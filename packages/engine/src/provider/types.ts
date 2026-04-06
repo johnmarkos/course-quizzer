@@ -41,7 +41,7 @@ export type ProviderRequest = {
 export type ToolDefinition = {
   name: string;
   description: string;
-  input_schema: Record<string, unknown>;
+  inputSchema: Record<string, unknown>;
 };
 
 export type ToolChoice =

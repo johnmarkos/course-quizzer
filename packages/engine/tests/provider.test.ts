@@ -106,7 +106,7 @@ describe('ClaudeProvider request formatting', () => {
         {
           name: 'generate_quiz',
           description: 'Generate quiz questions',
-          input_schema: { type: 'object', properties: {} },
+          inputSchema: { type: 'object', properties: {} },
         },
       ],
       toolChoice: { type: 'tool', name: 'generate_quiz' },
@@ -115,6 +115,9 @@ describe('ClaudeProvider request formatting', () => {
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
     expect(body.tools).toHaveLength(1);
     expect(body.tools[0].name).toBe('generate_quiz');
+    // Verify camelCase inputSchema is converted to Anthropic's snake_case
+    expect(body.tools[0].input_schema).toEqual({ type: 'object', properties: {} });
+    expect(body.tools[0].inputSchema).toBeUndefined();
     expect(body.tool_choice).toEqual({ type: 'tool', name: 'generate_quiz' });
   });
 

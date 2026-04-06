@@ -131,7 +131,12 @@ export class ClaudeProvider {
     }
 
     if (request.tools && request.tools.length > 0) {
-      body.tools = request.tools;
+      // Convert camelCase inputSchema to Anthropic's snake_case input_schema
+      body.tools = request.tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        input_schema: tool.inputSchema,
+      }));
     }
 
     if (request.toolChoice) {

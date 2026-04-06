@@ -22,6 +22,10 @@ export class RateLimiter {
   #maxTokens: number;
   #refillIntervalMs: number;
   #lastRefillTime: number;
+  // Queue serializes acquire() calls so concurrent callers
+  // wait in line rather than all waking at the same time
+  // and consuming the same refilled token.
+  #queue: Promise<void> = Promise.resolve();
 
   constructor(config: Partial<RateLimiterConfig> = {}) {
     const resolved = { ...DEFAULT_CONFIG, ...config };
@@ -36,8 +40,29 @@ export class RateLimiter {
   /**
    * Waits until a token is available, then consumes it.
    * Returns the number of milliseconds waited (0 if a token was immediately available).
+   * Calls are serialized: concurrent callers queue up rather than
+   * racing for the same refilled token.
    */
-  async acquire(): Promise<number> {
+  acquire(): Promise<number> {
+    const result = this.#queue.then(() => this.#acquireInternal());
+    // Chain onto the queue so the next caller waits for this one.
+    // Swallow errors in the chain — each caller gets its own rejection.
+    this.#queue = result.then(
+      () => {},
+      () => {}
+    );
+    return result;
+  }
+
+  /** Current number of available tokens. Useful for testing. */
+  get availableTokens(): number {
+    this.#refill();
+    return this.#tokens;
+  }
+
+  // --- Internal ---
+
+  async #acquireInternal(): Promise<number> {
     this.#refill();
 
     if (this.#tokens >= 1) {
@@ -58,14 +83,6 @@ export class RateLimiter {
     return actualWait;
   }
 
-  /** Current number of available tokens. Useful for testing. */
-  get availableTokens(): number {
-    this.#refill();
-    return this.#tokens;
-  }
-
-  // --- Internal ---
-
   #refill(): void {
     const now = Date.now();
     const elapsed = now - this.#lastRefillTime;
@@ -73,7 +90,8 @@ export class RateLimiter {
 
     if (tokensToAdd > 0) {
       this.#tokens = Math.min(this.#maxTokens, this.#tokens + tokensToAdd);
-      this.#lastRefillTime = now;
+      // Advance by exact intervals to preserve partial-interval remainder
+      this.#lastRefillTime += tokensToAdd * this.#refillIntervalMs;
     }
   }
 

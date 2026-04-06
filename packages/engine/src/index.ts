@@ -4,6 +4,8 @@ export { ClaudeProvider } from './provider/ClaudeProvider.js';
 export { RateLimiter } from './provider/rate-limiter.js';
 export { ProviderError } from './provider/types.js';
 export { StudentModel } from './student/StudentModel.js';
+export { SyllabusParser, validateCurriculumPlan } from './curriculum/SyllabusParser.js';
+export { CurriculumManager } from './curriculum/CurriculumManager.js';
 
 export type {
   CourseEngineConfig,
@@ -23,6 +25,12 @@ export type {
 export type { EngineEvent, EngineEventMap, Listener } from './engine/events.js';
 
 export type { Topic } from './curriculum/types.js';
+
+export {
+  buildSyllabusAnalysisPrompt,
+  SYLLABUS_ANALYSIS_VERSION,
+} from './prompts/syllabus-analysis.js';
+export type { PromptMessages } from './prompts/types.js';
 export type { MasteryUpdate } from './student/StudentModel.js';
 
 export type {

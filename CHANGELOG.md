@@ -15,6 +15,12 @@
 - `CourseEngine` now delegates all mastery logic to `StudentModel`
 - Snapshot version bumped to 3
 - 45 new tests (23 provider + 22 student model)
+- `SyllabusParser`: orchestrates syllabus text → Claude API → validated `CurriculumPlan`, with retry on malformed response
+- `CurriculumManager`: holds curriculum plan, tracks section position, provides navigation
+- Syllabus analysis prompt (`src/prompts/syllabus-analysis.ts`): versioned, tool_use-based structured output, syllabus text in user message (not system prompt)
+- `validateCurriculumPlan`: runtime shape validation with duplicate ID detection
+- 3 recorded fixtures (MIT algorithms, Coursera ML, informal cooking) for deterministic testing
+- 29 new tests (prompt builder, validation, parser with fixtures, curriculum manager)
 
 ## 0.1.0 — 2026-04-05
 

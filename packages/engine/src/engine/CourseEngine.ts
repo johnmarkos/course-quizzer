@@ -6,6 +6,7 @@
 
 import { EventEmitter } from './events.js';
 import { InvalidTransitionError } from './errors.js';
+import { StudentModel } from '../student/StudentModel.js';
 import type {
   CourseEngineConfig,
   EngineSnapshot,
@@ -19,8 +20,7 @@ import type {
 import type { StudentAnswer, Question } from '../content/types.js';
 import type { Section } from '../curriculum/types.js';
 
-const SNAPSHOT_VERSION = 2;
-const GAP_THRESHOLD = 0.5; // topics below this mastery score are "gaps"
+const SNAPSHOT_VERSION = 3;
 
 export class CourseEngine extends EventEmitter {
   #state: EngineState = 'idle';
@@ -29,7 +29,7 @@ export class CourseEngine extends EventEmitter {
   #currentSectionIndex = -1;
   #currentItemIndex = -1;
   #sectionItems: ContentItem[] = [];
-  #studentState: StudentState = { masteryByTopic: {}, gaps: [] };
+  #studentModel: StudentModel = new StudentModel();
   #lastAnswerResult: AnswerResult | null = null;
 
   constructor(config: CourseEngineConfig) {
@@ -58,28 +58,16 @@ export class CourseEngine extends EventEmitter {
   }
 
   get studentState(): StudentState {
-    // Return a defensive copy so callers can't mutate internal state
-    return {
-      masteryByTopic: { ...this.#studentState.masteryByTopic },
-      gaps: [...this.#studentState.gaps],
-    };
+    return this.#studentModel.getState();
   }
 
   get sessionProgress(): SessionProgress {
-    const totalSections = this.#curriculum?.sections.length ?? 0;
-    const masteries = Object.values(this.#studentState.masteryByTopic);
-    const overallMastery =
-      masteries.length > 0
-        ? masteries.reduce((sum, m) => sum + m.score, 0) / masteries.length
-        : 0;
-
-    return {
+    return this.#studentModel.computeProgress({
       currentSectionIndex: this.#currentSectionIndex,
-      totalSections,
+      totalSections: this.#curriculum?.sections.length ?? 0,
       currentItemIndex: this.#currentItemIndex,
       totalItemsInSection: this.#sectionItems.length,
-      overallMastery,
-    };
+    });
   }
 
   // --- State Transitions ---
@@ -114,12 +102,7 @@ export class CourseEngine extends EventEmitter {
     // Initialize mastery for all topics
     for (const section of this.#curriculum.sections) {
       for (const topic of section.topics) {
-        this.#studentState.masteryByTopic[topic.id] = {
-          topicId: topic.id,
-          score: 0,
-          questionsAnswered: 0,
-          questionsCorrect: 0,
-        };
+        this.#studentModel.initializeTopic(topic.id);
       }
     }
 
@@ -294,22 +277,10 @@ export class CourseEngine extends EventEmitter {
   }
 
   #updateMastery(result: AnswerResult): void {
-    const topicId = result.topicId;
-    const mastery = this.#studentState.masteryByTopic[topicId];
-    if (!mastery) return;
-
-    mastery.questionsAnswered++;
-    if (result.correct) {
-      mastery.questionsCorrect++;
-      mastery.score = Math.min(1, mastery.score + 0.15);
-    } else {
-      mastery.score = Math.max(0, mastery.score - 0.1);
-    }
-
-    // Update gaps list
-    this.#studentState.gaps = Object.values(this.#studentState.masteryByTopic)
-      .filter((m) => m.score < GAP_THRESHOLD)
-      .map((m) => m.topicId);
+    this.#studentModel.recordAnswer({
+      topicId: result.topicId,
+      correct: result.correct,
+    });
   }
 
   // --- Grading ---
@@ -409,7 +380,7 @@ export class CourseEngine extends EventEmitter {
       currentSectionIndex: this.#currentSectionIndex,
       currentItemIndex: this.#currentItemIndex,
       sectionItems: this.#sectionItems,
-      studentState: this.#studentState,
+      studentState: this.#studentModel.getState(),
       lastAnswerResult: this.#lastAnswerResult,
     };
   }
@@ -430,7 +401,7 @@ export class CourseEngine extends EventEmitter {
     engine.#currentSectionIndex = snapshot.currentSectionIndex;
     engine.#currentItemIndex = snapshot.currentItemIndex;
     engine.#sectionItems = snapshot.sectionItems;
-    engine.#studentState = snapshot.studentState;
+    engine.#studentModel = new StudentModel(snapshot.studentState);
     engine.#lastAnswerResult = snapshot.lastAnswerResult;
     return engine;
   }

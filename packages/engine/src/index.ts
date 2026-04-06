@@ -3,6 +3,7 @@ export { InvalidTransitionError, EngineError } from './engine/errors.js';
 export { ClaudeProvider } from './provider/ClaudeProvider.js';
 export { RateLimiter } from './provider/rate-limiter.js';
 export { ProviderError } from './provider/types.js';
+export { StudentModel } from './student/StudentModel.js';
 
 export type {
   CourseEngineConfig,
@@ -22,6 +23,7 @@ export type {
 export type { EngineEvent, EngineEventMap, Listener } from './engine/events.js';
 
 export type { Topic } from './curriculum/types.js';
+export type { MasteryUpdate } from './student/StudentModel.js';
 
 export type {
   StudentAnswer,

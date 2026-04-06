@@ -78,6 +78,8 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 
 ## Phase 5: Future (not planned in detail)
 
+- Content/quiz ratio tuning (user-adjustable per course or globally)
+- Additional question types (free-response with Claude evaluation, fill-in-the-blank, diagram labeling, code exercises)
 - Google Drive sync (`GoogleDriveAdapter`)
 - Multiple concurrent courses
 - Course sharing (export curriculum plan as shareable file)

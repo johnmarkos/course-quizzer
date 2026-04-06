@@ -14,6 +14,21 @@ This is a pnpm monorepo containing two packages:
 
 **Sister projects:** [PageQuizzer](https://github.com/johnmarkos/page-quizzer) (Chrome extension), [OpenQuizzer](https://github.com/johnmarkos/openquizzer) (zero-dependency quiz engine + template repo). QuizzerEngine is a different project from OpenQuizzer — OpenQuizzer presents static pre-made content; QuizzerEngine generates adaptive content dynamically via the Claude API. When in doubt about event-driven engine design patterns, OpenQuizzer is still the reference.
 
+## Learning Model
+
+The app is a quizzing engine with just enough reading to give the student something to be quizzed on. Reading is the means, not the end — active recall is the point.
+
+**The content/quiz loop:** For each concept in a section:
+
+1. **Brief content** — A focused explanation (2-3 paragraphs) or a link to external material with a summary. Short enough that the student doesn't lose focus.
+2. **Quiz burst** — Multiple questions on that concept, varying in type, until mastery is demonstrated. High ratio of questions to content.
+3. **Repeat** for the next concept in the section.
+4. **Section assessment** — Broader questions mixing concepts from the whole section.
+
+This is not a textbook with quizzes bolted on. The quiz burst is the primary experience; the content exists to give the student something to recall.
+
+**Question types:** v1 uses the types proven in OpenQuizzer (multiple choice, numeric input, ordering, multi-select, two-stage). Additional types are on the roadmap.
+
 ## Monorepo Coordination
 
 This is a pnpm workspaces monorepo. The engine and app live in one repo but remain independently functional.

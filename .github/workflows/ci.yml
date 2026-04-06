@@ -23,11 +23,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Test engine
+        run: pnpm --filter quizzer-engine test
+
       - name: Build engine
         run: pnpm --filter quizzer-engine build
 
-      - name: Test engine
-        run: pnpm --filter quizzer-engine test
+      - name: Test app
+        run: pnpm --filter coursequizzer test
+        continue-on-error: true # No app tests yet — remove once tests exist
 
       - name: Build app
         run: pnpm --filter coursequizzer build

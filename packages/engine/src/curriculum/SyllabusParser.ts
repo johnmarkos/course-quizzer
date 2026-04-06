@@ -32,15 +32,10 @@ export class SyllabusParser {
   async parse(syllabusText: string): Promise<CurriculumPlan> {
     const prompt = buildSyllabusAnalysisPrompt(syllabusText);
 
-    let response: ProviderResponse;
-    try {
-      response = await this.#provider.sendMessage({
-        ...prompt,
-        maxTokens: MAX_TOKENS,
-      });
-    } catch (error) {
-      throw error;
-    }
+    let response = await this.#provider.sendMessage({
+      ...prompt,
+      maxTokens: MAX_TOKENS,
+    });
 
     // Try to extract and validate the plan
     try {

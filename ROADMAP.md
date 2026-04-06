@@ -21,14 +21,12 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 
 **Goal:** The engine can accept a syllabus, analyze it with Claude, and generate content for the first section.
 
-- [ ] `ClaudeProvider`: API client with `anthropic-dangerous-direct-browser-access` header, typed responses, rate limiter
-- [ ] `SyllabusParser`: prompt + parsing for `CurriculumPlan`
-- [ ] `ContentGenerator`: prompt + parsing for explanations + quiz questions
-- [ ] `CourseEngine` state machine: full lifecycle (`idle` through `complete`)
-- [ ] Typed event system with all event payloads
-- [ ] `StudentModel` v1: per-topic mastery scores, gap tracking
-- [ ] `serialize()` / `restore()` for all engine state
-- [ ] Tests: state transitions, prompt output parsing, serialize/restore round-trips, event payloads
+- [ ] #2 — Core engine types and state machine (no dependencies)
+- [ ] #3 — ClaudeProvider: API client for browser-to-Claude calls (no dependencies)
+- [ ] #4 — SyllabusParser: prompt + parsing for CurriculumPlan (depends on #2, #3)
+- [ ] #5 — ContentGenerator: content/quiz loop for a section (depends on #2, #3, #4)
+- [ ] #6 — StudentModel: mastery tracking and gap detection (depends on #2)
+- [ ] #7 — Phase 1 integration: end-to-end test with real Claude API (depends on all above)
 
 **Checkpoint:** Engine drivable from tests — load syllabus, get curriculum plan, generate section content, answer questions, see mastery update. Validate prompt quality against 5+ real syllabi.
 

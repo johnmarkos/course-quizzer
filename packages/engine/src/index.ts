@@ -1,5 +1,6 @@
 export { CourseEngine } from './engine/CourseEngine.js';
 export { InvalidTransitionError, EngineError } from './engine/errors.js';
+export { StudentModel } from './student/StudentModel.js';
 
 export type {
   CourseEngineConfig,
@@ -19,6 +20,7 @@ export type {
 export type { EngineEvent, EngineEventMap, Listener } from './engine/events.js';
 
 export type { Topic } from './curriculum/types.js';
+export type { MasteryUpdate } from './student/StudentModel.js';
 
 export type {
   StudentAnswer,

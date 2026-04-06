@@ -43,7 +43,7 @@ This is a pnpm workspaces monorepo. The engine and app live in one repo but rema
 
 These are hard rules, not suggestions. Violations should be caught in self-review.
 
-1. **All Claude API calls go through `packages/engine/src/provider/`** — no direct `fetch` to AI APIs anywhere else in the monorepo.
+1. **All LLM API calls go through `packages/engine/src/provider/`** — no direct `fetch` to AI APIs anywhere else in the monorepo. The provider interface is provider-agnostic; no provider-specific code outside `src/provider/`.
 2. **Prompts live in `packages/engine/src/prompts/`** — one file per feature, with a version constant and tested output shape.
 3. **The engine (`packages/engine/`) has zero browser API dependencies** — no `document`, no `window`, no `localStorage`, no `fetch` polyfill assumptions. It runs identically in Node and the browser.
 4. **Engine/UI boundary:** The engine emits events with all data the UI needs to render. The UI never reaches back into the engine for display info. This is the core design constraint.

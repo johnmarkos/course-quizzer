@@ -59,8 +59,9 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 - [ ] Loading states and transitions
 - [ ] Comprehensive E2E test suite
 - [ ] Full security review
+- [ ] Additional LLM providers: GPT, Gemini, Ollama (provider interface is already provider-agnostic from Phase 1)
 
-**Checkpoint:** Multi-section course flow, adaptive content, export → import → continue on different browser.
+**Checkpoint:** Multi-section course flow, adaptive content, export → import → continue on different browser. Multiple provider options.
 
 ## Phase 4: Hardening + PWA
 
@@ -82,5 +83,4 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 - Multiple concurrent courses
 - Course sharing (export curriculum plan as shareable file)
 - Spaced repetition across sessions
-- Alternative LLM providers
 - Static course generation (batch mode)

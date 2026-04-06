@@ -3,10 +3,49 @@
 // The engine emits events with all data the UI needs to render.
 // The UI never reaches back into the engine for display info.
 
+import type { CurriculumPlan, Section } from '../curriculum/types.js';
+import type {
+  ContentItem,
+  Explanation,
+  Question,
+  AnswerResult,
+} from '../content/types.js';
+import type { StudentState, SessionProgress } from '../student/types.js';
+import type { EngineState } from './types.js';
+
 export type EngineEventMap = {
-  ready: { state: string };
-  stateChange: { from: string; to: string };
-  error: { message: string };
+  stateChange: { from: EngineState; to: EngineState };
+  error: { message: string; recoverable: boolean };
+
+  // --- Syllabus lifecycle ---
+  syllabusLoaded: { curriculum: CurriculumPlan };
+
+  // --- Section lifecycle ---
+  sectionStart: { section: Section; sectionIndex: number; totalSections: number };
+  contentReady: { items: ContentItem[]; section: Section };
+
+  // --- Content/quiz loop ---
+  itemShow: { item: ContentItem; itemIndex: number; totalItems: number };
+  answerResult: {
+    result: AnswerResult;
+    studentState: StudentState;
+    progress: SessionProgress;
+  };
+
+  // --- Section/course completion ---
+  sectionComplete: {
+    section: Section;
+    studentState: StudentState;
+    progress: SessionProgress;
+  };
+  courseComplete: {
+    studentState: StudentState;
+    progress: SessionProgress;
+  };
+
+  // --- API activity (for loading indicators) ---
+  apiCallStart: { purpose: string };
+  apiCallComplete: { purpose: string };
 };
 
 export type EngineEvent = keyof EngineEventMap;

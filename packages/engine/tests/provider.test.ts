@@ -338,7 +338,8 @@ describe('error handling', () => {
       const pe = error as ProviderError;
       expect(pe.type).toBe('network');
       expect(pe.message).toContain('Failed to fetch');
-      expect(pe.retryable).toBe(false);
+      expect(pe.retryable).toBe(true);
+      expect(pe.cause).toBeInstanceOf(Error);
     }
   });
 

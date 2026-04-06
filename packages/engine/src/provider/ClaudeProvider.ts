@@ -164,7 +164,9 @@ export class ClaudeProvider {
     } catch (error) {
       throw new ProviderError(
         'network',
-        `Network error: ${error instanceof Error ? error.message : String(error)}`
+        `Network error: ${error instanceof Error ? error.message : String(error)}`,
+        undefined,
+        { cause: error }
       );
     }
 

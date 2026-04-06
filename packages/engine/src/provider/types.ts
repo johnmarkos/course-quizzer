@@ -92,12 +92,20 @@ export class ProviderError extends Error {
   readonly statusCode?: number;
   readonly retryable: boolean;
 
-  constructor(type: ProviderErrorType, message: string, statusCode?: number) {
-    super(message);
+  constructor(
+    type: ProviderErrorType,
+    message: string,
+    statusCode?: number,
+    options?: { cause?: unknown }
+  ) {
+    super(message, options);
     this.name = 'ProviderError';
     this.type = type;
     this.statusCode = statusCode;
     this.retryable =
-      type === 'rate_limit' || type === 'overloaded' || type === 'server_error';
+      type === 'rate_limit' ||
+      type === 'overloaded' ||
+      type === 'server_error' ||
+      type === 'network';
   }
 }

@@ -4,6 +4,9 @@
 
 ### Phase 1: Engine Core
 
+- `ClaudeProvider`: browser-to-Claude API client with typed request/response, `testConnection()`, and structured error handling (`ProviderError` with `authentication`, `rate_limit`, `overloaded`, `invalid_request`, `server_error`, `network`, `malformed_response` types)
+- `RateLimiter`: token bucket rate limiter to prevent 429s
+- Provider types: `ProviderRequest`, `ProviderResponse`, `ToolDefinition`, `ToolChoice` — provider-agnostic interface for the rest of the engine
 - `StudentModel`: dedicated class for per-topic mastery tracking and gap detection, extracted from inline logic in `CourseEngine`
 - Mastery scores: correct answers increase by 0.15, incorrect decrease by 0.10, clamped to [0, 1]
 - Gap detection: topics below 0.5 mastery threshold are tracked as gaps
@@ -11,7 +14,7 @@
 - Full serialize/restore round-trip support
 - `CourseEngine` now delegates all mastery logic to `StudentModel`
 - Snapshot version bumped to 3
-- 22 new tests covering mastery calculations, gap detection, bounds, serialization, and defensive copies
+- 45 new tests (23 provider + 22 student model)
 
 ## 0.1.0 — 2026-04-05
 

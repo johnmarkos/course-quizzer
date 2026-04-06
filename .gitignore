@@ -137,3 +137,16 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Local coordination files
+CLAUDE-HANDOFF.md
+CODEX-HANDOFF.md
+HANDOFF.md
+TASK-*.md
+
+# Scratch directory
+.scratch/
+
+# Playwright
+test-results/
+playwright-report/

@@ -1,11 +1,90 @@
 import { describe, it, expect } from 'vitest';
-import { CourseEngine } from '../src/index.js';
-import type { EngineEventMap } from '../src/index.js';
+import { CourseEngine, InvalidTransitionError } from '../src/index.js';
+import type {
+  EngineEventMap,
+  CurriculumPlan,
+  ContentItem,
+  StudentAnswer,
+} from '../src/index.js';
 
-// --- Test Helpers ---
+// --- Test Data Factories ---
 
-function createEngine() {
-  return new CourseEngine({ apiKey: 'test-key' });
+function mockCurriculum(): CurriculumPlan {
+  return {
+    title: 'Intro to Testing',
+    description: 'A course about testing',
+    sections: [
+      {
+        id: 'section-1',
+        title: 'Unit Testing',
+        order: 0,
+        topics: [
+          { id: 'topic-1', title: 'Assertions', description: 'How to assert' },
+          { id: 'topic-2', title: 'Mocking', description: 'How to mock' },
+        ],
+      },
+      {
+        id: 'section-2',
+        title: 'Integration Testing',
+        order: 1,
+        topics: [{ id: 'topic-3', title: 'Setup', description: 'Test setup' }],
+      },
+    ],
+  };
+}
+
+function mockSectionContent(): ContentItem[] {
+  return [
+    {
+      type: 'explanation',
+      topicId: 'topic-1',
+      title: 'Understanding Assertions',
+      content: 'Assertions verify expected behavior.',
+    },
+    {
+      type: 'multiple-choice',
+      id: 'q1',
+      topicId: 'topic-1',
+      question: 'What does assertEquals do?',
+      options: ['Compares values', 'Logs output', 'Throws always', 'Does nothing'],
+      correctIndex: 0,
+    },
+    {
+      type: 'numeric-input',
+      id: 'q2',
+      topicId: 'topic-1',
+      question: 'What is 2 + 2?',
+      correctValue: 4,
+      tolerance: 0,
+    },
+    {
+      type: 'ordering',
+      id: 'q3',
+      topicId: 'topic-2',
+      question: 'Order the test phases:',
+      items: ['Assert', 'Arrange', 'Act'],
+      correctOrder: [1, 2, 0], // Arrange, Act, Assert
+    },
+    {
+      type: 'multi-select',
+      id: 'q4',
+      topicId: 'topic-2',
+      question: 'Select all testing frameworks:',
+      options: ['Vitest', 'Photoshop', 'Jest', 'Excel'],
+      correctIndices: [0, 2],
+    },
+    {
+      type: 'two-stage',
+      id: 'q5',
+      topicId: 'topic-2',
+      question: 'What is a mock?',
+      options: ['A fake object', 'A real database', 'A CSS file'],
+      correctIndex: 0,
+      followUp: 'Why use mocks?',
+      followUpOptions: ['Isolation', 'Performance', 'Styling'],
+      followUpCorrectIndex: 0,
+    },
+  ];
 }
 
 function collectEvents<E extends keyof EngineEventMap>(
@@ -17,96 +96,652 @@ function collectEvents<E extends keyof EngineEventMap>(
   return events;
 }
 
+function engineAtPracticing(): {
+  engine: CourseEngine;
+  items: ContentItem[];
+} {
+  const engine = new CourseEngine({ apiKey: 'test-key' });
+  engine.loadCurriculum(mockCurriculum());
+  engine.startSection('section-1');
+  const items = mockSectionContent();
+  engine.setSectionContent(items);
+  return { engine, items };
+}
+
 // --- Constructor ---
 
 describe('CourseEngine', () => {
-  it('starts in ready state after construction', () => {
-    const engine = createEngine();
+  it('starts in idle state', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    expect(engine.state).toBe('idle');
+  });
+
+  it('has no curriculum initially', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    expect(engine.curriculum).toBeNull();
+    expect(engine.currentSection).toBeNull();
+    expect(engine.currentItem).toBeNull();
+  });
+});
+
+// --- State Transitions ---
+
+describe('state machine transitions', () => {
+  it('idle → ready on loadCurriculum', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    const stateChanges = collectEvents(engine, 'stateChange');
+
+    engine.loadCurriculum(mockCurriculum());
+
     expect(engine.state).toBe('ready');
+    expect(stateChanges).toEqual([{ from: 'idle', to: 'ready' }]);
   });
 
-  it('emits stateChange and ready events on construction', () => {
-    const stateChanges: EngineEventMap['stateChange'][] = [];
-    const readyEvents: EngineEventMap['ready'][] = [];
+  it('ready → loading on startSection', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+    const stateChanges = collectEvents(engine, 'stateChange');
 
-    // Need to listen before construction completes —
-    // construct manually to capture events
-    const engine = createEngine();
+    engine.startSection('section-1');
 
-    // Constructor already fired events, so we test via serialize
-    // that the state is correct. For event testing, we'll use
-    // a fresh engine with pre-registered listeners.
-    expect(engine.state).toBe('ready');
+    expect(engine.state).toBe('loading');
+    expect(stateChanges).toEqual([{ from: 'ready', to: 'loading' }]);
   });
 
-  it('emits events to registered listeners', () => {
-    const engine = createEngine();
-    const errors = collectEvents(engine, 'error');
+  it('loading → practicing on setSectionContent', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    const stateChanges = collectEvents(engine, 'stateChange');
 
-    // Trigger an error event manually isn't possible from public API yet,
-    // but we can verify the listener registration works via state events
-    expect(errors).toHaveLength(0);
+    engine.setSectionContent(mockSectionContent());
+
+    expect(engine.state).toBe('practicing');
+    expect(stateChanges).toEqual([{ from: 'loading', to: 'practicing' }]);
   });
 
-  it('removes listeners with off()', () => {
-    const engine = createEngine();
-    const events: EngineEventMap['stateChange'][] = [];
-    const listener = (payload: EngineEventMap['stateChange']) => events.push(payload);
+  it('practicing → answered on submitAnswer', () => {
+    const { engine } = engineAtPracticing();
+    // Skip explanation first
+    engine.nextItem();
+    const stateChanges = collectEvents(engine, 'stateChange');
 
-    engine.on('stateChange', listener);
-    engine.off('stateChange', listener);
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
 
-    // No public way to trigger stateChange yet, but listener is removed
-    expect(events).toHaveLength(0);
+    expect(engine.state).toBe('answered');
+    expect(stateChanges).toEqual([{ from: 'practicing', to: 'answered' }]);
+  });
+
+  it('answered → practicing on nextItem', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // skip explanation
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    const stateChanges = collectEvents(engine, 'stateChange');
+
+    engine.nextItem();
+
+    expect(engine.state).toBe('practicing');
+    expect(stateChanges).toEqual([{ from: 'answered', to: 'practicing' }]);
+  });
+
+  it('practicing → sectionComplete when all items done', () => {
+    const { engine } = engineAtPracticing();
+    const sectionCompleteEvents = collectEvents(engine, 'sectionComplete');
+
+    // Walk through all items
+    engine.nextItem(); // explanation → q1
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem(); // q1 → q2
+    engine.submitAnswer({ type: 'numeric-input', value: 4 });
+    engine.nextItem(); // q2 → q3
+    engine.submitAnswer({ type: 'ordering', order: [1, 2, 0] });
+    engine.nextItem(); // q3 → q4
+    engine.submitAnswer({ type: 'multi-select', selectedIndices: [0, 2] });
+    engine.nextItem(); // q4 → q5
+    engine.submitAnswer({
+      type: 'two-stage',
+      selectedIndex: 0,
+      followUpSelectedIndex: 0,
+    });
+    engine.nextItem(); // q5 → complete
+
+    expect(engine.state).toBe('sectionComplete');
+    expect(sectionCompleteEvents).toHaveLength(1);
+    expect(sectionCompleteEvents[0].section.id).toBe('section-1');
+  });
+
+  it('sectionComplete → loading on nextSection', () => {
+    const { engine } = engineAtPracticing();
+    // Complete section 1
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'numeric-input', value: 4 });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'ordering', order: [1, 2, 0] });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multi-select', selectedIndices: [0, 2] });
+    engine.nextItem();
+    engine.submitAnswer({
+      type: 'two-stage',
+      selectedIndex: 0,
+      followUpSelectedIndex: 0,
+    });
+    engine.nextItem();
+
+    expect(engine.state).toBe('sectionComplete');
+    const stateChanges = collectEvents(engine, 'stateChange');
+    engine.nextSection();
+
+    // Should transition through sectionComplete → loading
+    expect(engine.state).toBe('loading');
+  });
+
+  it('sectionComplete → complete when last section finishes', () => {
+    const { engine } = engineAtPracticing();
+    // Complete section 1
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'numeric-input', value: 4 });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'ordering', order: [1, 2, 0] });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multi-select', selectedIndices: [0, 2] });
+    engine.nextItem();
+    engine.submitAnswer({
+      type: 'two-stage',
+      selectedIndex: 0,
+      followUpSelectedIndex: 0,
+    });
+    engine.nextItem();
+
+    // Start and complete section 2
+    engine.nextSection();
+    engine.setSectionContent([
+      {
+        type: 'multiple-choice',
+        id: 'q6',
+        topicId: 'topic-3',
+        question: 'What is integration testing?',
+        options: ['Testing components together', 'Unit testing', 'Manual testing'],
+        correctIndex: 0,
+      },
+    ]);
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem();
+    expect(engine.state).toBe('sectionComplete');
+
+    const courseCompleteEvents = collectEvents(engine, 'courseComplete');
+    engine.nextSection();
+
+    expect(engine.state).toBe('complete');
+    expect(courseCompleteEvents).toHaveLength(1);
+  });
+});
+
+// --- Invalid Transitions ---
+
+describe('invalid transitions', () => {
+  it('throws on loadCurriculum when not idle', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+
+    expect(() => engine.loadCurriculum(mockCurriculum())).toThrow(InvalidTransitionError);
+  });
+
+  it('throws on startSection when idle', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    expect(() => engine.startSection('section-1')).toThrow(InvalidTransitionError);
+  });
+
+  it('throws on startSection with unknown section id', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+    expect(() => engine.startSection('nonexistent')).toThrow(InvalidTransitionError);
+  });
+
+  it('throws on submitAnswer when not practicing', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    expect(() =>
+      engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 })
+    ).toThrow(InvalidTransitionError);
+  });
+
+  it('throws on submitAnswer when current item is an explanation', () => {
+    const { engine } = engineAtPracticing();
+    // Current item is an explanation
+    expect(() =>
+      engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 })
+    ).toThrow(InvalidTransitionError);
+  });
+
+  it('throws on nextItem for unanswered question', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // skip explanation, now on q1
+    // Try to skip the question without answering
+    expect(() => engine.nextItem()).toThrow(InvalidTransitionError);
+  });
+
+  it('throws on setSectionContent when not loading', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    expect(() => engine.setSectionContent([])).toThrow(InvalidTransitionError);
+  });
+
+  it('throws on nextSection when not sectionComplete', () => {
+    const { engine } = engineAtPracticing();
+    expect(() => engine.nextSection()).toThrow(InvalidTransitionError);
+  });
+});
+
+// --- Grading ---
+
+describe('answer grading', () => {
+  it('grades multiple-choice correctly', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // skip explanation
+    const result = engine.submitAnswer({
+      type: 'multiple-choice',
+      selectedIndex: 0,
+    });
+    expect(result.correct).toBe(true);
+    expect(result.correctAnswer).toBe('Compares values');
+  });
+
+  it('grades multiple-choice incorrectly', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem();
+    const result = engine.submitAnswer({
+      type: 'multiple-choice',
+      selectedIndex: 2,
+    });
+    expect(result.correct).toBe(false);
+  });
+
+  it('grades numeric-input correctly', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // explanation
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem(); // q1 → q2
+    const result = engine.submitAnswer({ type: 'numeric-input', value: 4 });
+    expect(result.correct).toBe(true);
+  });
+
+  it('grades numeric-input with tolerance', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    engine.setSectionContent([
+      {
+        type: 'numeric-input',
+        id: 'q-tol',
+        topicId: 'topic-1',
+        question: 'What is pi?',
+        correctValue: 3.14,
+        tolerance: 0.01,
+      },
+    ]);
+    const result = engine.submitAnswer({ type: 'numeric-input', value: 3.14159 });
+    // 3.14159 is within 0.01 of 3.14? |3.14159 - 3.14| = 0.00159 < 0.01
+    expect(result.correct).toBe(true);
+  });
+
+  it('handles numeric-input with correctValue of 0', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    engine.setSectionContent([
+      {
+        type: 'numeric-input',
+        id: 'q-zero',
+        topicId: 'topic-1',
+        question: 'What is 0?',
+        correctValue: 0,
+        tolerance: 0.1,
+      },
+    ]);
+    const result = engine.submitAnswer({ type: 'numeric-input', value: 0.05 });
+    expect(result.correct).toBe(true);
+  });
+
+  it('grades ordering correctly', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // explanation
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem(); // q1
+    engine.submitAnswer({ type: 'numeric-input', value: 4 });
+    engine.nextItem(); // q2 → q3
+    const result = engine.submitAnswer({ type: 'ordering', order: [1, 2, 0] });
+    expect(result.correct).toBe(true);
+    expect(result.correctAnswer).toBe('Arrange → Act → Assert');
+  });
+
+  it('grades multi-select correctly regardless of order', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'numeric-input', value: 4 });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'ordering', order: [1, 2, 0] });
+    engine.nextItem(); // q3 → q4
+    // Correct indices are [0, 2], submit in reverse order
+    const result = engine.submitAnswer({
+      type: 'multi-select',
+      selectedIndices: [2, 0],
+    });
+    expect(result.correct).toBe(true);
+  });
+
+  it('grades two-stage correctly', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'numeric-input', value: 4 });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'ordering', order: [1, 2, 0] });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multi-select', selectedIndices: [0, 2] });
+    engine.nextItem(); // q4 → q5
+    const result = engine.submitAnswer({
+      type: 'two-stage',
+      selectedIndex: 0,
+      followUpSelectedIndex: 0,
+    });
+    expect(result.correct).toBe(true);
+    expect(result.correctAnswer).toBe('A fake object, then Isolation');
+  });
+
+  it('grades two-stage incorrect when follow-up is wrong', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'numeric-input', value: 4 });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'ordering', order: [1, 2, 0] });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multi-select', selectedIndices: [0, 2] });
+    engine.nextItem();
+    const result = engine.submitAnswer({
+      type: 'two-stage',
+      selectedIndex: 0,
+      followUpSelectedIndex: 1, // wrong follow-up
+    });
+    expect(result.correct).toBe(false);
+  });
+
+  it('handles mismatched answer type', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // skip explanation, now on MCQ
+    const result = engine.submitAnswer({ type: 'numeric-input', value: 42 });
+    expect(result.correct).toBe(false);
+    expect(result.explanation).toContain('type does not match');
+  });
+});
+
+// --- Skip ---
+
+describe('skipQuestion', () => {
+  it('advances to the next item without answering', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // explanation → q1
+    const itemEvents = collectEvents(engine, 'itemShow');
+
+    engine.skipQuestion();
+
+    expect(engine.state).toBe('practicing');
+    expect(itemEvents).toHaveLength(1);
+    expect(itemEvents[0].itemIndex).toBe(2); // q2
+  });
+
+  it('throws when current item is an explanation', () => {
+    const { engine } = engineAtPracticing();
+    expect(() => engine.skipQuestion()).toThrow(InvalidTransitionError);
+  });
+});
+
+// --- Event Payloads ---
+
+describe('event payloads', () => {
+  it('syllabusLoaded contains the full curriculum', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    const events = collectEvents(engine, 'syllabusLoaded');
+
+    engine.loadCurriculum(mockCurriculum());
+
+    expect(events).toHaveLength(1);
+    expect(events[0].curriculum.title).toBe('Intro to Testing');
+    expect(events[0].curriculum.sections).toHaveLength(2);
+  });
+
+  it('sectionStart contains section info and position', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+    const events = collectEvents(engine, 'sectionStart');
+
+    engine.startSection('section-1');
+
+    expect(events).toHaveLength(1);
+    expect(events[0].section.id).toBe('section-1');
+    expect(events[0].sectionIndex).toBe(0);
+    expect(events[0].totalSections).toBe(2);
+  });
+
+  it('contentReady contains all items and section', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    const events = collectEvents(engine, 'contentReady');
+    const items = mockSectionContent();
+
+    engine.setSectionContent(items);
+
+    expect(events).toHaveLength(1);
+    expect(events[0].items).toHaveLength(items.length);
+    expect(events[0].section.id).toBe('section-1');
+  });
+
+  it('itemShow contains item and position', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    const events = collectEvents(engine, 'itemShow');
+
+    engine.setSectionContent(mockSectionContent());
+
+    expect(events).toHaveLength(1);
+    expect(events[0].item.type).toBe('explanation');
+    expect(events[0].itemIndex).toBe(0);
+    expect(events[0].totalItems).toBe(6);
+  });
+
+  it('answerResult contains result, studentState, and progress', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // skip explanation
+    const events = collectEvents(engine, 'answerResult');
+
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+
+    expect(events).toHaveLength(1);
+    expect(events[0].result.correct).toBe(true);
+    expect(events[0].studentState.masteryByTopic).toBeDefined();
+    expect(events[0].progress.currentItemIndex).toBe(1);
+  });
+});
+
+// --- Student State ---
+
+describe('mastery tracking', () => {
+  it('increases mastery on correct answer', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+
+    const state = engine.studentState;
+    expect(state.masteryByTopic['topic-1'].score).toBeGreaterThan(0);
+    expect(state.masteryByTopic['topic-1'].questionsCorrect).toBe(1);
+  });
+
+  it('decreases mastery on incorrect answer', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 3 }); // wrong
+
+    const state = engine.studentState;
+    // Started at 0, decreased — but clamped to 0
+    expect(state.masteryByTopic['topic-1'].score).toBe(0);
+    expect(state.masteryByTopic['topic-1'].questionsCorrect).toBe(0);
+    expect(state.masteryByTopic['topic-1'].questionsAnswered).toBe(1);
+  });
+
+  it('mastery stays within 0-1 bounds', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+
+    // Create 10 correct answers to push mastery high
+    const items: ContentItem[] = Array.from({ length: 10 }, (_, i) => ({
+      type: 'multiple-choice' as const,
+      id: `q-${i}`,
+      topicId: 'topic-1',
+      question: `Question ${i}`,
+      options: ['A', 'B'],
+      correctIndex: 0,
+    }));
+    engine.setSectionContent(items);
+
+    for (let i = 0; i < 10; i++) {
+      engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+      if (i < 9) engine.nextItem();
+    }
+
+    expect(engine.studentState.masteryByTopic['topic-1'].score).toBeLessThanOrEqual(1);
+  });
+
+  it('identifies gaps when mastery is below threshold', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem();
+    // Wrong answer — mastery stays at 0, which is below gap threshold
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 3 });
+
+    const state = engine.studentState;
+    // All topics start at 0 mastery, so all should be gaps initially
+    expect(state.gaps).toContain('topic-1');
+  });
+
+  it('returns defensive copies of student state', () => {
+    const { engine } = engineAtPracticing();
+    const state1 = engine.studentState;
+    state1.gaps.push('fake-gap');
+    const state2 = engine.studentState;
+    expect(state2.gaps).not.toContain('fake-gap');
+  });
+});
+
+// --- Session Progress ---
+
+describe('session progress', () => {
+  it('tracks section and item position', () => {
+    const { engine } = engineAtPracticing();
+    const progress = engine.sessionProgress;
+
+    expect(progress.currentSectionIndex).toBe(0);
+    expect(progress.totalSections).toBe(2);
+    expect(progress.currentItemIndex).toBe(0);
+    expect(progress.totalItemsInSection).toBe(6);
   });
 });
 
 // --- Serialization ---
 
 describe('serialize / restore', () => {
-  it('round-trips engine state', () => {
-    const engine = createEngine();
+  it('round-trips engine in idle state', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
     const snapshot = engine.serialize();
-
     const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
-    expect(restored.state).toBe(engine.state);
+    expect(restored.state).toBe('idle');
   });
 
-  it('produces a snapshot with version and state', () => {
-    const engine = createEngine();
+  it('round-trips engine in practicing state with full context', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // skip explanation
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem(); // advance to q2
+
     const snapshot = engine.serialize();
+    const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
 
-    expect(snapshot).toEqual({
-      version: 1,
-      state: 'ready',
-    });
-  });
-
-  it('rejects snapshots with wrong version', () => {
-    expect(() =>
-      CourseEngine.restore({ version: 999, state: 'ready' }, { apiKey: 'test-key' })
-    ).toThrow('Unsupported snapshot version');
+    expect(restored.state).toBe('practicing');
+    expect(restored.curriculum?.title).toBe('Intro to Testing');
+    expect(restored.currentSection?.id).toBe('section-1');
+    expect(restored.currentItem?.type).toBe('numeric-input');
+    expect(restored.studentState.masteryByTopic['topic-1'].questionsCorrect).toBe(1);
   });
 
   it('restore does not emit events', () => {
-    const engine = createEngine();
+    const { engine } = engineAtPracticing();
     const snapshot = engine.serialize();
 
-    const stateChanges: EngineEventMap['stateChange'][] = [];
+    const events: EngineEventMap['stateChange'][] = [];
     const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
-    restored.on('stateChange', (p) => stateChanges.push(p));
+    restored.on('stateChange', (p) => events.push(p));
 
-    // No events should have been emitted during restore
-    expect(stateChanges).toHaveLength(0);
+    expect(events).toHaveLength(0);
   });
 
-  it('stores a defensive copy of config', () => {
-    const config = { apiKey: 'original-key' };
-    const engine = createEngine();
-    config.apiKey = 'mutated-key';
+  it('rejects snapshots with wrong version', () => {
+    const snapshot = {
+      version: 999,
+      state: 'idle' as const,
+      curriculum: null,
+      currentSectionIndex: -1,
+      currentItemIndex: -1,
+      sectionItems: [],
+      studentState: { masteryByTopic: {}, gaps: [] },
+      lastAnswerResult: null,
+    };
+    expect(() => CourseEngine.restore(snapshot, { apiKey: 'test-key' })).toThrow(
+      'Unsupported snapshot version'
+    );
+  });
 
-    // Engine should not be affected by external mutation
+  it('restored engine can continue operating', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // explanation → q1
+
     const snapshot = engine.serialize();
-    expect(snapshot.state).toBe('ready');
+    const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
+
+    // Should be able to answer the current question
+    const result = restored.submitAnswer({
+      type: 'multiple-choice',
+      selectedIndex: 0,
+    });
+    expect(result.correct).toBe(true);
+    expect(restored.state).toBe('answered');
+  });
+});
+
+// --- Defensive Copies ---
+
+describe('defensive copies', () => {
+  it('loadCurriculum stores a copy, not the original', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    const curriculum = mockCurriculum();
+    engine.loadCurriculum(curriculum);
+
+    // Mutate the original
+    curriculum.title = 'Mutated';
+    curriculum.sections.push({
+      id: 'extra',
+      title: 'Extra',
+      order: 2,
+      topics: [],
+    });
+
+    expect(engine.curriculum?.title).toBe('Intro to Testing');
+    expect(engine.curriculum?.sections).toHaveLength(2);
   });
 });

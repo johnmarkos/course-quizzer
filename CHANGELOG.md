@@ -28,6 +28,11 @@
 - Retry-once on malformed LLM responses for both explanations and quiz bursts
 - Runtime shape validation and parsing for all 5 question types
 - 22 new tests (prompt builders, quality filters, content generator with fixtures)
+- Integration tests: full engine lifecycle (syllabus → curriculum → content → answering → mastery) with 3 recorded fixture sets (MIT Algorithms, Cooking, WWII History)
+- 2 new syllabus fixtures: WWII History (non-CS subject), Guitar (minimal/edge case)
+- 3 recorded API response fixture sets for deterministic lifecycle testing covering all 5 question types
+- 11 integration tests validating end-to-end flow, question diversity, unique IDs, topic mapping, and mastery progression
+- Separate `pnpm test:integration` script for running integration suite
 
 ## 0.1.0 — 2026-04-05
 

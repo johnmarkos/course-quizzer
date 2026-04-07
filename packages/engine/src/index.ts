@@ -6,6 +6,8 @@ export { ProviderError } from './provider/types.js';
 export { StudentModel } from './student/StudentModel.js';
 export { SyllabusParser, validateCurriculumPlan } from './curriculum/SyllabusParser.js';
 export { CurriculumManager } from './curriculum/CurriculumManager.js';
+export { ContentGenerator } from './content/ContentGenerator.js';
+export { checkQuestionQuality } from './content/quality-filters.js';
 
 export type {
   CourseEngineConfig,
@@ -30,6 +32,11 @@ export {
   buildSyllabusAnalysisPrompt,
   SYLLABUS_ANALYSIS_VERSION,
 } from './prompts/syllabus-analysis.js';
+export { buildExplanationPrompt, EXPLANATION_VERSION } from './prompts/explanation.js';
+export {
+  buildQuizGenerationPrompt,
+  QUIZ_GENERATION_VERSION,
+} from './prompts/quiz-generation.js';
 export type { PromptMessages } from './prompts/types.js';
 export type { MasteryUpdate } from './student/StudentModel.js';
 
@@ -57,5 +64,6 @@ export type {
   ToolChoice,
 } from './provider/types.js';
 
+export type { QualityIssue } from './content/quality-filters.js';
 export type { ClaudeProviderConfig } from './provider/ClaudeProvider.js';
 export type { RateLimiterConfig } from './provider/rate-limiter.js';

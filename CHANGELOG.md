@@ -21,6 +21,13 @@
 - `validateCurriculumPlan`: runtime shape validation with duplicate ID detection
 - 3 recorded fixtures (MIT algorithms, Coursera ML, informal cooking) for deterministic testing
 - 29 new tests (prompt builder, validation, parser with fixtures, curriculum manager)
+- `ContentGenerator`: core content/quiz loop — generates explanation + quiz burst per topic in a section
+- Explanation prompt (`src/prompts/explanation.ts`): versioned (v1.0), tool_use-based, topic context in user message
+- Quiz generation prompt (`src/prompts/quiz-generation.ts`): versioned (v1.0), supports all 5 question types (MCQ, numeric-input, ordering, multi-select, two-stage)
+- Quality filters (`src/content/quality-filters.ts`): length outlier detection, front-matter question detection, duplicate option detection — inherited from PageQuizzer
+- Retry-once on malformed LLM responses for both explanations and quiz bursts
+- Runtime shape validation and parsing for all 5 question types
+- 22 new tests (prompt builders, quality filters, content generator with fixtures)
 
 ## 0.1.0 — 2026-04-05
 

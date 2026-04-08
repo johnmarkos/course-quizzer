@@ -16,6 +16,10 @@ on:
         required: true
         type: number
 
+concurrency:
+  group: reviewer-${{ github.event.pull_request.number || github.event.issue.number || inputs.issue_number }}
+  cancel-in-progress: true
+
 jobs:
   # --- Job 1: Review a PR ---
   review:

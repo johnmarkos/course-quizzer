@@ -12,6 +12,10 @@ on:
   issue_comment:
     types: [created]
 
+concurrency:
+  group: author-${{ github.event.issue.number }}
+  cancel-in-progress: false # Don't cancel in-progress implementations
+
 jobs:
   # --- Job 1: Implement a new issue ---
   implement:

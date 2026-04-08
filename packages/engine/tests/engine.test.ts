@@ -722,6 +722,98 @@ describe('serialize / restore', () => {
     expect(result.correct).toBe(true);
     expect(restored.state).toBe('answered');
   });
+
+  it('serialize returns defensive copies of snapshot data', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // explanation → q1
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem(); // q1 → q2
+    engine.submitAnswer({ type: 'numeric-input', value: 4 });
+    engine.nextItem(); // q2 → q3
+    engine.submitAnswer({ type: 'ordering', order: [1, 2, 0] });
+
+    const snapshot = engine.serialize();
+    snapshot.curriculum!.title = 'Mutated';
+    const snapshotOrderingItem = snapshot.sectionItems[3];
+    expect(snapshotOrderingItem.type).toBe('ordering');
+    if (snapshotOrderingItem.type !== 'ordering') {
+      throw new Error('Expected snapshot item to be ordering');
+    }
+    snapshotOrderingItem.items[0] = 'Mutated';
+    snapshotOrderingItem.correctOrder[0] = 99;
+
+    const snapshotAnswer = snapshot.lastAnswerResult!.userAnswer;
+    expect(snapshotAnswer.type).toBe('ordering');
+    if (snapshotAnswer.type !== 'ordering') {
+      throw new Error('Expected snapshot answer to be ordering');
+    }
+    snapshotAnswer.order[0] = 99;
+
+    expect(engine.curriculum?.title).toBe('Intro to Testing');
+    const currentItem = engine.currentItem;
+    expect(currentItem?.type).toBe('ordering');
+    if (currentItem?.type !== 'ordering') {
+      throw new Error('Expected current item to remain ordering');
+    }
+    expect(currentItem.items[0]).toBe('Assert');
+    expect(currentItem.correctOrder[0]).toBe(1);
+
+    const freshSnapshot = engine.serialize();
+    const freshAnswer = freshSnapshot.lastAnswerResult!.userAnswer;
+    expect(freshAnswer.type).toBe('ordering');
+    if (freshAnswer.type !== 'ordering') {
+      throw new Error('Expected fresh snapshot answer to be ordering');
+    }
+    expect(freshAnswer.order[0]).toBe(1);
+  });
+
+  it('restore copies caller-owned snapshot data', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // explanation → q1
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem(); // q1 → q2
+    engine.submitAnswer({ type: 'numeric-input', value: 4 });
+    engine.nextItem(); // q2 → q3
+    engine.submitAnswer({ type: 'ordering', order: [1, 2, 0] });
+    engine.nextItem(); // q3 → q4
+    engine.submitAnswer({ type: 'multi-select', selectedIndices: [0, 2] });
+
+    const snapshot = engine.serialize();
+    const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
+
+    snapshot.curriculum!.title = 'Mutated';
+    const snapshotMultiSelectItem = snapshot.sectionItems[4];
+    expect(snapshotMultiSelectItem.type).toBe('multi-select');
+    if (snapshotMultiSelectItem.type !== 'multi-select') {
+      throw new Error('Expected snapshot item to be multi-select');
+    }
+    snapshotMultiSelectItem.options[0] = 'Mutated';
+    snapshotMultiSelectItem.correctIndices[0] = 99;
+
+    const snapshotAnswer = snapshot.lastAnswerResult!.userAnswer;
+    expect(snapshotAnswer.type).toBe('multi-select');
+    if (snapshotAnswer.type !== 'multi-select') {
+      throw new Error('Expected snapshot answer to be multi-select');
+    }
+    snapshotAnswer.selectedIndices[0] = 99;
+
+    expect(restored.curriculum?.title).toBe('Intro to Testing');
+    const restoredItem = restored.currentItem;
+    expect(restoredItem?.type).toBe('multi-select');
+    if (restoredItem?.type !== 'multi-select') {
+      throw new Error('Expected restored item to remain multi-select');
+    }
+    expect(restoredItem.options[0]).toBe('Vitest');
+    expect(restoredItem.correctIndices[0]).toBe(0);
+
+    const restoredSnapshot = restored.serialize();
+    const restoredAnswer = restoredSnapshot.lastAnswerResult!.userAnswer;
+    expect(restoredAnswer.type).toBe('multi-select');
+    if (restoredAnswer.type !== 'multi-select') {
+      throw new Error('Expected restored snapshot answer to be multi-select');
+    }
+    expect(restoredAnswer.selectedIndices[0]).toBe(0);
+  });
 });
 
 // --- Defensive Copies ---

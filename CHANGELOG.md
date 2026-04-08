@@ -4,10 +4,10 @@
 
 ### Phase 1 Review Fixes
 
-- Fix reference leaks: `CurriculumManager` and `CourseEngine` getters (`plan`, `sections`, `currentSection`, `curriculum`, `currentItem`) now return defensive copies
+- Fix reference leaks: `CurriculumManager` and `CourseEngine` getters, navigation methods, and emitted content payloads now return defensive copies
 - Reject negative `tolerance` values in `ContentGenerator` numeric-input parsing
 - Extend length-outlier quality filter to cover multi-select (checks longest correct option) and two-stage `followUpOptions`
-- 8 new tests covering all three fixes
+- 14 new tests covering all three fixes and the nested-array reference leak surfaces
 
 ## 0.2.0 — 2026-04-05
 

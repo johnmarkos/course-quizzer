@@ -469,3 +469,8 @@ Insights captured from development. This section starts empty and grows with the
 - If the correct answer is the only long, specific, or detailed option, the question is too guessable — apply structural checks
 - Prompt changes should be in separate commits from code changes for reviewability
 - Keep hooks versioned in `.githooks/` and use `npm prepare` to set `core.hooksPath`
+
+**Phase 1 milestone review:**
+
+- Getter methods on engine classes must return defensive copies, same as constructor inputs — both directions of the trust boundary matter
+- Quality filter coverage should be verified against all question types; a filter that silently skips a type is a gap that's hard to catch later

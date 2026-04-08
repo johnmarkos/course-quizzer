@@ -430,4 +430,38 @@ describe('CurriculumManager', () => {
     expect(manager.currentSection?.title).toBe('Hashing');
     expect(manager.currentSection?.topics).toHaveLength(plan.sections[2].topics.length);
   });
+
+  it('startSection returns a defensive copy', () => {
+    const manager = new CurriculumManager(plan);
+    const section = manager.startSection('hashing');
+    section.title = 'Mutated';
+    section.topics.push({ id: 'x', title: 'X', description: 'X' });
+
+    expect(manager.currentSection?.title).toBe('Hashing');
+    expect(manager.currentSection?.topics).toHaveLength(plan.sections[2].topics.length);
+  });
+
+  it('nextSection returns a defensive copy', () => {
+    const manager = new CurriculumManager(plan);
+    manager.startSection('algorithmic-thinking');
+    const section = manager.nextSection();
+    expect(section).not.toBeNull();
+    section!.title = 'Mutated';
+    section!.topics.push({ id: 'x', title: 'X', description: 'X' });
+
+    expect(manager.currentSection?.title).toBe('Sorting and Trees');
+    expect(manager.currentSection?.topics).toHaveLength(plan.sections[1].topics.length);
+  });
+
+  it('getSection returns a defensive copy', () => {
+    const manager = new CurriculumManager(plan);
+    const section = manager.getSection('dynamic-programming');
+    expect(section).not.toBeNull();
+    section!.title = 'Mutated';
+    section!.topics.push({ id: 'x', title: 'X', description: 'X' });
+
+    const freshSection = manager.getSection('dynamic-programming');
+    expect(freshSection?.title).toBe('Dynamic Programming');
+    expect(freshSection?.topics).toHaveLength(plan.sections[5].topics.length);
+  });
 });

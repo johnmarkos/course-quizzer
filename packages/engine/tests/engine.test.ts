@@ -778,4 +778,123 @@ describe('defensive copies', () => {
       'Understanding Assertions'
     );
   });
+
+  it('currentItem getter deep-copies nested question arrays', () => {
+    const { engine } = engineAtPracticing();
+    engine.nextItem(); // move from explanation to multiple-choice question
+
+    const item = engine.currentItem;
+    expect(item?.type).toBe('multiple-choice');
+    if (item?.type !== 'multiple-choice') {
+      throw new Error('Expected current item to be multiple-choice');
+    }
+
+    item.options[0] = 'Mutated';
+
+    const freshItem = engine.currentItem;
+    expect(freshItem?.type).toBe('multiple-choice');
+    if (freshItem?.type !== 'multiple-choice') {
+      throw new Error('Expected current item to remain multiple-choice');
+    }
+
+    expect(freshItem.options[0]).toBe('Compares values');
+  });
+
+  it('setSectionContent stores deep copies of all question array fields', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    const items = mockSectionContent();
+
+    engine.setSectionContent(items);
+
+    const multipleChoice = items[1];
+    const ordering = items[3];
+    const multiSelect = items[4];
+    const twoStage = items[5];
+
+    if (multipleChoice.type !== 'multiple-choice') {
+      throw new Error('Expected test item to be multiple-choice');
+    }
+    if (ordering.type !== 'ordering') {
+      throw new Error('Expected test item to be ordering');
+    }
+    if (multiSelect.type !== 'multi-select') {
+      throw new Error('Expected test item to be multi-select');
+    }
+    if (twoStage.type !== 'two-stage') {
+      throw new Error('Expected test item to be two-stage');
+    }
+
+    multipleChoice.options[0] = 'Mutated';
+    ordering.items[0] = 'Mutated';
+    ordering.correctOrder[0] = 99;
+    multiSelect.options[0] = 'Mutated';
+    multiSelect.correctIndices[0] = 99;
+    twoStage.options[0] = 'Mutated';
+    twoStage.followUpOptions[0] = 'Mutated';
+
+    engine.nextItem();
+    const storedMultipleChoice = engine.currentItem;
+    expect(storedMultipleChoice?.type).toBe('multiple-choice');
+    if (storedMultipleChoice?.type !== 'multiple-choice') {
+      throw new Error('Expected stored item to be multiple-choice');
+    }
+    expect(storedMultipleChoice.options[0]).toBe('Compares values');
+
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem();
+    engine.submitAnswer({ type: 'numeric-input', value: 4 });
+    engine.nextItem();
+
+    const storedOrdering = engine.currentItem;
+    expect(storedOrdering?.type).toBe('ordering');
+    if (storedOrdering?.type !== 'ordering') {
+      throw new Error('Expected stored item to be ordering');
+    }
+    expect(storedOrdering.items[0]).toBe('Assert');
+    expect(storedOrdering.correctOrder[0]).toBe(1);
+
+    engine.skipQuestion();
+    const storedMultiSelect = engine.currentItem;
+    expect(storedMultiSelect?.type).toBe('multi-select');
+    if (storedMultiSelect?.type !== 'multi-select') {
+      throw new Error('Expected stored item to be multi-select');
+    }
+    expect(storedMultiSelect.options[0]).toBe('Vitest');
+    expect(storedMultiSelect.correctIndices[0]).toBe(0);
+
+    engine.skipQuestion();
+    const storedTwoStage = engine.currentItem;
+    expect(storedTwoStage?.type).toBe('two-stage');
+    if (storedTwoStage?.type !== 'two-stage') {
+      throw new Error('Expected stored item to be two-stage');
+    }
+    expect(storedTwoStage.options[0]).toBe('A fake object');
+    expect(storedTwoStage.followUpOptions[0]).toBe('Isolation');
+  });
+
+  it('contentReady emits deep copies of generated content', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    const contentReadyEvents = collectEvents(engine, 'contentReady');
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    engine.setSectionContent(mockSectionContent());
+
+    const emittedItem = contentReadyEvents[0].items[1];
+    expect(emittedItem.type).toBe('multiple-choice');
+    if (emittedItem.type !== 'multiple-choice') {
+      throw new Error('Expected emitted item to be multiple-choice');
+    }
+
+    emittedItem.options[0] = 'Mutated';
+
+    engine.nextItem();
+    const internalItem = engine.currentItem;
+    expect(internalItem?.type).toBe('multiple-choice');
+    if (internalItem?.type !== 'multiple-choice') {
+      throw new Error('Expected current item to be multiple-choice');
+    }
+    expect(internalItem.options[0]).toBe('Compares values');
+  });
 });

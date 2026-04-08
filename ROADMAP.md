@@ -17,7 +17,7 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 
 **Checkpoint:** Both packages build and test. App deploys. Engine is consumable from the app via workspace protocol. SvelteKit static adapter works fine — no framework switch needed.
 
-## Phase 1: Core Engine — Syllabus to Content ← current (milestone review in progress)
+## Phase 1: Core Engine — Syllabus to Content ✓
 
 **Goal:** The engine can accept a syllabus, analyze it with Claude, and generate content for the first section.
 
@@ -27,23 +27,23 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 - [x] #5 — ContentGenerator: content/quiz loop for a section (PR #13)
 - [x] #6 — StudentModel: mastery tracking and gap detection (PR #11)
 - [x] #7 — Phase 1 integration: end-to-end test with recorded fixtures (PR #14)
-- [ ] #9 — Phase 1 milestone review: security, readability, architecture audit (in progress)
+- [x] #9 — Phase 1 milestone review: security, readability, architecture audit (PR #15)
 
 **Checkpoint:** Engine drivable from tests — load syllabus, get curriculum plan, generate section content, answer questions, see mastery update. Integration tests use recorded fixtures (3 diverse syllabi). Real API testing is manual.
 
-## Phase 2: App Shell — Syllabus to First Question
+## Phase 2: App Shell — Syllabus to First Question ← current
 
 **Goal:** A user can paste a syllabus in the browser and answer the first generated question.
 
-- [ ] Settings page: API key input, validation, storage, removal
-- [ ] New Course page: syllabus text input, analyze, display resulting curriculum plan
-- [ ] Course Overview page: section list with progress indicators, "Start Section"
-- [ ] Learn page: question display, answer submission, result, explanation
-- [ ] Engine store: Svelte store wrapping `CourseEngine`, translating events to reactive `$state`
-- [ ] Course list page: show all courses, resume or delete
-- [ ] `LocalStorageAdapter` implementing `StorageAdapter`
-- [ ] Error handling: API errors, network errors, invalid syllabus
-- [ ] Tests: component units, integration (mocked engine), one E2E (paste syllabus → answer question)
+- [ ] #16 — Build settings page and API key management
+- [ ] #17 — Add local course persistence and `LocalStorageAdapter`
+- [ ] #18 — Create engine Svelte store wrapper
+- [ ] #19 — Implement new course syllabus-analysis flow
+- [ ] #20 — Implement course list and course overview pages
+- [ ] #21 — Implement learn page content and answer flow
+- [ ] #22 — Add app error handling, loading states, and safe rendering checks
+- [ ] #23 — Add Phase 2 tests for the critical browser flow
+- [ ] #24 — Phase 2 milestone review: app security, UX, and architecture audit
 
 **Checkpoint:** Full demo flow in the browser: enter API key → paste syllabus → see curriculum plan → start section → answer question → see result.
 

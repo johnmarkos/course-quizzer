@@ -1,43 +1,32 @@
-# Gemini Agent Context
+# Gemini CLI Context
 
-This file provides context for Gemini CLI agents running in GitHub Actions.
+This file provides context for Gemini CLI when used for integration testing.
 
-## Primary Reference
+## Purpose
 
-Read **`AGENTS.md`** in the project root. It is the source of truth for:
-
-- Architecture rules (hard rules, not suggestions)
-- Testing philosophy
-- Prompt engineering standards
-- Security review checklist
-- Content quality standards
-- Conventions (TypeScript strict, ES modules, private fields, etc.)
-- Self-review loop
-
-Every agent must follow AGENTS.md. This file adds agent-specific context only.
+Gemini (free tier) is used as an alternative LLM provider for integration tests,
+avoiding paid API calls during CI and local testing. It is NOT used for agent
+workflows (coding, reviewing) — those run as local Claude Code sessions.
 
 ## Project Structure
 
-This is a pnpm monorepo:
+This is a pnpm monorepo. See `AGENTS.md` for full details.
 
-- `packages/engine/` — QuizzerEngine, a client-side TypeScript library. Zero browser dependencies. All LLM calls go through `src/provider/`. All prompts live in `src/prompts/`.
+- `packages/engine/` — QuizzerEngine, a client-side TypeScript library.
 - `apps/coursequizzer/` — SvelteKit 5 static site consuming the engine.
 
-## Agent Roles
+## Integration Test Usage
 
-### Reviewer Agent (`agent-review.yml`)
+The engine's provider interface is provider-agnostic. Integration tests that
+need real LLM responses can use a Gemini provider (when implemented in Phase 3)
+with a free API key from [Google AI Studio](https://aistudio.google.com/apikey).
 
-- **Read-only.** No `contents:write` permission. Cannot edit code.
-- Reviews PRs against AGENTS.md rules.
-- Posts one comment per PR with findings in the `## Review — Reviewer Agent` format.
-- Does NOT create commits, push code, or open PRs.
+Store the key as `GEMINI_API_KEY` in repo secrets for CI, or set it locally:
 
-### Coding Agent (`agent-author.yml`)
-
-- Implements GitHub issues and addresses review feedback.
-- Claims issues with `in-progress` label before starting.
-- Creates feature branches, writes code, runs tests, opens PRs.
-- Follows the self-review loop before opening a PR.
+```bash
+export GEMINI_API_KEY="your-key-here"
+pnpm --filter quizzer-engine test:integration
+```
 
 ## Key Commands
 
@@ -48,10 +37,3 @@ pnpm -r build             # Build all packages
 pnpm format               # Format code (Prettier)
 pnpm format:check         # Check formatting (CI)
 ```
-
-## Conventions to Follow
-
-- Commit messages end with: `Co-Authored-By: Gemini <noreply@google.com>`
-- PR descriptions link the issue: `Closes #<number>`
-- Branch naming: `feat/`, `fix/`, `chore/` prefixes
-- Update `CHANGELOG.md` when shipping functionality

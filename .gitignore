@@ -140,12 +140,19 @@ vite.config.ts.timestamp-*
 
 # Local coordination files
 CLAUDE-HANDOFF.md
+CLAUDE-*-HANDOFF.md
 CODEX-HANDOFF.md
 HANDOFF.md
 TASK-*.md
+AUTHOR-INSTRUCTIONS.md
+REVIEWER-INSTRUCTIONS.md
 
 # Scratch directory
 .scratch/
+
+# Gemini CLI working files
+.gemini/
+gha-creds-*.json
 
 # Playwright
 test-results/

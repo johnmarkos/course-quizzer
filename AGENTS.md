@@ -306,14 +306,27 @@ All changes to `main` require a pull request. No direct commits to `main`.
 
 ## Agent Workflow
 
-This project uses Claude agents running in git worktrees for parallel development. GitHub is the dispatch and coordination system — not local files.
+This project uses multiple AI agents running in git worktrees for parallel development. GitHub is the dispatch and coordination system — not local files.
 
 ### Roles
 
 - **Planning agent** — Breaks down ROADMAP.md phases into GitHub issues with clear scope and acceptance criteria. Updates ROADMAP.md and AGENTS.md as the project evolves.
-- **Coding agent** — Implements features and fixes. Monitors GitHub issues for work. Monitors their own open PRs for review feedback.
-- **Review agent** — Reviews PRs. Monitors open PRs for new or updated submissions.
+- **Coding agent(s)** — Implement features and fixes. Multiple coding agents (Claude, Codex, etc.) can run in parallel. Each monitors GitHub issues for unclaimed work and their own open PRs for review feedback.
+- **Review agent** — Reviews PRs. Monitors open PRs for new or updated submissions. Reviews PRs from any coding agent equally — the quality bar is the same regardless of author.
 - **John** — Signs off on the roadmap, makes architectural decisions, course-corrects. Does not author. John approves phases in ROADMAP.md; once a phase is approved, the planning agent creates issues and agents execute without waiting for per-issue or per-PR approval.
+
+### Issue Claiming
+
+Multiple coding agents may be running simultaneously. To prevent two agents from working on the same issue:
+
+1. **Before starting work**, add the `in-progress` label to the issue: `gh issue edit <n> --add-label in-progress`
+2. **Skip issues labeled `in-progress`** — another agent is working on them.
+3. **On completion**, the label is removed when the PR merges and closes the issue.
+4. **Stale claims**: If an issue is labeled `in-progress` but has no corresponding branch or PR, the claim is stale and the issue can be reclaimed. Remove the label and take the issue.
+
+### Safety Gate
+
+Agents only auto-take issues and auto-review PRs authored by repository owners or members (currently `johnmarkos`). This prevents an external issue or PR from being picked up automatically. Check with `gh issue view <n> --json author` or `gh pr view <n> --json author`.
 
 ### Worktree Setup
 
@@ -321,15 +334,17 @@ Each agent runs in its own git worktree so they can work in parallel without con
 
 ```bash
 # From the main clone, create worktrees for each agent
-git worktree add ../cq-coding -b feat/current-task
-git worktree add ../cq-review main
+git worktree add ../cq-author main     # Claude coding agent
+git worktree add ../cq-codex main      # Codex coding agent
+git worktree add ../cq-reviewer main   # Review agent
 
-# Each agent runs in its own terminal
-cd ../cq-coding && claude    # coding agent
-cd ../cq-review && claude    # review agent
+# Each agent runs in its own terminal/session
+cd ../cq-author && claude
+cd ../cq-codex                         # Codex runs here
+cd ../cq-reviewer && claude
 ```
 
-Worktrees share the same git history but have independent working directories. Each agent works on its own branch.
+Worktrees share the same git history but have independent working directories. Each agent works on its own branch. Each coding agent gets a unique worktree directory.
 
 ### Dispatch: Plan → Issues → Code → PR → Review
 
@@ -341,6 +356,8 @@ Worktrees share the same git history but have independent working directories. E
    - Labels: `engine`, `app`, `prompt`, `infra`, etc.
    - Issues are created once John has signed off on the phase in ROADMAP.md
 2. **Coding agent picks up an issue:**
+   - Checks the issue has no `in-progress` label
+   - Adds the `in-progress` label to claim it
    - Reads AGENTS.md
    - Creates a feature branch in their worktree (`feat/issue-description`)
    - Implements the feature, following Architecture Rules

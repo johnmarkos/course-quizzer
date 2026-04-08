@@ -23,11 +23,20 @@ export class CurriculumManager {
   // --- Queries ---
 
   get plan(): CurriculumPlan {
-    return this.#plan;
+    return {
+      ...this.#plan,
+      sections: this.#plan.sections.map((s) => ({
+        ...s,
+        topics: [...s.topics],
+      })),
+    };
   }
 
   get sections(): Section[] {
-    return this.#plan.sections;
+    return this.#plan.sections.map((s) => ({
+      ...s,
+      topics: [...s.topics],
+    }));
   }
 
   get totalSections(): number {
@@ -42,7 +51,8 @@ export class CurriculumManager {
     if (this.#currentIndex < 0 || this.#currentIndex >= this.#plan.sections.length) {
       return null;
     }
-    return this.#plan.sections[this.#currentIndex];
+    const s = this.#plan.sections[this.#currentIndex];
+    return { ...s, topics: [...s.topics] };
   }
 
   get hasNextSection(): boolean {

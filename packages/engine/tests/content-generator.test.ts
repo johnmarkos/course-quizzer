@@ -176,6 +176,46 @@ describe('quality filters', () => {
     const q: Question = { ...GOOD_ORDERING, id: 'q1', topicId: 't1' } as Question;
     expect(checkQuestionQuality(q)).toEqual([]);
   });
+
+  it('flags multi-select where a correct option is a length outlier', () => {
+    const q: Question = {
+      type: 'multi-select',
+      id: 'q1',
+      topicId: 't1',
+      question: 'Select all correct answers:',
+      options: [
+        'A short answer that is a detailed and comprehensive explanation of the underlying concept covering multiple important aspects of the topic',
+        'No',
+        'Nope',
+        'Wrong',
+      ],
+      correctIndices: [0],
+    };
+    const issues = checkQuestionQuality(q);
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues[0].reason).toContain('longer');
+  });
+
+  it('flags two-stage where followUp correct option is a length outlier', () => {
+    const q: Question = {
+      type: 'two-stage',
+      id: 'q1',
+      topicId: 't1',
+      question: 'What is X?',
+      options: ['A', 'B', 'C'],
+      correctIndex: 0,
+      followUp: 'Why?',
+      followUpOptions: [
+        'Because it is a well-defined computational procedure that takes values as input and produces values as output through a finite sequence of carefully designed steps',
+        'No reason',
+        'Just because',
+      ],
+      followUpCorrectIndex: 0,
+    };
+    const issues = checkQuestionQuality(q);
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues[0].reason).toContain('longer');
+  });
 });
 
 // --- ContentGenerator ---
@@ -304,6 +344,19 @@ describe('ContentGenerator', () => {
 
     await expect(gen.generateSection(SECTION, 'Course')).rejects.toThrow(
       'Failed to generate quiz'
+    );
+  });
+
+  it('rejects numeric-input with negative tolerance', async () => {
+    const negTolerance = { ...GOOD_NUMERIC, tolerance: -1 };
+    const provider = mockProvider(
+      explanationResponse('Topic', 'Content...'),
+      quizResponse([negTolerance])
+    );
+    const gen = new ContentGenerator(provider);
+
+    await expect(gen.generateSection(SECTION, 'Course')).rejects.toThrow(
+      'failed validation'
     );
   });
 

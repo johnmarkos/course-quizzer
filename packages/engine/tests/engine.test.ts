@@ -744,4 +744,38 @@ describe('defensive copies', () => {
     expect(engine.curriculum?.title).toBe('Intro to Testing');
     expect(engine.curriculum?.sections).toHaveLength(2);
   });
+
+  it('curriculum getter returns a copy, not the internal object', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key' });
+    engine.loadCurriculum(mockCurriculum());
+
+    const c1 = engine.curriculum!;
+    c1.title = 'Mutated';
+    c1.sections.push({ id: 'extra', title: 'Extra', order: 2, topics: [] });
+
+    expect(engine.curriculum?.title).toBe('Intro to Testing');
+    expect(engine.curriculum?.sections).toHaveLength(2);
+  });
+
+  it('currentSection getter returns a copy, not the internal object', () => {
+    const { engine } = engineAtPracticing();
+
+    const section = engine.currentSection!;
+    section.title = 'Mutated';
+    section.topics.push({ id: 'extra', title: 'Extra', description: 'Extra' });
+
+    expect(engine.currentSection?.title).toBe('Unit Testing');
+    expect(engine.currentSection?.topics).toHaveLength(2);
+  });
+
+  it('currentItem getter returns a copy, not the internal object', () => {
+    const { engine } = engineAtPracticing();
+
+    const item = engine.currentItem!;
+    (item as Record<string, unknown>).title = 'Mutated';
+
+    expect((engine.currentItem as Record<string, unknown>).title).toBe(
+      'Understanding Assertions'
+    );
+  });
 });

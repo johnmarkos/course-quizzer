@@ -44,17 +44,28 @@ export class CourseEngine extends EventEmitter {
   }
 
   get curriculum(): CurriculumPlan | null {
-    return this.#curriculum;
+    if (!this.#curriculum) return null;
+    return {
+      ...this.#curriculum,
+      sections: this.#curriculum.sections.map((s) => ({
+        ...s,
+        topics: [...s.topics],
+      })),
+    };
   }
 
   get currentSection(): Section | null {
     if (!this.#curriculum || this.#currentSectionIndex < 0) return null;
-    return this.#curriculum.sections[this.#currentSectionIndex] ?? null;
+    const s = this.#curriculum.sections[this.#currentSectionIndex];
+    if (!s) return null;
+    return { ...s, topics: [...s.topics] };
   }
 
   get currentItem(): ContentItem | null {
     if (this.#currentItemIndex < 0) return null;
-    return this.#sectionItems[this.#currentItemIndex] ?? null;
+    const item = this.#sectionItems[this.#currentItemIndex];
+    if (!item) return null;
+    return { ...item };
   }
 
   get studentState(): StudentState {

@@ -399,4 +399,35 @@ describe('CurriculumManager', () => {
     expect(manager.plan.title).toBe('Mutable'); // title is shallow-copied via spread
     expect(manager.totalSections).toBe(1);
   });
+
+  it('plan getter returns a defensive copy', () => {
+    const manager = new CurriculumManager(plan);
+    const p = manager.plan;
+    p.title = 'Mutated';
+    p.sections.push({ id: 'x', title: 'X', order: 99, topics: [] });
+
+    expect(manager.plan.title).toBe('Introduction to Algorithms');
+    expect(manager.totalSections).toBe(8);
+  });
+
+  it('sections getter returns a defensive copy', () => {
+    const manager = new CurriculumManager(plan);
+    const sections = manager.sections;
+    sections.push({ id: 'x', title: 'X', order: 99, topics: [] });
+    sections[0].title = 'Mutated';
+
+    expect(manager.sections).toHaveLength(8);
+    expect(manager.sections[0].title).toBe(plan.sections[0].title);
+  });
+
+  it('currentSection getter returns a defensive copy', () => {
+    const manager = new CurriculumManager(plan);
+    manager.startSection('hashing');
+    const section = manager.currentSection!;
+    section.title = 'Mutated';
+    section.topics.push({ id: 'x', title: 'X', description: 'X' });
+
+    expect(manager.currentSection?.title).toBe('Hashing');
+    expect(manager.currentSection?.topics).toHaveLength(plan.sections[2].topics.length);
+  });
 });

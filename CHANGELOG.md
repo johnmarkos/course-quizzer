@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1 — 2026-04-07
+
+### Phase 1 Review Fixes
+
+- Fix reference leaks: `CurriculumManager` and `CourseEngine` getters, navigation methods, emitted content payloads, and serialize/restore snapshots now return defensive copies
+- Reject negative `tolerance` values in `ContentGenerator` numeric-input parsing
+- Extend length-outlier quality filter to cover multi-select (checks longest correct option) and two-stage `followUpOptions`
+- 16 new tests covering all three fixes and the nested-array reference leak surfaces
+
 ## 0.2.0 — 2026-04-05
 
 ### Phase 1: Engine Core

@@ -5,6 +5,13 @@
 
 import type { CurriculumPlan, Section } from './types.js';
 
+function copySection(section: Section): Section {
+  return {
+    ...section,
+    topics: section.topics.map((topic) => ({ ...topic })),
+  };
+}
+
 export class CurriculumManager {
   #plan: CurriculumPlan;
   #currentIndex: number = -1;
@@ -13,21 +20,21 @@ export class CurriculumManager {
     // Defensive copy
     this.#plan = {
       ...plan,
-      sections: plan.sections.map((s) => ({
-        ...s,
-        topics: [...s.topics],
-      })),
+      sections: plan.sections.map(copySection),
     };
   }
 
   // --- Queries ---
 
   get plan(): CurriculumPlan {
-    return this.#plan;
+    return {
+      ...this.#plan,
+      sections: this.#plan.sections.map(copySection),
+    };
   }
 
   get sections(): Section[] {
-    return this.#plan.sections;
+    return this.#plan.sections.map(copySection);
   }
 
   get totalSections(): number {
@@ -42,7 +49,8 @@ export class CurriculumManager {
     if (this.#currentIndex < 0 || this.#currentIndex >= this.#plan.sections.length) {
       return null;
     }
-    return this.#plan.sections[this.#currentIndex];
+    const s = this.#plan.sections[this.#currentIndex];
+    return copySection(s);
   }
 
   get hasNextSection(): boolean {
@@ -60,7 +68,7 @@ export class CurriculumManager {
       throw new Error(`Section "${sectionId}" not found in curriculum`);
     }
     this.#currentIndex = index;
-    return this.#plan.sections[index];
+    return copySection(this.#plan.sections[index]);
   }
 
   /**
@@ -70,13 +78,14 @@ export class CurriculumManager {
   nextSection(): Section | null {
     if (!this.hasNextSection) return null;
     this.#currentIndex++;
-    return this.#plan.sections[this.#currentIndex];
+    return copySection(this.#plan.sections[this.#currentIndex]);
   }
 
   /**
    * Get a section by ID without changing the current position.
    */
   getSection(sectionId: string): Section | null {
-    return this.#plan.sections.find((s) => s.id === sectionId) ?? null;
+    const section = this.#plan.sections.find((s) => s.id === sectionId);
+    return section ? copySection(section) : null;
   }
 }

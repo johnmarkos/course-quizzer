@@ -262,13 +262,18 @@ export class ContentGenerator {
       throw new Error('numeric-input missing correctValue');
     }
 
+    const tolerance = typeof obj.tolerance === 'number' ? obj.tolerance : 0;
+    if (tolerance < 0) {
+      throw new Error('numeric-input tolerance must be >= 0');
+    }
+
     return {
       type: 'numeric-input',
       id,
       topicId,
       question,
       correctValue: obj.correctValue,
-      tolerance: typeof obj.tolerance === 'number' ? obj.tolerance : 0,
+      tolerance,
       unit: typeof obj.unit === 'string' ? obj.unit : undefined,
     };
   }

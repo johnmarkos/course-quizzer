@@ -50,10 +50,31 @@ function isLengthOutlier(question: Question): boolean {
     return false; // These types don't have text options to compare
   }
 
-  const options = getOptions(question);
-  if (!options || options.length < 3) return false;
+  // Check primary options
+  if (hasLengthOutlierInSet(getOptions(question), getCorrectIndex(question))) {
+    return true;
+  }
 
-  const correctIndex = getCorrectIndex(question);
+  // Check two-stage follow-up options separately
+  if (question.type === 'two-stage') {
+    if (hasLengthOutlierInSet(question.followUpOptions, question.followUpCorrectIndex)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Check if the correct option is a length outlier within an option set.
+ * Returns true if the correct answer is >2x the average length of
+ * other options and longer than 30 characters.
+ */
+function hasLengthOutlierInSet(
+  options: string[] | undefined,
+  correctIndex: number | undefined
+): boolean {
+  if (!options || options.length < 3) return false;
   if (correctIndex === undefined || correctIndex < 0 || correctIndex >= options.length) {
     return false;
   }
@@ -115,6 +136,19 @@ function getCorrectIndex(question: Question): number | undefined {
     case 'multiple-choice':
     case 'two-stage':
       return question.correctIndex;
+    case 'multi-select':
+      // For multi-select, check each correct option individually.
+      // Return the index of the longest correct option to detect
+      // if any correct answer is a length outlier.
+      return question.correctIndices.reduce(
+        (longest, idx) =>
+          longest === undefined
+            ? idx
+            : question.options[idx].length > question.options[longest].length
+              ? idx
+              : longest,
+        undefined as number | undefined
+      );
     default:
       return undefined;
   }

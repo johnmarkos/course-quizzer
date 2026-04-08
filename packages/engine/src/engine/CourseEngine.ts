@@ -22,6 +22,71 @@ import type { Section } from '../curriculum/types.js';
 
 const SNAPSHOT_VERSION = 3;
 
+function copySection(section: Section): Section {
+  return {
+    ...section,
+    topics: section.topics.map((topic) => ({ ...topic })),
+  };
+}
+
+function copyCurriculumPlan(curriculum: CurriculumPlan): CurriculumPlan {
+  return {
+    ...curriculum,
+    sections: curriculum.sections.map(copySection),
+  };
+}
+
+function copyContentItem(item: ContentItem): ContentItem {
+  switch (item.type) {
+    case 'explanation':
+      return { ...item };
+    case 'multiple-choice':
+      return { ...item, options: [...item.options] };
+    case 'numeric-input':
+      return { ...item };
+    case 'ordering':
+      return {
+        ...item,
+        items: [...item.items],
+        correctOrder: [...item.correctOrder],
+      };
+    case 'multi-select':
+      return {
+        ...item,
+        options: [...item.options],
+        correctIndices: [...item.correctIndices],
+      };
+    case 'two-stage':
+      return {
+        ...item,
+        options: [...item.options],
+        followUpOptions: [...item.followUpOptions],
+      };
+  }
+}
+
+function copyStudentAnswer(answer: StudentAnswer): StudentAnswer {
+  switch (answer.type) {
+    case 'multiple-choice':
+      return { ...answer };
+    case 'numeric-input':
+      return { ...answer };
+    case 'ordering':
+      return { ...answer, order: [...answer.order] };
+    case 'multi-select':
+      return { ...answer, selectedIndices: [...answer.selectedIndices] };
+    case 'two-stage':
+      return { ...answer };
+  }
+}
+
+function copyAnswerResult(result: AnswerResult): AnswerResult {
+  return {
+    ...result,
+    userAnswer: copyStudentAnswer(result.userAnswer),
+  };
+}
+
 export class CourseEngine extends EventEmitter {
   #state: EngineState = 'idle';
   #config: CourseEngineConfig;
@@ -44,17 +109,22 @@ export class CourseEngine extends EventEmitter {
   }
 
   get curriculum(): CurriculumPlan | null {
-    return this.#curriculum;
+    if (!this.#curriculum) return null;
+    return copyCurriculumPlan(this.#curriculum);
   }
 
   get currentSection(): Section | null {
     if (!this.#curriculum || this.#currentSectionIndex < 0) return null;
-    return this.#curriculum.sections[this.#currentSectionIndex] ?? null;
+    const s = this.#curriculum.sections[this.#currentSectionIndex];
+    if (!s) return null;
+    return copySection(s);
   }
 
   get currentItem(): ContentItem | null {
     if (this.#currentItemIndex < 0) return null;
-    return this.#sectionItems[this.#currentItemIndex] ?? null;
+    const item = this.#sectionItems[this.#currentItemIndex];
+    if (!item) return null;
+    return copyContentItem(item);
   }
 
   get studentState(): StudentState {
@@ -91,13 +161,7 @@ export class CourseEngine extends EventEmitter {
   loadCurriculum(curriculum: CurriculumPlan): void {
     this.#requireState('loadCurriculum', 'idle');
 
-    this.#curriculum = {
-      ...curriculum,
-      sections: curriculum.sections.map((s) => ({
-        ...s,
-        topics: [...s.topics],
-      })),
-    };
+    this.#curriculum = copyCurriculumPlan(curriculum);
 
     // Initialize mastery for all topics
     for (const section of this.#curriculum.sections) {
@@ -107,7 +171,7 @@ export class CourseEngine extends EventEmitter {
     }
 
     this.#setState('ready');
-    this.emit('syllabusLoaded', { curriculum: this.#curriculum });
+    this.emit('syllabusLoaded', { curriculum: copyCurriculumPlan(this.#curriculum) });
   }
 
   // --- Section Lifecycle ---
@@ -132,7 +196,7 @@ export class CourseEngine extends EventEmitter {
     this.#sectionItems = [];
     this.#lastAnswerResult = null;
 
-    const section = this.#curriculum.sections[sectionIndex];
+    const section = copySection(this.#curriculum.sections[sectionIndex]);
     this.#setState('loading');
     this.emit('sectionStart', {
       section,
@@ -148,11 +212,14 @@ export class CourseEngine extends EventEmitter {
   setSectionContent(items: ContentItem[]): void {
     this.#requireState('setSectionContent', 'loading');
 
-    this.#sectionItems = items.map((item) => ({ ...item }));
+    this.#sectionItems = items.map(copyContentItem);
     this.#currentItemIndex = 0;
 
     const section = this.currentSection!;
-    this.emit('contentReady', { items: this.#sectionItems, section });
+    this.emit('contentReady', {
+      items: this.#sectionItems.map(copyContentItem),
+      section,
+    });
 
     this.#setState('practicing');
     this.#emitCurrentItem();
@@ -169,19 +236,19 @@ export class CourseEngine extends EventEmitter {
     }
 
     const result = this.#gradeAnswer(item, answer);
-    this.#lastAnswerResult = result;
+    this.#lastAnswerResult = copyAnswerResult(result);
 
     // Update mastery
     this.#updateMastery(result);
 
     this.#setState('answered');
     this.emit('answerResult', {
-      result,
+      result: copyAnswerResult(result),
       studentState: this.studentState,
       progress: this.sessionProgress,
     });
 
-    return result;
+    return copyAnswerResult(result);
   }
 
   nextItem(): void {
@@ -291,7 +358,7 @@ export class CourseEngine extends EventEmitter {
         correct: false,
         questionId: question.id,
         topicId: question.topicId,
-        userAnswer: answer,
+        userAnswer: copyStudentAnswer(answer),
         correctAnswer: this.#describeCorrectAnswer(question),
         explanation: 'Answer type does not match question type.',
       };
@@ -303,7 +370,7 @@ export class CourseEngine extends EventEmitter {
       correct,
       questionId: question.id,
       topicId: question.topicId,
-      userAnswer: answer,
+      userAnswer: copyStudentAnswer(answer),
       correctAnswer: this.#describeCorrectAnswer(question),
     };
   }
@@ -376,12 +443,14 @@ export class CourseEngine extends EventEmitter {
     return {
       version: SNAPSHOT_VERSION,
       state: this.#state,
-      curriculum: this.#curriculum,
+      curriculum: this.#curriculum ? copyCurriculumPlan(this.#curriculum) : null,
       currentSectionIndex: this.#currentSectionIndex,
       currentItemIndex: this.#currentItemIndex,
-      sectionItems: this.#sectionItems,
+      sectionItems: this.#sectionItems.map(copyContentItem),
       studentState: this.#studentModel.getState(),
-      lastAnswerResult: this.#lastAnswerResult,
+      lastAnswerResult: this.#lastAnswerResult
+        ? copyAnswerResult(this.#lastAnswerResult)
+        : null,
     };
   }
 
@@ -397,12 +466,16 @@ export class CourseEngine extends EventEmitter {
     // Restore does NOT emit events — the consumer must resync explicitly.
     const engine = new CourseEngine(config);
     engine.#state = snapshot.state;
-    engine.#curriculum = snapshot.curriculum;
+    engine.#curriculum = snapshot.curriculum
+      ? copyCurriculumPlan(snapshot.curriculum)
+      : null;
     engine.#currentSectionIndex = snapshot.currentSectionIndex;
     engine.#currentItemIndex = snapshot.currentItemIndex;
-    engine.#sectionItems = snapshot.sectionItems;
+    engine.#sectionItems = snapshot.sectionItems.map(copyContentItem);
     engine.#studentModel = new StudentModel(snapshot.studentState);
-    engine.#lastAnswerResult = snapshot.lastAnswerResult;
+    engine.#lastAnswerResult = snapshot.lastAnswerResult
+      ? copyAnswerResult(snapshot.lastAnswerResult)
+      : null;
     return engine;
   }
 }

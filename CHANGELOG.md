@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 — 2026-04-09
+
+### Phase 2: Settings Page and API Key Management
+
+- Settings page (`/settings`) with API key entry, masked display, and removal
+- API key store (`src/lib/stores/api-key.ts`): save, remove, get, has, masked display — localStorage only
+- Input validation: rejects empty/whitespace-only keys, trims whitespace
+- Key displayed as masked string (prefix + dots + last 4 chars) after saving
+- Input uses `type="password"` to prevent shoulder surfing
+- Vitest configured for app package with 13 new store tests
+- No `{@html}`, no direct API calls, key never leaves localStorage
+
 ## 0.2.1 — 2026-04-07
 
 ### Phase 1 Review Fixes

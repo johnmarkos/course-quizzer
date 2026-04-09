@@ -166,8 +166,6 @@ pnpm format                           # Prettier — entire monorepo
 pnpm format:check                     # CI check
 ```
 
-**Tests must pass before committing.** Run `pnpm -r test` from the root.
-
 ## Conventions
 
 - TypeScript strict mode — no `any` types except where interfacing with untyped external APIs
@@ -179,9 +177,7 @@ pnpm format:check                     # CI check
 - When in doubt, a short comment is better than making the reader trace through code
 - Prettier standard formatting: single quotes, 2-space indent, no trailing whitespace
 
-**Readability is a nonfunctional requirement.** The bar: a junior engineer who is competent but not expert — someone who can read TypeScript and follow logic — should be able to read any file in this codebase and build a mental model of what the system does. Not just "what does this line do" but "how does this piece fit into the whole." If a junior engineer would need to trace through three files to understand why a function exists, add a comment explaining the purpose. If a module's role in the system isn't obvious from its name and structure, add a doc comment at the top explaining what it does and how it relates to the rest.
-
-Concretely: use section headers to group related code, add doc comments on non-obvious algorithms, choose method names that describe what the code does (not what the caller uses it for), label conditional branches, and avoid single-letter variable names outside tight loops. But these are tactics — the goal is comprehension, not decoration. A well-named function with clear structure needs no comments. A complex algorithm needs explanation regardless of how it's formatted.
+**Readability is a nonfunctional requirement.** The bar: a competent junior engineer should be able to read any file and build a mental model of how the piece fits into the whole. If tracing through three files is needed to understand why a function exists, add a comment. The goal is comprehension, not decoration — a well-named function needs no comments; a complex algorithm needs explanation regardless of formatting.
 
 ## Prompt Engineering Standards
 
@@ -275,35 +271,14 @@ LLM-generated educational content needs quality gates beyond "it parsed correctl
 - **Quality reporting:** The app displays a "Report issue" action on every generated item. In v1 this logs to console. In v2, it writes to a local quality log the user can review.
 - **Content is ephemeral:** Generated content is not cached permanently without the student's explicit action (export). Regeneration is always available. This is a feature, not a limitation — it means a student can get fresh material by replaying a section.
 
-## Self-Review Loop
-
-**Mandatory after every milestone.** Switch to a reviewer role and critique harshly:
-
-- [ ] Bugs in engine logic (state transitions, mastery calculation, edge cases)
-- [ ] Architecture rule violations (see Architecture Rules above — every numbered rule gets checked)
-- [ ] Dead code or unused fields after refactors
-- [ ] API surface mismatch (engine exposes things the UI doesn't need, or vice versa)
-- [ ] Missing test coverage for new functionality
-- [ ] Prompt quality (run against diverse inputs, check output)
-- [ ] Security checklist items affected by this milestone's changes
-- [ ] Readability: descriptive names, section comments, labeled branches
-- [ ] `any` types — each one is a type safety hole
-
-Fix issues. Review again. **Iterate until the reviewer finds nothing significant.**
-
-**Escape hatch:** If the same issue recurs or you're uncertain, flag it for human review and move on.
-
 ## Branching & Pull Requests
 
 All changes to `main` require a pull request. No direct commits to `main`.
 
 - **Branch naming:** `feat/`, `fix/`, `chore/` prefixes (e.g., `feat/syllabus-parser`, `fix/prefetch-race-condition`)
-- **Before opening a PR:** run `pnpm -r test`, `pnpm -r build`, `pnpm format:check`, and the self-review checklist
+- **One PR = one thing.** Each PR closes exactly one issue. No compound PRs.
 - **CI runs on every PR:** checkout → Node 20 → `pnpm install` → engine test → engine build → app test → app build → format check
-- **Branch protection** is configured in the GitHub UI (require PRs, require CI status check)
-- **One PR = one thing.** Each PR closes exactly one issue. No compound PRs. This keeps reviews fast and diffs small.
-- **Code review:** The review agent checks open PRs and reviews them (see Agent Workflow below). Trivial PRs (version bumps, typos, config tweaks, doc-only) can merge after CI passes without a full review.
-- **Review via comments, not GitHub approvals.** All agents share one GitHub account (`johnmarkos`), so formal review approvals don't work. The review agent posts a comment with `**Status: APPROVED**` or `**Status: CHANGES REQUESTED**`.
+- **Review via comments, not GitHub approvals.** All agents share one GitHub account (`johnmarkos`), so the review agent posts `**Status: APPROVED**` or `**Status: CHANGES REQUESTED**` as PR comments. Trivial PRs (version bumps, typos, config tweaks) can merge after CI passes without a full review.
 - **Cross-package PRs:** When a PR touches both `packages/engine` and `apps/coursequizzer`, the PR description must explain why both are changing together.
 
 ## Agent Workflow
@@ -388,46 +363,12 @@ Do not tell Gemini to "read AGENTS.md" — it won't follow through. Put the rule
 
 ### Dispatch: Plan → Tests → Issues → Code → PR → Review
 
-**GitHub issues are the task queue.** The full workflow:
+**GitHub issues are the task queue.** The flow:
 
-1. **Planning agent breaks down work into issues:**
-   - Reads ROADMAP.md for the current phase
-   - Creates GitHub issues with clear scope, acceptance criteria, and context
-   - **Each issue does exactly one thing.** Compound issues (e.g., "fix all milestone review bugs") are forbidden — split them into atomic issues. This keeps PRs small and reviewable.
-   - Labels: `engine`, `app`, `prompt`, `infra`, etc.
-   - Issues are created once John has signed off on the phase in ROADMAP.md
-   - **Marks parallelizable issues explicitly.** If two issues have no dependency, say so. If they're serial, note the dependency.
-2. **Planning agent writes failing tests (when practical):**
-   - For engine logic and testable app logic, the planning agent writes failing tests that encode the acceptance criteria and commits them to a `test/` branch or includes them in the issue description
-   - This is the TDD handoff: the test is the spec. The coding agent's job is to make it pass.
-   - Not all issues can have pre-written tests (e.g., UI layout, prompt tuning). That's fine — the coding agent writes tests in those cases.
-3. **Coding agent picks up an issue:**
-   - Checks the issue has no `in-progress` label
-   - Adds the `in-progress` label to claim it
-   - Reads AGENTS.md (or GEMINI.md for Gemini agents)
-   - Creates a feature branch in their worktree (`feat/issue-description`)
-   - If a failing test exists, implements until it passes (green). If not, writes the test first (red), then implements (green).
-   - Refactors if needed (refactor)
-   - Runs `pnpm -r test`, `pnpm -r build`, `pnpm format`
-   - Runs the self-review loop
-   - **Updates the role-specific handoff file** before opening the PR
-   - Opens a PR linking the issue (e.g., "Closes #12")
-   - **Moves on to the next issue** if it's independent. Does NOT wait for review if there's unblocked work available. If all remaining issues depend on this PR, waits.
-4. **Review agent picks up the PR:**
-   - Reads every changed source file — not just diffs
-   - Checks all Architecture Rules (every numbered rule)
-   - Verifies test coverage matches new functionality
-   - Checks prompt quality if prompt changes are included
-   - Looks for: `any` types, browser APIs in the engine, direct API calls outside provider, unsanitized `{@html}`, API keys in exports
-   - Checks readability: section headers, doc comments, descriptive names, labeled branches
-   - Posts review findings as PR comments (not GitHub review approvals — all agents share one GitHub account)
-   - Approval is a comment with `**Status: APPROVED**`
-5. **Coding agent addresses review feedback:**
-   - Checks their own open PRs for new comments
-   - Pushes fixes to the same branch
-   - Re-requests review
-6. **Review agent re-reviews.** Iterate until clean.
-7. **Review agent approves.** Coding agent merges the PR.
+1. **Plan** — Planning agent creates issues from ROADMAP.md and writes failing tests when practical (see Planning Agent Checklist)
+2. **Code** — Coding agent claims an issue, implements via TDD, opens a PR (see Coding Agent Checklist). Moves on to the next independent issue without waiting for review.
+3. **Review** — Review agent reviews the PR, posts findings as comments (see Review Agent Checklist). Coding agent addresses feedback. Iterate until clean.
+4. **Merge** — Review agent approves. Coding agent merges.
 
 ### Issue Format
 
@@ -444,43 +385,36 @@ The planning agent creates issues. Good issues contain:
 
 Before opening a PR:
 
-1. All Architecture Rules followed
-2. **TDD discipline:** If a failing test was provided, make it pass. If not, write the test first (red), then implement (green), then refactor.
-3. `pnpm -r test` passes
-4. `pnpm -r build` passes
-5. `pnpm format` run
-6. Self-review loop completed
-7. CHANGELOG.md updated
-8. PR description links the issue and explains the approach
-9. **Update your role-specific handoff file** (`AUTHOR-HANDOFF.md`) before exiting
+1. Claim issue (`in-progress` label), create feature branch, read AGENTS.md (or GEMINI.md)
+2. **TDD:** If a failing test was provided, make it pass. If not, write the test first (red), then implement (green), then refactor.
+3. `pnpm -r test` passes, `pnpm -r build` passes, `pnpm format` run
+4. CHANGELOG.md updated
+5. PR description links the issue (`Closes #N`) and explains the approach
+6. Update `AUTHOR-HANDOFF.md` before exiting
 
 ### Review Agent Checklist
 
 For each PR:
 
 1. Read every changed source file — not just diffs
-2. Check all Architecture Rules (every numbered rule)
-3. Verify test coverage matches current functionality
-4. Check CHANGELOG.md accurately reflects what's in the code
-5. Run prompts against diverse inputs if prompt changes are included
-6. Check readability: section headers, doc comments, descriptive names, labeled branches
-7. Flag anything needing John's decision
-8. At the end of significant reviews: check if AGENTS.md Lessons Learned should be updated
-9. **Update `REVIEWER-HANDOFF.md`** before exiting
+2. Check all Architecture Rules and Security Checklist items affected by this PR
+3. Verify test coverage, CHANGELOG.md accuracy, readability
+4. Run prompts against diverse inputs if prompt changes are included
+5. Flag anything needing John's decision
+6. After significant reviews: check if Lessons Learned should be updated
+7. Update `REVIEWER-HANDOFF.md` before exiting
 
 ### Planning Agent Checklist
 
 When breaking down a phase into issues:
 
 1. Read AGENTS.md and ROADMAP.md
-2. Break the phase into **atomic issues — each issue does exactly one thing.** No compound issues.
-3. Order issues by dependency (what must be built first)
-4. **Mark parallelizable issues explicitly** — if two issues are independent, say so in both
-5. Keep issues small enough for one PR — if an issue needs 10+ files changed, split it
-6. Include enough context in each issue that the coding agent doesn't need to ask clarifying questions
-7. After creating issues, update ROADMAP.md to link to them
-8. Where practical, write failing tests that encode the acceptance criteria (TDD handoff)
-9. **Schedule user testing.** At the end of each phase, create an issue for John to do a live user test of the built features. The planner defines what to test and what feedback to capture. John is both the project owner and the first user — his hands-on experience drives the next phase's priorities.
+2. **Atomic issues** — each issue does exactly one thing. If it needs 10+ files, split it.
+3. Order by dependency; **mark parallelizable issues explicitly**
+4. Include enough context that the coding agent doesn't need to ask clarifying questions (see Issue Format)
+5. Where practical, write failing tests that encode the acceptance criteria (see TDD Workflow)
+6. After creating issues, update ROADMAP.md to link to them
+7. **Schedule user testing** at the end of each phase — John is both owner and first user. Define what to test and what feedback to capture.
 
 ### Handoff Files
 
@@ -583,17 +517,10 @@ Insights captured from development. This section starts empty and grows with the
 
 **Inherited from OpenQuizzer and PageQuizzer (validated patterns):**
 
-- Engine emits events with all data the UI needs — UI should never reach back into the engine for display info
-- Store defensive copies of caller-provided arrays (`[...problems]`) — the caller may mutate the original
-- Guard state transitions: methods should throw or no-op if the engine is in the wrong state
 - `serialize()` / `restore()` enable persistence; restore does NOT emit events (the consumer must resync explicitly)
 - Factory functions (`mockProblem(id)`) and the `collectEvents` pattern keep tests concise and readable
-- When splitting mixed functions (part logic, part DOM), the engine emits events; the UI listens — never the reverse
 - Rename methods to match what they actually do, not what the caller conceptually wants
 - Watch for dead fields after extraction: if a field is set but never read, delete it
-- Every `JSON.parse` of untrusted data needs runtime shape validation, not just a type cast
-- If the correct answer is the only long, specific, or detailed option, the question is too guessable — apply structural checks
-- Prompt changes should be in separate commits from code changes for reviewability
 - Keep hooks versioned in `.githooks/` and use `npm prepare` to set `core.hooksPath`
 
 **Phase 1 milestone review:**

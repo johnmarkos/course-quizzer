@@ -2,7 +2,7 @@
 
 ## 0.3.0 — 2026-04-09
 
-### Phase 2: Settings Page and API Key Management
+### Phase 2: App Foundation
 
 - Settings page (`/settings`) with API key entry, masked display, and removal
 - API key store (`src/lib/stores/api-key.ts`): save, remove, get, has, masked display — localStorage only
@@ -11,6 +11,12 @@
 - Input uses `type="password"` to prevent shoulder surfing
 - Vitest configured for app package with 13 new store tests
 - No `{@html}`, no direct API calls, key never leaves localStorage
+- Course storage (`src/lib/storage/course-storage.ts`): CRUD for course records in localStorage
+- Course records hold id, title, curriculum plan, engine snapshot, and timestamps
+- Runtime validation: malformed localStorage JSON rejected safely, invalid records filtered out
+- API keys stripped from snapshots before persisting (sanitizeSnapshot)
+- Defensive copies on all inputs and outputs (JSON round-trip)
+- 17 new course storage tests covering CRUD, validation, security, and defensive copies
 
 ## 0.2.1 — 2026-04-07
 

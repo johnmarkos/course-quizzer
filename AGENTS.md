@@ -346,20 +346,7 @@ Worktrees share the same git history but have independent working directories. E
 
 ### Gemini Setup
 
-Gemini struggles with long structured docs like AGENTS.md. Instead of pointing Gemini at this file, create a `GEMINI.md` in the Gemini worktree that **inlines the critical rules directly**. Keep it under ~100 lines. Must include:
-
-1. One issue = one PR = one thing
-2. Run `pnpm -r test`, `pnpm -r build`, `pnpm format` before opening a PR
-3. Engine has zero browser API dependencies
-4. All LLM API calls go through `packages/engine/src/provider/`
-5. No `{@html}` without sanitization
-6. API keys never in logs, exports, or URLs
-7. Defensive copies on engine boundaries
-8. Link the issue in the PR description (`Closes #N`)
-9. Update CHANGELOG.md
-10. Write/update the handoff file before exiting
-
-Do not tell Gemini to "read AGENTS.md" — it won't follow through. Put the rules in front of its face.
+`GEMINI.md` in the repo root tells Gemini agents to read AGENTS.md and follow the appropriate checklist. It also includes a quick-reference subset of the most critical rules as a safety net. If Gemini stops following AGENTS.md reliably, consider inlining more rules into GEMINI.md or reinforcing them in issue descriptions.
 
 ### Dispatch: Plan → Tests → Issues → Code → PR → Review
 

@@ -285,25 +285,17 @@ All changes to `main` require a pull request. No direct commits to `main`.
 
 This project uses multiple AI agents running locally in git worktrees. GitHub issues are the task queue; PRs are the review surface. All agent work runs locally — no GitHub Actions, no paid API keys in CI.
 
-### Agent Economics
+### Execution Model
 
-The factory runs on a budget (~$100/month target). Agent selection is driven by cost-effectiveness:
-
-| Agent | Cost | Role | Best for |
-|-------|------|------|----------|
-| Claude (Pro plan) | $20/mo + extra usage | Architect | Planning, complex implementation, prompt engineering, review |
-| Codex/GPT-5.4 | $20/mo (generous credits) | Laborer | Well-specified issues, making tests pass, mechanical refactors |
-| Gemini | $20/mo (paid plan) | Laborer | Similar to Codex; needs short inlined rules (see Gemini Setup) |
-
-**Key principle:** Every Claude token spent on mechanical work is an expensive token that should have gone to Codex or Gemini. Claude produces artifacts that make cheaper agents effective — good issues, failing tests, clear handoff files. Then gets out of the way.
-
-**Execution model:** Agents poll for work every 5 minutes. A poll is cheap (~a few hundred tokens for `gh issue list` / `gh pr list`). Agents are active ~1-2 hours per 5-hour credit window. Time is not the constraint; money is. It's fine for an agent to sit idle polling while waiting for a review.
+Agents poll for work every 5 minutes. A poll is cheap (~a few hundred tokens for `gh issue list` / `gh pr list`). Time is not the constraint; money is. It's fine for an agent to sit idle polling while waiting for a review.
 
 ### Roles
 
-- **Planning agent** — Breaks down ROADMAP.md phases into GitHub issues with clear scope and acceptance criteria. Updates ROADMAP.md and AGENTS.md as the project evolves. Writes failing tests as specs for coding agents. **Typically Claude** — this is high-value, low-volume work.
-- **Coding agent(s)** — Implement features and fixes. Multiple coding agents (Claude, Codex, Gemini) can run in parallel on independent issues. Each checks GitHub issues for unclaimed work and their own open PRs for review feedback.
-- **Review agent** — Reviews PRs. Checks open PRs for new or updated submissions. Reviews PRs from any coding agent equally — the quality bar is the same regardless of which model authored the code. **Typically Claude** — review requires judgment.
+Any model (Claude, Codex, Gemini) can fill any role. The quality bar is the same regardless of which model is running.
+
+- **Planning agent** — Breaks down ROADMAP.md phases into GitHub issues with clear scope and acceptance criteria. Updates ROADMAP.md and AGENTS.md as the project evolves. Writes failing tests as specs for coding agents.
+- **Coding agent(s)** — Implement features and fixes. Multiple coding agents can run in parallel on independent issues. Each checks GitHub issues for unclaimed work and their own open PRs for review feedback.
+- **Review agent** — Reviews PRs. Checks open PRs for new or updated submissions. Reviews PRs from any coding agent equally.
 - **John (Owner / Technical Architect)** — Designs the system, sets the quality bar, makes architectural decisions, approves the roadmap, and does live user testing at phase boundaries. Does not author code. John approves phases in ROADMAP.md; once a phase is approved, the planning agent creates issues and agents execute without waiting for per-issue or per-PR approval. The planning agent is John's primary interface — they collaborate interactively on priorities, tradeoffs, and scope.
 
 ### Issue Claiming
@@ -458,9 +450,9 @@ Svelte stores, data transformations, validation functions — all testable with 
 - Even in UI-heavy features, extract testable logic into functions and TDD those
 
 **The TDD handoff pattern:**
-1. Planning agent (Claude) writes failing tests that encode acceptance criteria
-2. Coding agent (Codex/Gemini/Claude) makes them pass
-3. This is the most cost-effective split: writing the test (the hard part) uses expensive Claude tokens; making it pass (the mechanical part) uses cheap Codex tokens
+1. Planning agent writes failing tests that encode acceptance criteria
+2. Coding agent makes them pass
+3. The test is the spec — any model can implement against it
 
 **Testing stack (all free):**
 

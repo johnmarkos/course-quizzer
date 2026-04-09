@@ -11,7 +11,8 @@
   let maskedKey = $state(getMaskedApiKey(localStorage));
   let error = $state('');
 
-  function handleSave() {
+  function handleSave(e: SubmitEvent) {
+    e.preventDefault();
     error = '';
     try {
       saveApiKey(keyInput, localStorage);

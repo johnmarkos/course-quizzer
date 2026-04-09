@@ -400,6 +400,7 @@ When breaking down a phase into issues:
 Each agent role maintains its own handoff file. These are the connective tissue between sessions — especially important when handing off between different models (Claude → Codex, Codex → Claude, etc.).
 
 **Files:**
+
 - `PLANNER-HANDOFF.md` — Planning agent state
 - `AUTHOR-HANDOFF.md` — Coding agent state
 - `REVIEWER-HANDOFF.md` — Review agent state
@@ -408,26 +409,32 @@ Each agent role maintains its own handoff file. These are the connective tissue 
 
 ```markdown
 ## Status
+
 Phase: 2 | Issue: #18 | Branch: feat/engine-store-wrapper | State: implementing
 
 ## Done
+
 - [abc1234] Implemented store wrapper skeleton
 - [def5678] Added event forwarding tests
 
 ## Next
+
 1. Wire store to SvelteKit layout (specific file: src/routes/+layout.svelte)
 2. Add error propagation from engine events to store
 
 ## Decisions
+
 - Chose runes over legacy stores because SvelteKit 5 default
 - Used $effect rather than onMount for engine binding — cleaner teardown
 
 ## Gotchas
+
 - Engine emits 'ready' before first content is available — don't render until 'content:ready'
 - pnpm workspace protocol requires exact match on engine export names
 ```
 
 **Rules:**
+
 - **Update before every exit.** Not optional. If the handoff file is stale, the next agent (especially Codex or Gemini) wastes credits re-deriving context.
 - **"Next" must be specific and actionable.** Not "continue working on the feature" — list exact files, functions, or steps.
 - **"Decisions" captures non-obvious choices.** If it's obvious from the code, don't repeat it. If a future agent would make a different choice without this context, write it down.
@@ -444,24 +451,26 @@ All engine code is pure TypeScript with no browser deps. Write the test first, a
 Svelte stores, data transformations, validation functions — all testable with Vitest, no browser needed.
 
 **UI components — pragmatic TDD:**
+
 - Use `@testing-library/svelte` + Vitest for component behavior ("given this state, does the right thing render?")
 - Use Playwright for E2E critical paths (paste syllabus → get question → answer → see result)
 - Don't TDD CSS, layout, or visual design — those are human judgment calls
 - Even in UI-heavy features, extract testable logic into functions and TDD those
 
 **The TDD handoff pattern:**
+
 1. Planning agent writes failing tests that encode acceptance criteria
 2. Coding agent makes them pass
 3. The test is the spec — any model can implement against it
 
 **Testing stack (all free):**
 
-| Tool | Use for |
-|------|---------|
-| Vitest | Engine unit/integration, store tests, component tests |
-| @testing-library/svelte | Component rendering behavior |
-| Playwright | E2E browser tests for critical paths |
-| jsdom (via Vitest) | DOM simulation for component tests |
+| Tool                    | Use for                                               |
+| ----------------------- | ----------------------------------------------------- |
+| Vitest                  | Engine unit/integration, store tests, component tests |
+| @testing-library/svelte | Component rendering behavior                          |
+| Playwright              | E2E browser tests for critical paths                  |
+| jsdom (via Vitest)      | DOM simulation for component tests                    |
 
 ## Commit Attribution
 

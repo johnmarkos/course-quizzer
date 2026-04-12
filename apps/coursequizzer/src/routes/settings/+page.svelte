@@ -5,6 +5,7 @@
     hasApiKey,
     getMaskedApiKey,
   } from '$lib/stores/api-key.js';
+  import { normalizeError } from '$lib/errors/app-errors.js';
 
   let keyInput = $state('');
   let saved = $state(hasApiKey(localStorage));
@@ -20,7 +21,7 @@
       maskedKey = getMaskedApiKey(localStorage);
       keyInput = '';
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to save API key';
+      error = normalizeError(e).message;
     }
   }
 

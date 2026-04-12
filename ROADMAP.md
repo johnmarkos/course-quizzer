@@ -35,15 +35,15 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 
 **Goal:** A user can paste a syllabus in the browser and answer the first generated question.
 
-- [ ] #16 — Build settings page and API key management
-- [ ] #17 — Add local course persistence and `LocalStorageAdapter`
-- [ ] #18 — Create engine Svelte store wrapper
-- [ ] #19 — Implement new course syllabus-analysis flow
-- [ ] #20 — Implement course list and course overview pages
-- [ ] #21 — Implement learn page content and answer flow
-- [ ] #22 — Add app error handling, loading states, and safe rendering checks
-- [ ] #23 — Add Phase 2 tests for the critical browser flow
-- [ ] #24 — Phase 2 milestone review: app security, UX, and architecture audit
+- [x] #16 — Build settings page and API key management
+- [x] #17 — Add local course persistence and `LocalStorageAdapter`
+- [x] #18 — Create engine Svelte store wrapper
+- [x] #19 — Implement new course syllabus-analysis flow
+- [x] #20 — Implement course list and course overview pages
+- [x] #21 — Implement learn page content and answer flow
+- [x] #22 — Add app error handling, loading states, and safe rendering checks
+- [x] #23 — Add Phase 2 tests for the critical browser flow
+- [x] #24 — Phase 2 milestone review: app security, UX, and architecture audit
 
 **Checkpoint:** Full demo flow in the browser: enter API key → paste syllabus → see curriculum plan → start section → answer question → see result.
 

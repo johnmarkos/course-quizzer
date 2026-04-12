@@ -13,6 +13,7 @@
     type ContentItem,
     type Section,
   } from 'quizzer-engine';
+  import { normalizeError } from '$lib/errors/app-errors.js';
 
   // --- State ---
 
@@ -72,8 +73,7 @@
       const items = await generator.generateSection(section, course.curriculum.title);
       session.setSectionContent(items);
     } catch (err) {
-      generateError =
-        err instanceof Error ? err.message : 'Failed to generate content.';
+      generateError = normalizeError(err).message;
     } finally {
       generating = false;
     }

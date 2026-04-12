@@ -12,6 +12,22 @@
 - Empty state for new users with API key prompt and create-course link
 - All user/LLM text rendered with Svelte auto-escaping (no `{@html}`)
 - 12 new tests covering progress extraction, mastery formatting, and progress labels
+- Learn page (`/course/[courseId]/learn`): content generation, explanation display, and answer flow for all 5 question types
+- Section picker: choose a section to start, generates content via ContentGenerator + ClaudeProvider
+- Renders explanations with Svelte auto-escaping (no `{@html}`)
+- Multiple choice: click-to-answer option buttons
+- Numeric input: form with number input and submit
+- Ordering: reorderable list with up/down arrow controls
+- Multi-select: toggle option buttons with visual selected state
+- Two-stage: first answer → follow-up question flow
+- Answer result screen: correct/incorrect feedback with correct answer shown on wrong answers
+- Section complete and course complete screens with mastery percentage
+- Skip question support for all question types
+- Report issue action on every content item (v1: console log)
+- Auto-saves engine snapshots to course storage after each answer and section completion
+- Restores session from snapshot when returning to a course in progress
+- "Start Learning" link added to course overview page
+- 5 new learn-flow tests covering full section completion, incorrect answers, skip, auto-save, and section navigation
 
 ## 0.5.0 — 2026-04-12
 

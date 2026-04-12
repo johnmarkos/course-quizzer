@@ -5,7 +5,6 @@
 
 import {
   SyllabusParser,
-  ProviderError,
   validateCurriculumPlan,
   type CurriculumPlan,
   type ProviderRequest,

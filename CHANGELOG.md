@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.1 — 2026-04-12
+
+### Phase 2 Milestone Review Fixes
+
+- Fix: learn page content generation errors now normalized through `normalizeError()` instead of showing raw provider error messages (potential sensitive data leak)
+- Fix: settings page `saveApiKey` errors now normalized through `normalizeError()` instead of showing raw `DOMException` messages
+- Update ROADMAP.md Phase 2 checkboxes to reflect completed issues
+
 ## 0.7.0 — 2026-04-12
 
 ### Phase 2: App Foundation (continued)

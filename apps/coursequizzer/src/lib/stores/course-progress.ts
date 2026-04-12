@@ -62,10 +62,12 @@ export function getCourseProgress(record: CourseRecord): CourseProgressSummary |
   });
 
   const allMasteries = Object.values(masteryMap) as TopicMastery[];
+  const attemptedMasteries = allMasteries.filter((m) => m.questionsAnswered > 0);
   const totalAnswered = allMasteries.reduce((sum, m) => sum + m.questionsAnswered, 0);
   const overallMastery =
-    allMasteries.length > 0
-      ? allMasteries.reduce((sum, m) => sum + m.score, 0) / allMasteries.length
+    attemptedMasteries.length > 0
+      ? attemptedMasteries.reduce((sum, m) => sum + m.score, 0) /
+        attemptedMasteries.length
       : 0;
 
   return {

@@ -165,6 +165,27 @@ describe('getCourseProgress', () => {
     expect(progress.totalQuestionsAnswered).toBe(9); // 5 + 4
     expect(progress.hasProgress).toBe(true);
   });
+
+  it('excludes unattempted topics from overall mastery', () => {
+    const state: StudentState = {
+      masteryByTopic: {
+        t1: { topicId: 't1', score: 0.8, questionsAnswered: 5, questionsCorrect: 4 },
+        t2: { topicId: 't2', score: 0, questionsAnswered: 0, questionsCorrect: 0 },
+        t3: { topicId: 't3', score: 0.6, questionsAnswered: 3, questionsCorrect: 2 },
+      },
+      gaps: [],
+    };
+    const snapshot = mockSnapshot({
+      currentSectionIndex: 1,
+      studentState: state,
+    });
+    const record = mockRecord({ snapshot });
+    const progress = getCourseProgress(record)!;
+
+    // Only t1 (0.8) and t3 (0.6) are attempted — t2 has 0 answers and must not drag the average down
+    expect(progress.overallMastery).toBeCloseTo(0.7); // avg of 0.8 and 0.6, not (0.8 + 0 + 0.6) / 3
+    expect(progress.totalQuestionsAnswered).toBe(8); // 5 + 3
+  });
 });
 
 // --- formatMastery ---

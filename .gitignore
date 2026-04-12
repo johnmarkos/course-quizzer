@@ -152,6 +152,9 @@ REVIEWER-INSTRUCTIONS.md
 # Scratch directory
 .scratch/
 
+# Agent logs
+logs/
+
 # Gemini CLI working files
 .gemini/
 gha-creds-*.json

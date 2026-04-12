@@ -1,10 +1,9 @@
 // --- New Course Analysis ---
 // Orchestrates the syllabus analysis flow: validate input, call provider via
-// SyllabusParser, handle errors, and persist the resulting course.
+// prompt builder, handle errors, and persist the resulting course.
 // This module is pure logic — no Svelte, no browser APIs at import time.
 
 import {
-  SyllabusParser,
   validateCurriculumPlan,
   type CurriculumPlan,
   type ProviderRequest,
@@ -56,11 +55,8 @@ export async function analyzeSyllabus(
 ): Promise<AnalysisResult> {
   const { syllabusText, sendMessage } = params;
 
-  // Build the prompt via SyllabusParser internals:
-  // We construct a SyllabusParser-compatible flow manually here because
-  // SyllabusParser.parse() requires a ClaudeProvider instance. Instead, we
-  // use the same prompt builder and validation the parser uses, but wire in
-  // the sendMessage function directly.
+  // Build the prompt using the engine's prompt builder and wire in the
+  // sendMessage function directly (no ClaudeProvider instance needed).
   const { buildSyllabusAnalysisPrompt } = await import('quizzer-engine');
 
   const prompt = buildSyllabusAnalysisPrompt(syllabusText);
@@ -76,8 +72,16 @@ export async function analyzeSyllabus(
     } catch {
       // Retry once on malformed response
       response = await sendMessage({ ...prompt, maxTokens: MAX_TOKENS });
-      const plan = extractPlan(response);
-      return { ok: true, plan };
+      try {
+        const plan = extractPlan(response);
+        return { ok: true, plan };
+      } catch {
+        return {
+          ok: false,
+          error: 'The API returned an unexpected response. Please try again.',
+          errorType: 'malformed_response',
+        };
+      }
     }
   } catch (err) {
     const normalized = normalizeError(err);
@@ -86,7 +90,7 @@ export async function analyzeSyllabus(
 }
 
 // --- Response Extraction ---
-// Mirrors SyllabusParser's extraction logic.
+// Extracts and validates the curriculum plan from a provider response.
 
 function extractPlan(response: ProviderResponse): CurriculumPlan {
   const toolBlock = response.content.find(

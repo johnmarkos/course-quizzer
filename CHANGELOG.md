@@ -11,6 +11,14 @@
 - Runtime security tests: API key not in serialized snapshots, not in persisted course records, malformed import data handled gracefully
 - 9 new tests across 2 test files (critical-path.test.ts, security.test.ts), total app tests now 90
 
+## 0.6.1 — 2026-04-12
+
+### Fixes
+
+- Removed unused `SyllabusParser` import from `new-course.ts`
+- `extractPlan` double-failure now returns user-friendly "unexpected response" message instead of raw error
+- Home page course list refreshes on client-side navigation (no more stale list after creating a course)
+
 ## 0.6.0 — 2026-04-12
 
 ### Phase 2: App Foundation (continued)

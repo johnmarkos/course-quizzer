@@ -4,7 +4,6 @@
 // This module is pure logic — no Svelte, no browser APIs at import time.
 
 import {
-  SyllabusParser,
   validateCurriculumPlan,
   type CurriculumPlan,
   type ProviderRequest,
@@ -76,8 +75,16 @@ export async function analyzeSyllabus(
     } catch {
       // Retry once on malformed response
       response = await sendMessage({ ...prompt, maxTokens: MAX_TOKENS });
-      const plan = extractPlan(response);
-      return { ok: true, plan };
+      try {
+        const plan = extractPlan(response);
+        return { ok: true, plan };
+      } catch {
+        return {
+          ok: false,
+          error: 'The API returned an unexpected response. Please try again.',
+          errorType: 'malformed_response',
+        };
+      }
     }
   } catch (err) {
     const normalized = normalizeError(err);

@@ -3,10 +3,17 @@
   import { hasApiKey } from '$lib/stores/api-key.js';
   import { getProgressLabel } from '$lib/stores/course-progress.js';
   import { normalizeError } from '$lib/errors/app-errors.js';
+  import { afterNavigate } from '$app/navigation';
   import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 
   let storageError = $state('');
   let courses = $state(loadCourses());
+
+  // Refresh the course list on every client-side navigation to this page,
+  // so newly created courses appear without a full page reload.
+  afterNavigate(() => {
+    courses = loadCourses();
+  });
 
   /** Load courses from localStorage, capturing any error. */
   function loadCourses() {

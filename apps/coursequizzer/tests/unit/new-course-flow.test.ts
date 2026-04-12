@@ -172,7 +172,10 @@ describe('analyzeSyllabus', () => {
 
     expect(result.ok).toBe(false);
     const failure = result as Extract<AnalysisResult, { ok: false }>;
-    expect(failure.error).toContain('did not contain');
+    expect(failure.error).toBe(
+      'The API returned an unexpected response. Please try again.'
+    );
+    expect(failure.errorType).toBe('malformed_response');
   });
 
   it('returns user-readable error for authentication failure', async () => {

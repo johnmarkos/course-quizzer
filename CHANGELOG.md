@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.1 — 2026-04-12
+
+### Fixes
+
+- Removed unused `SyllabusParser` import from `new-course.ts`
+- `extractPlan` double-failure now returns user-friendly "unexpected response" message instead of raw error
+- Home page course list refreshes on client-side navigation (no more stale list after creating a course)
+
 ## 0.6.0 — 2026-04-12
 
 ### Phase 2: App Foundation (continued)

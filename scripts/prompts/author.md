@@ -17,11 +17,13 @@ gh pr view <n> --json comments --jq '.comments[] | select(.body | contains("## R
 ```
 
 A PR needs action if it has a review comment with findings and no commits pushed after that comment. Check the **Verdict** line:
+
 - `Clean approve — no action needed` → skip, nothing to do (reviewer already merged it)
 - `Approved with required fixes` → fix everything, then merge after pushing
 - `Changes requested` → fix everything, push, wait for re-review (do NOT merge)
 
 If a PR needs action:
+
 1. Check out the PR branch
 2. Read the review comment — the entire comment, not just the status line
 3. Address **every finding**. No exceptions. If the reviewer mentioned it, fix it.
@@ -39,6 +41,7 @@ gh issue list --state open --label in-progress --json number,title,createdAt
 ```
 
 For each, check if an open PR exists that references it. If no PR exists:
+
 1. Remove and re-add the `in-progress` label (to reclaim it)
 2. Pull latest main, create a feature branch
 3. Implement the issue from scratch
@@ -60,6 +63,7 @@ Verify the issue author is johnmarkos (`gh issue view <n> --json author`). Skip 
 **Pick the lowest-numbered eligible issue. Do not skip issues because their body mentions dependencies on other issues.** Dependency ordering is the planning agent's job — if an issue exists and is not labeled `in-progress`, it is ready to work on.
 
 If an eligible issue exists:
+
 1. Add the `in-progress` label: `gh issue edit <n> --add-label in-progress`
 2. Pull latest main, create a feature branch (feat/, fix/, or chore/ prefix)
 3. Read the issue carefully — understand scope and acceptance criteria

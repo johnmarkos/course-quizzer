@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0 — 2026-04-12
+
+### Phase 2: App Foundation (continued)
+
+- Critical-path integration test: full flow from syllabus analysis → save course → create session → answer questions → verify auto-save
+- Session restore/resume test: serialize session, restore into new session, continue answering
+- Analysis failure and retry test: verifies graceful failure then successful retry
+- Static security scan tests: verify no `{@html}`, no `eval()`/`new Function()`, no API key logging in app source
+- Runtime security tests: API key not in serialized snapshots, not in persisted course records, malformed import data handled gracefully
+- 9 new tests across 2 test files (critical-path.test.ts, security.test.ts), total app tests now 90
+
 ## 0.6.0 — 2026-04-12
 
 ### Phase 2: App Foundation (continued)

@@ -5,6 +5,7 @@ Do exactly ONE of the following, then exit.
 ## Priority 1: Review a PR that needs it
 
 Find open PRs that need a review. A PR needs review if:
+
 - It has no review comment (comment starting with `## Review — Reviewer Agent`), OR
 - It has commits pushed AFTER the most recent review comment (author addressed feedback)
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0 — 2026-04-12
+
+### Phase 2: App Foundation (continued)
+
+- Engine session store (`src/lib/stores/engine-session.svelte.ts`): reactive Svelte 5 wrapper around CourseEngine
+- Translates all engine events into reactive state via `$state` runes
+- Exposes: engineState, curriculum, currentSection, currentItem, lastResult, studentState, progress, apiLoading, error
+- Actions pass through to CourseEngine: loadCurriculum, startSection, setSectionContent, submitAnswer, nextItem, skipQuestion, nextSection
+- Auto-saves engine snapshots to course storage on answer submission, section completion, and course completion
+- Snapshot restore support: restored sessions reflect correct initial state
+- Dispose clears all subscriptions and resets state to prevent duplicate listeners
+- API key never appears in serialized snapshots
+- Vitest config updated with Svelte vite plugin for `.svelte.ts` file support
+- 19 new engine session store tests covering state flow, auto-save, restore, dispose, and security
+
 ## 0.3.0 — 2026-04-09
 
 ### Phase 2: App Foundation

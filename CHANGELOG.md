@@ -28,6 +28,18 @@
 - Restores session from snapshot when returning to a course in progress
 - "Start Learning" link added to course overview page
 - 5 new learn-flow tests covering full section completion, incorrect answers, skip, auto-save, and section navigation
+- Centralized error normalization module (`src/lib/errors/app-errors.ts`): maps provider, engine, storage, and unknown errors to user-safe messages
+- Sensitive data scrubbing: API key patterns, raw headers, and localStorage dump patterns are redacted from all user-facing error messages
+- Reusable `ErrorAlert` component with optional retry action and accessible `role="alert"` markup
+- Reusable `LoadingIndicator` component with message and detail text, `aria-busy` and `role="status"` attributes
+- Home page handles localStorage failures gracefully with error display
+- Course overview page catches and normalizes storage access errors
+- New course page save flow catches localStorage quota/access errors
+- Engine session auto-save catches storage errors and surfaces them as recoverable
+- Engine session error handler sanitizes messages via `scrubSensitiveData` directly (no throwaway Error wrapping)
+- Refactored `new-course.ts` to delegate error sanitization to centralized module (removed inline error message map)
+- Security audit: no `{@html}`, no `eval()`, no direct `fetch()`, no API key logging in app source
+- 20 new tests covering error normalization for all provider types, engine errors, storage errors, unknown errors, and sensitive data scrubbing
 
 ## 0.5.0 — 2026-04-12
 

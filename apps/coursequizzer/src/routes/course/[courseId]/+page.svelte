@@ -8,9 +8,24 @@
     formatMastery,
     getProgressLabel,
   } from '$lib/stores/course-progress.js';
+  import { normalizeError } from '$lib/errors/app-errors.js';
+  import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 
   const courseId = $derived(page.params.courseId);
-  const course = $derived(courseId ? getCourse(courseId, localStorage) : null);
+
+  // Load course — errors are returned as part of the result object to avoid
+  // mutating reactive state inside a $derived computation.
+  const courseResult = $derived.by(() => {
+    if (!courseId) return { data: null, error: '' };
+    try {
+      return { data: getCourse(courseId, localStorage), error: '' };
+    } catch (err) {
+      return { data: null, error: normalizeError(err).message };
+    }
+  });
+
+  const course = $derived(courseResult.data);
+  const loadError = $derived(courseResult.error);
   const progress = $derived(course ? getCourseProgress(course) : null);
   const apiKeyStored = $derived(hasApiKey(localStorage));
 
@@ -58,7 +73,10 @@
 </svelte:head>
 
 <main>
-  {#if course}
+  {#if loadError}
+    <h1>Error</h1>
+    <ErrorAlert message={loadError} />
+  {:else if course}
     <header>
       <h1>{course.title}</h1>
       <p class="description">{course.curriculum.description}</p>

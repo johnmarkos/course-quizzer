@@ -8,6 +8,9 @@
     validateSyllabusInput,
     MIN_SYLLABUS_LENGTH,
   } from '$lib/stores/new-course.js';
+  import { normalizeError } from '$lib/errors/app-errors.js';
+  import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+  import LoadingIndicator from '$lib/components/LoadingIndicator.svelte';
 
   // --- State ---
 
@@ -77,8 +80,13 @@
     if (!plan) return;
 
     step = 'saving';
-    const record = saveCourseFromPlan(plan, localStorage);
-    goto(`/course/${record.id}`);
+    try {
+      const record = saveCourseFromPlan(plan, localStorage);
+      goto(`/course/${record.id}`);
+    } catch (err) {
+      analysisError = normalizeError(err).message;
+      step = 'error';
+    }
   }
 </script>
 
@@ -130,8 +138,10 @@
   {:else if step === 'analyzing'}
     <!-- Loading state -->
     <section>
-      <p class="loading">Analyzing your syllabus with Claude...</p>
-      <p>This may take 10–30 seconds depending on the syllabus length.</p>
+      <LoadingIndicator
+        message="Analyzing your syllabus with Claude..."
+        detail="This may take 10–30 seconds depending on the syllabus length."
+      />
     </section>
   {:else if step === 'review' && plan}
     <!-- Curriculum plan review step -->
@@ -166,13 +176,12 @@
   {:else if step === 'error'}
     <!-- Error state -->
     <section>
-      <p role="alert" class="error">{analysisError}</p>
-      <button type="button" onclick={handleRetry}>Try Again</button>
+      <ErrorAlert message={analysisError} recoverable={true} onretry={handleRetry} />
     </section>
   {:else if step === 'saving'}
     <!-- Saving state (brief — redirects immediately) -->
     <section>
-      <p>Saving course...</p>
+      <LoadingIndicator message="Saving course..." />
     </section>
   {/if}
 
@@ -211,11 +220,6 @@
   .error {
     color: #c00;
     font-weight: 600;
-  }
-
-  .loading {
-    font-weight: 600;
-    font-size: 1.1rem;
   }
 
   .section-list {

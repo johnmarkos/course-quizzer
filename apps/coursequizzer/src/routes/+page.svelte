@@ -2,9 +2,34 @@
   import { listCourses, deleteCourse } from '$lib/storage/course-storage.js';
   import { hasApiKey } from '$lib/stores/api-key.js';
   import { getProgressLabel } from '$lib/stores/course-progress.js';
+  import { normalizeError } from '$lib/errors/app-errors.js';
+  import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 
-  let courses = $state(listCourses(localStorage));
-  const apiKeyStored = $derived(hasApiKey(localStorage));
+  let storageError = $state('');
+
+  // Load courses — errors are caught separately in an $effect to avoid
+  // mutating reactive state inside a $derived computation (Finding #2).
+  let coursesResult = $derived.by(() => {
+    try {
+      return { data: listCourses(localStorage), error: '' };
+    } catch (err) {
+      return { data: [] as ReturnType<typeof listCourses>, error: normalizeError(err).message };
+    }
+  });
+
+  let courses = $state(coursesResult.data);
+  $effect(() => {
+    courses = coursesResult.data;
+    storageError = coursesResult.error;
+  });
+
+  const apiKeyStored = $derived.by(() => {
+    try {
+      return hasApiKey(localStorage);
+    } catch {
+      return false;
+    }
+  });
 
   // --- Delete confirmation ---
 
@@ -37,6 +62,10 @@
     <a href="/course/new">New Course</a>
     <a href="/settings">Settings</a>
   </nav>
+
+  {#if storageError}
+    <ErrorAlert message={storageError} />
+  {/if}
 
   {#if !apiKeyStored}
     <section>

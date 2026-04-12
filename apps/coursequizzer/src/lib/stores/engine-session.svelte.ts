@@ -19,6 +19,7 @@ import {
   type Listener,
 } from 'quizzer-engine';
 import { updateCourse } from '../storage/course-storage.js';
+import { normalizeError, scrubSensitiveData } from '../errors/app-errors.js';
 
 // --- Types ---
 
@@ -144,7 +145,8 @@ export function createEngineSession(config: EngineSessionConfig) {
   };
 
   const onError: Listener<'error'> = (payload) => {
-    error = { message: payload.message, recoverable: payload.recoverable };
+    // Scrub sensitive data directly — no need to wrap in Error and classify
+    error = { message: scrubSensitiveData(payload.message), recoverable: payload.recoverable };
   };
 
   // --- Subscribe to engine events ---
@@ -181,8 +183,14 @@ export function createEngineSession(config: EngineSessionConfig) {
 
   function autoSave(): void {
     if (!config.courseId || !config.storage || !engine) return;
-    const snapshot = engine.serialize();
-    updateCourse(config.courseId, { snapshot }, config.storage);
+    try {
+      const snapshot = engine.serialize();
+      updateCourse(config.courseId, { snapshot }, config.storage);
+    } catch (err) {
+      // Surface storage errors (e.g., quota exceeded) as recoverable engine errors
+      const normalized = normalizeError(err);
+      error = { message: normalized.message, recoverable: true };
+    }
   }
 
   // --- Public API ---

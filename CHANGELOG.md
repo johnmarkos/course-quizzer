@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0 — 2026-04-12
+
+### Phase 2: App Foundation (continued)
+
+- Course list home page: shows all courses with progress summary, open link, and delete with confirmation
+- Course overview page: curriculum sections with expanded topics, progress bar, mastery percentages, Start/Resume Learning action
+- Progress helper module (`src/lib/stores/course-progress.ts`): extracts per-section and overall progress from snapshot data
+- Delete course with explicit confirmation step on both home and overview pages
+- Graceful handling of missing/invalid course IDs with helpful message
+- Empty state for new users with API key prompt and create-course link
+- All user/LLM text rendered with Svelte auto-escaping (no `{@html}`)
+- 12 new tests covering progress extraction, mastery formatting, and progress labels
+
 ## 0.5.0 — 2026-04-12
 
 ### Phase 2: App Foundation (continued)

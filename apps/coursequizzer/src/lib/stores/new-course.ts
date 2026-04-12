@@ -5,13 +5,13 @@
 
 import {
   SyllabusParser,
-  ProviderError,
   validateCurriculumPlan,
   type CurriculumPlan,
   type ProviderRequest,
   type ProviderResponse,
 } from 'quizzer-engine';
 import { createCourse, type CourseRecord } from '../storage/course-storage.js';
+import { normalizeError } from '../errors/app-errors.js';
 
 // --- Constants ---
 
@@ -46,30 +46,8 @@ export function validateSyllabusInput(text: string): string | null {
 }
 
 // --- Error Sanitization ---
-// Provider errors may contain raw API error messages that could include
-// the API key or sensitive headers. We map them to user-readable messages.
-
-const ERROR_MESSAGES: Record<string, string> = {
-  authentication:
-    'Your API key was not accepted. Please check that it is correct in Settings.',
-  rate_limit:
-    'Too many requests — the Anthropic API rate limit was reached. Please wait a moment and try again.',
-  overloaded:
-    'The Anthropic API is currently overloaded. Please try again in a few minutes.',
-  invalid_request:
-    'The request to the API was invalid. This may be a bug — please report it.',
-  server_error:
-    'The Anthropic API returned a server error. Please try again in a few minutes.',
-  network:
-    'Could not reach the Anthropic API. Please check your internet connection and try again.',
-  malformed_response: 'The API returned an unexpected response. Please try again.',
-};
-
-function sanitizeProviderError(err: ProviderError): { error: string; errorType: string } {
-  const message =
-    ERROR_MESSAGES[err.type] ?? 'An unexpected error occurred. Please try again.';
-  return { error: message, errorType: err.type };
-}
+// Delegates to the centralized normalizeError utility, which maps provider,
+// engine, storage, and unknown errors to user-safe messages.
 
 // --- Analysis ---
 
@@ -102,13 +80,8 @@ export async function analyzeSyllabus(
       return { ok: true, plan };
     }
   } catch (err) {
-    if (err instanceof ProviderError) {
-      return { ok: false, ...sanitizeProviderError(err) };
-    }
-    // For non-provider errors (e.g., validation errors from extractPlan),
-    // return a generic message that doesn't leak internals
-    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
-    return { ok: false, error: message };
+    const normalized = normalizeError(err);
+    return { ok: false, error: normalized.message, errorType: normalized.category };
   }
 }
 

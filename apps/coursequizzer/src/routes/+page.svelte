@@ -2,9 +2,30 @@
   import { listCourses, deleteCourse } from '$lib/storage/course-storage.js';
   import { hasApiKey } from '$lib/stores/api-key.js';
   import { getProgressLabel } from '$lib/stores/course-progress.js';
+  import { normalizeError } from '$lib/errors/app-errors.js';
+  import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 
-  let courses = $state(listCourses(localStorage));
-  const apiKeyStored = $derived(hasApiKey(localStorage));
+  let storageError = $state('');
+  let courses = $state(loadCourses());
+
+  /** Load courses from localStorage, capturing any error. */
+  function loadCourses() {
+    try {
+      storageError = '';
+      return listCourses(localStorage);
+    } catch (err) {
+      storageError = normalizeError(err).message;
+      return [] as ReturnType<typeof listCourses>;
+    }
+  }
+
+  const apiKeyStored = $derived.by(() => {
+    try {
+      return hasApiKey(localStorage);
+    } catch {
+      return false;
+    }
+  });
 
   // --- Delete confirmation ---
 
@@ -20,7 +41,7 @@
 
   function confirmDelete(courseId: string) {
     deleteCourse(courseId, localStorage);
-    courses = listCourses(localStorage);
+    courses = loadCourses();
     confirmDeleteId = null;
   }
 </script>
@@ -37,6 +58,10 @@
     <a href="/course/new">New Course</a>
     <a href="/settings">Settings</a>
   </nav>
+
+  {#if storageError}
+    <ErrorAlert message={storageError} />
+  {/if}
 
   {#if !apiKeyStored}
     <section>

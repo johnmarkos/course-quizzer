@@ -6,22 +6,18 @@
   import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 
   let storageError = $state('');
+  let courses = $state(loadCourses());
 
-  // Load courses — errors are caught separately in an $effect to avoid
-  // mutating reactive state inside a $derived computation (Finding #2).
-  let coursesResult = $derived.by(() => {
+  /** Load courses from localStorage, capturing any error. */
+  function loadCourses() {
     try {
-      return { data: listCourses(localStorage), error: '' };
+      storageError = '';
+      return listCourses(localStorage);
     } catch (err) {
-      return { data: [] as ReturnType<typeof listCourses>, error: normalizeError(err).message };
+      storageError = normalizeError(err).message;
+      return [] as ReturnType<typeof listCourses>;
     }
-  });
-
-  let courses = $state(coursesResult.data);
-  $effect(() => {
-    courses = coursesResult.data;
-    storageError = coursesResult.error;
-  });
+  }
 
   const apiKeyStored = $derived.by(() => {
     try {
@@ -45,7 +41,7 @@
 
   function confirmDelete(courseId: string) {
     deleteCourse(courseId, localStorage);
-    courses = listCourses(localStorage);
+    courses = loadCourses();
     confirmDeleteId = null;
   }
 </script>

@@ -146,7 +146,10 @@ export function createEngineSession(config: EngineSessionConfig) {
 
   const onError: Listener<'error'> = (payload) => {
     // Scrub sensitive data directly — no need to wrap in Error and classify
-    error = { message: scrubSensitiveData(payload.message), recoverable: payload.recoverable };
+    error = {
+      message: scrubSensitiveData(payload.message),
+      recoverable: payload.recoverable,
+    };
   };
 
   // --- Subscribe to engine events ---

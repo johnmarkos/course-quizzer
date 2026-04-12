@@ -7,6 +7,7 @@ import {
   getCourse,
   listCourses,
   updateCourse,
+  COURSES_STORAGE_KEY,
 } from '../../src/lib/storage/course-storage.js';
 import type { CurriculumPlan, EngineSnapshot } from 'quizzer-engine';
 
@@ -133,20 +134,29 @@ describe('API key safety at runtime', () => {
 
   it('API key is not present in course records persisted to storage', () => {
     const storage = createLocalStorageMock();
+
+    // Create the course first so we can use its generated ID
+    const courseRecord = createCourse(
+      { title: 'Test', curriculum: mockCurriculumPlan() },
+      storage
+    );
+
     const session = createEngineSession({
       apiKey: 'sk-ant-api03-PERSISTCHECK',
-      courseId: 'test-course',
+      courseId: courseRecord.id,
       storage,
     });
 
     session.loadCurriculum(mockCurriculumPlan());
 
-    // Create the course in storage so auto-save has a target
-    createCourse({ title: 'Test', curriculum: mockCurriculumPlan() }, storage);
+    // Simulate what auto-save does: serialize the session and persist via updateCourse
+    const snapshot = session.serialize()!;
+    updateCourse(courseRecord.id, { snapshot }, storage);
 
-    // Check all persisted data
-    const courses = listCourses(storage);
-    const allStoredData = JSON.stringify(courses);
+    // Verify the persisted course record does not contain the API key
+    const persisted = getCourse(courseRecord.id, storage);
+    expect(persisted).not.toBeNull();
+    const allStoredData = JSON.stringify(persisted);
     expect(allStoredData).not.toContain('sk-ant-api03-PERSISTCHECK');
 
     session.dispose();
@@ -156,15 +166,15 @@ describe('API key safety at runtime', () => {
     const storage = createLocalStorageMock();
 
     // Simulate corrupted localStorage
-    storage.setItem('cq:courses', 'not-valid-json{{{');
+    storage.setItem(COURSES_STORAGE_KEY, 'not-valid-json{{{');
     expect(listCourses(storage)).toEqual([]);
 
     // Simulate data with wrong shape
-    storage.setItem('cq:courses', JSON.stringify([{ invalid: true }]));
+    storage.setItem(COURSES_STORAGE_KEY, JSON.stringify([{ invalid: true }]));
     expect(listCourses(storage)).toEqual([]);
 
     // Simulate array of nulls
-    storage.setItem('cq:courses', JSON.stringify([null, undefined, 42]));
+    storage.setItem(COURSES_STORAGE_KEY, JSON.stringify([null, undefined, 42]));
     expect(listCourses(storage)).toEqual([]);
   });
 });

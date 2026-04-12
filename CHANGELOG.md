@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0 — 2026-04-12
+
+### Phase 2: App Foundation (continued)
+
+- New course syllabus-analysis flow (`/course/new`): paste syllabus → Claude analysis → review curriculum plan → save course
+- Analysis logic module (`src/lib/stores/new-course.ts`): validates input, calls provider via SyllabusParser prompt, retries on malformed response, sanitizes all error messages
+- Provider errors mapped to user-readable messages; API key and raw headers never leak into error text
+- Curriculum plan displayed with Svelte auto-escaping (no `{@html}`)
+- Saved courses persist via course-storage and are loadable by ID
+- Minimal course detail page (`/course/[courseId]`) as redirect target after save
+- Home page updated with course list and new-course navigation
+- 14 new tests covering input validation, successful analysis, retry logic, 4 error types, and API key leak prevention
+
 ## 0.4.0 — 2026-04-12
 
 ### Phase 2: App Foundation (continued)

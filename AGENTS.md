@@ -309,6 +309,13 @@ This project uses multiple AI agents running locally in git worktrees. GitHub is
 
 Agents poll for work every 5 minutes. A poll is cheap (~a few hundred tokens for `gh issue list` / `gh pr list`). Time is not the constraint; money is. It's fine for an agent to sit idle polling while waiting for a review.
 
+The author and reviewer roles are now **script-driven**:
+
+- `scripts/author.sh` owns the author poll loop
+- `scripts/reviewer.sh` owns the reviewer poll loop
+- each model invocation does one task, exits, and hands control back to the shell script
+- retry logic, backoff, logging, worktree setup, and model fallback live in the shell scripts, not in ad hoc agent behavior
+
 ### Roles
 
 Any model (Claude, Codex, Gemini) can fill any role. The quality bar is the same regardless of which model is running.
@@ -317,6 +324,25 @@ Any model (Claude, Codex, Gemini) can fill any role. The quality bar is the same
 - **Coding agent(s)** — Implement features and fixes. Multiple coding agents can run in parallel on independent issues. Each checks GitHub issues for unclaimed work and their own open PRs for review feedback.
 - **Review agent** — Reviews PRs. Checks open PRs for new or updated submissions. Reviews PRs from any coding agent equally.
 - **John (Owner / Technical Architect)** — Designs the system, sets the quality bar, makes architectural decisions, approves the roadmap, and does live user testing at phase boundaries. Does not author code. John approves phases in ROADMAP.md; once a phase is approved, the planning agent creates issues and agents execute without waiting for per-issue or per-PR approval. The planning agent is John's primary interface — they collaborate interactively on priorities, tradeoffs, and scope.
+
+### Role Selection
+
+Pick the role from the launch context, not from general capability:
+
+- **Script-invoked author/reviewer runs** take their role from `scripts/author.sh`, `scripts/reviewer.sh`, and the corresponding prompt file. They must not improvise planner behavior.
+- **Interactive sessions with John** default to the **planning agent** when John explicitly addresses the model as planner (for example, "Hello, Codex Planner!") or asks for roadmap, issue-triage, milestone-review, or agent-factory process work.
+- If the role is ambiguous in an interactive session, ask once or make the narrowest reasonable assumption and state it.
+
+### Script Agent Boundaries
+
+Author and reviewer script agents are intentionally narrow. They must not:
+
+- update or mention `AUTHOR-HANDOFF.md` or `REVIEWER-HANDOFF.md`
+- ask John whether to continue, stop, or switch roles
+- volunteer to perform milestone reviews, planning, or cross-role work
+- treat "checkpoint complete" prompts as part of their runtime contract
+
+Their job is to do the one scripted task, emit a short status summary, and exit.
 
 ### Issue Claiming
 
@@ -403,7 +429,8 @@ Before opening a PR:
 3. `pnpm -r test` passes, `pnpm -r build` passes, `pnpm format` run
 4. CHANGELOG.md updated
 5. PR description links the issue (`Closes #N`) and explains the approach
-6. Update `AUTHOR-HANDOFF.md` before exiting
+6. If running under `scripts/author.sh`: do **not** maintain an author handoff file; GitHub state, logs, and the shell loop are the source of truth
+7. Exit after one task with a concise status summary only — do not ask whether to continue or switch to review work
 
 ### Review Agent Checklist
 
@@ -415,7 +442,8 @@ For each PR:
 4. Run prompts against diverse inputs if prompt changes are included
 5. Flag anything needing John's decision
 6. After significant reviews: check if Lessons Learned should be updated
-7. Update `REVIEWER-HANDOFF.md` before exiting
+7. If running under `scripts/reviewer.sh`: do **not** maintain a reviewer handoff file; GitHub comments, logs, and the shell loop are the source of truth
+8. Exit after one review with a concise status summary only — do not ask whether to continue or take on author/planner work
 
 ### Planning Agent Checklist
 
@@ -429,6 +457,7 @@ When breaking down a phase into issues:
 6. After creating issues, update ROADMAP.md to link to them
 7. **Schedule user testing** at the end of each phase — John is both owner and first user. Define what to test and what feedback to capture.
 8. **Run milestone reviews** at the end of each phase (see Milestone Reviews below). Create one issue per finding.
+9. Update `PLANNER-HANDOFF.md` before ending an interactive planner session. This is the only handoff file still in active use.
 
 ### Milestone Reviews
 
@@ -452,13 +481,20 @@ Milestone reviews are a **planning agent responsibility**, not a coding or PR-re
 
 ### Handoff Files
 
-Each agent role maintains its own handoff file. These are the connective tissue between sessions — especially important when handing off between different models (Claude → Codex, Codex → Claude, etc.).
+Only the planning role maintains a handoff file now.
+
+Script-driven author and reviewer agents do **not** maintain handoff files. Their continuity comes from:
+
+- GitHub issues and PRs
+- review comments
+- script logs under `logs/`
+- the shell script control plane
+
+The planning role is different because it is interactive, cross-cutting, and not driven from a single issue/PR queue.
 
 **Files:**
 
 - `PLANNER-HANDOFF.md` — Planning agent state
-- `AUTHOR-HANDOFF.md` — Coding agent state
-- `REVIEWER-HANDOFF.md` — Review agent state
 
 **Format (strict — must be machine-parseable):**
 
@@ -493,7 +529,7 @@ Phase: 2 | Issue: #18 | Branch: feat/engine-store-wrapper | State: implementing
 - **Update before every exit.** Not optional. If the handoff file is stale, the next agent (especially Codex or Gemini) wastes credits re-deriving context.
 - **"Next" must be specific and actionable.** Not "continue working on the feature" — list exact files, functions, or steps.
 - **"Decisions" captures non-obvious choices.** If it's obvious from the code, don't repeat it. If a future agent would make a different choice without this context, write it down.
-- **These files are gitignored.** They live in the worktree, not in the repo. Each worktree has its own copy.
+- **This file is gitignored.** It lives in the worktree, not in the repo.
 
 ### TDD Workflow
 

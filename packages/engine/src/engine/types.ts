@@ -27,6 +27,10 @@ export type CourseEngineConfig = {
   model?: string;
   provider?: ClaudeProvider;
   generator?: ContentGenerator;
+  prefetch?: {
+    enabled: boolean;
+    generator: ContentGenerator;
+  };
 };
 
 export type EngineSnapshot = {

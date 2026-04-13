@@ -44,7 +44,7 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 - [x] #22 — Add app error handling, loading states, and safe rendering checks
 - [x] #23 — Add Phase 2 tests for the critical browser flow
 - [x] #24 — Phase 2 milestone review: app security, UX, and architecture audit
-- [ ] #44 — Harden course-storage validation for persisted curriculum and snapshots
+- [ ] #43 — Harden course-storage validation for persisted curriculum and snapshots
 - [ ] #45 — Fail closed on bad persisted engine snapshots in learn session restore
 - [ ] #46 — Mask short stored API keys in Settings
 

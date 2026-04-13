@@ -6,6 +6,12 @@
 
 - Add root-level `pnpm dev` script that builds the engine first, then starts the app dev server
 
+## 0.7.2 — 2026-04-12
+
+### Fixes
+
+- Rename "Save Course & Start Learning" button to "Save Course" on `/course/new` — no learning flow exists yet, so the old label set false expectations
+
 ## 0.7.1 — 2026-04-12
 
 ### Phase 2 Milestone Review Fixes

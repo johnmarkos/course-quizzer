@@ -167,7 +167,7 @@
       </ol>
 
       <div class="actions">
-        <button type="button" onclick={handleSave}>Save Course & Start Learning</button>
+        <button type="button" onclick={handleSave}>Save Course</button>
         <button type="button" class="secondary" onclick={handleBackToInput}>
           Back to Edit
         </button>

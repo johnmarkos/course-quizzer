@@ -179,6 +179,22 @@ pnpm format:check                     # CI check
 
 **Readability is a nonfunctional requirement.** The bar: a competent junior engineer should be able to read any file and build a mental model of how the piece fits into the whole. If tracing through three files is needed to understand why a function exists, add a comment. The goal is comprehension, not decoration — a well-named function needs no comments; a complex algorithm needs explanation regardless of formatting.
 
+## Script Standards
+
+Shell scripts in `scripts/` are infrastructure — they keep the agent factory running. They don't need the same rigor as application code, but they do need a quality bar.
+
+**Apply:**
+
+- **Readability** — same standard as application code. Section comments, clear variable names, comments explaining "why."
+- **Code review** — scripts go through PRs like everything else. A bug in an agent script silently wastes credits or causes double work.
+- **Security awareness** — avoid `eval` with dynamic input, quote variables, be careful with `rm` and path expansion.
+- **`shellcheck`** — run `shellcheck scripts/*.sh` before opening a PR that touches scripts. Treat warnings as errors. This is the bash equivalent of `tsc --strict`.
+
+**Don't apply:**
+
+- **TDD / automated tests** — shell scripts are hard to unit test and the ROI is low. Manual smoke testing (run it, kill it, check lockfile cleanup, simulate a network failure) is sufficient.
+- **Formal reviewer agent pass** — a quick human or planning-agent read is enough for script-only changes. Full reviewer passes are for application code.
+
 ## Prompt Engineering Standards
 
 Prompts are a first-class engineering artifact, not strings buried in code.
@@ -344,6 +360,19 @@ Worktrees share the same git history but have independent working directories. E
 
 `GEMINI.md` in the repo root tells Gemini agents to read AGENTS.md and follow the appropriate checklist. It also includes a quick-reference subset of the most critical rules as a safety net. If Gemini stops following AGENTS.md reliably, consider inlining more rules into GEMINI.md or reinforcing them in issue descriptions.
 
+### Granularity Rule
+
+**One issue = one thing. One PR = one thing. No exceptions.**
+
+Every issue should be small enough that a coding agent can implement it in a single session and a reviewer can review it in one pass. If an issue touches more than ~10 files or does two conceptually distinct things, split it. This applies to all issue sources:
+
+- Planning agent breaking down a phase
+- Milestone review findings (each finding becomes its own issue)
+- User testing findings (each UX issue or bug becomes its own issue)
+- Bug reports, refactoring ideas, tech debt
+
+The goal: small, reviewable PRs that are easy to understand, easy to review, and easy to revert if something goes wrong.
+
 ### Dispatch: Plan → Tests → Issues → Code → PR → Review
 
 **GitHub issues are the task queue.** The flow:
@@ -352,6 +381,7 @@ Worktrees share the same git history but have independent working directories. E
 2. **Code** — Coding agent claims an issue, implements via TDD, opens a PR (see Coding Agent Checklist). Moves on to the next independent issue without waiting for review.
 3. **Review** — Review agent reviews the PR, posts findings as comments (see Review Agent Checklist). Coding agent addresses feedback. Iterate until clean.
 4. **Merge** — Review agent approves. Coding agent merges.
+5. **Milestone review** — At the end of each phase, the reviewer agent does a full audit (security, readability, architecture). Each finding becomes a new issue. Those issues go through the same Code → PR → Review → Merge cycle.
 
 ### Issue Format
 
@@ -387,17 +417,25 @@ For each PR:
 6. After significant reviews: check if Lessons Learned should be updated
 7. Update `REVIEWER-HANDOFF.md` before exiting
 
+For milestone reviews (end-of-phase audits):
+
+1. Full audit: security checklist, readability, architecture rules, test coverage, UX consistency
+2. **Each finding becomes its own GitHub issue** (see Granularity Rule) — not a monolithic "fix these 12 things" issue
+3. Findings should include enough context that a coding agent can fix them without re-deriving the reviewer's reasoning
+4. Flag anything needing John's decision separately
+
 ### Planning Agent Checklist
 
 When breaking down a phase into issues:
 
 1. Read AGENTS.md and ROADMAP.md
-2. **Atomic issues** — each issue does exactly one thing. If it needs 10+ files, split it.
+2. **Atomic issues** — see Granularity Rule. Each issue does exactly one thing. If it needs 10+ files, split it.
 3. Order by dependency; **mark parallelizable issues explicitly**
 4. Include enough context that the coding agent doesn't need to ask clarifying questions (see Issue Format)
 5. Where practical, write failing tests that encode the acceptance criteria (see TDD Workflow)
 6. After creating issues, update ROADMAP.md to link to them
 7. **Schedule user testing** at the end of each phase — John is both owner and first user. Define what to test and what feedback to capture.
+8. **After milestone reviews:** the reviewer agent's findings become new issues (one per finding). The planning agent triages these — prioritize, order, and add to ROADMAP.md like any other issue.
 
 ### Handoff Files
 

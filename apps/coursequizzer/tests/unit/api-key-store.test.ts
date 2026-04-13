@@ -103,11 +103,25 @@ describe('api-key store', () => {
     expect(getMaskedApiKey(storage)).toBeNull();
   });
 
-  it('masks a short key without crashing', () => {
+  it('masks a short key instead of returning it verbatim', () => {
     saveApiKey('abcd', storage);
     const masked = getMaskedApiKey(storage);
-    // A 4-char key: show all 4 since there's nothing to mask
-    expect(masked).toBe('abcd');
+    // Short keys are fully masked — never shown verbatim
+    expect(masked).toBe('••••');
+    expect(masked).not.toBe('abcd');
+  });
+
+  it('masks a very short key (1 char)', () => {
+    saveApiKey('x', storage);
+    const masked = getMaskedApiKey(storage);
+    expect(masked).toBe('•');
+  });
+
+  it('masks a medium-short key showing partial prefix and suffix', () => {
+    saveApiKey('secret99', storage);
+    const masked = getMaskedApiKey(storage);
+    // 8 chars: show first 2, mask middle, show last 2
+    expect(masked).toBe('se••••99');
   });
 
   it('masks a key with exactly the prefix plus a few chars', () => {
@@ -115,5 +129,14 @@ describe('api-key store', () => {
     const masked = getMaskedApiKey(storage);
     // 15 chars: prefix "sk-ant-" (7) + 4 masked + suffix "3-xy" (4)
     expect(masked).toBe('sk-ant-••••3-xy');
+  });
+
+  it('never returns a stored key verbatim regardless of length', () => {
+    // Verify the core invariant across various lengths
+    for (const key of ['a', 'ab', 'abc', 'abcd', 'abcde', 'abcdef', 'abcdefgh']) {
+      saveApiKey(key, storage);
+      const masked = getMaskedApiKey(storage);
+      expect(masked, `key "${key}" was returned verbatim`).not.toBe(key);
+    }
   });
 });

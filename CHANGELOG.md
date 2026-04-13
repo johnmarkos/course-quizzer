@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.5 — 2026-04-12
+
+### Fixes
+
+- Mask short stored API keys in Settings instead of displaying them verbatim — `getMaskedApiKey()` now always returns a masked value for any non-empty key
+
 ## 0.7.4 — 2026-04-12
 
 ### Fixes

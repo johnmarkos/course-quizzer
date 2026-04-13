@@ -184,24 +184,24 @@ function isValidContentItem(value: unknown): boolean {
 function validateSnapshot(value: unknown): EngineSnapshot | null {
   if (!isPlainObject(value)) return null;
 
-  let snapshot = sanitizeSnapshot(value as EngineSnapshot);
+  const snapshot = sanitizeSnapshot(value as EngineSnapshot);
 
-  // Migration: v3 -> v4
-  if (snapshot.version === 3) {
-    snapshot = { ...snapshot, version: SNAPSHOT_VERSION, allGeneratedContent: {} };
-  }
+  // Supported versions for restoration
+  const supportedVersions = [3, SNAPSHOT_VERSION];
 
   if (
-    snapshot.version !== SNAPSHOT_VERSION ||
+    !supportedVersions.includes(snapshot.version) ||
     !isValidEngineState(snapshot.state) ||
     !Number.isInteger(snapshot.currentSectionIndex) ||
     !Number.isInteger(snapshot.currentItemIndex) ||
     !Array.isArray(snapshot.sectionItems) ||
     !snapshot.sectionItems.every(isValidContentItem) ||
-    !isPlainObject(snapshot.allGeneratedContent) ||
-    !Object.values(snapshot.allGeneratedContent).every(
-      (items) => Array.isArray(items) && items.every(isValidContentItem)
-    ) ||
+    (snapshot.version === SNAPSHOT_VERSION &&
+      !isPlainObject(snapshot.allGeneratedContent)) ||
+    (snapshot.version === SNAPSHOT_VERSION &&
+      !Object.values(snapshot.allGeneratedContent).every(
+        (items) => Array.isArray(items) && items.every(isValidContentItem)
+      )) ||
     !isValidStudentState(snapshot.studentState) ||
     (snapshot.curriculum !== null && !isValidCurriculum(snapshot.curriculum)) ||
     !('lastAnswerResult' in snapshot) ||
@@ -302,11 +302,17 @@ export function importCourse(
   storage: Storage
 ): string {
   const now = new Date().toISOString();
+
+  const validatedSnapshot = validateSnapshot(input.snapshot);
+  if (!validatedSnapshot) {
+    throw new Error('Invalid course snapshot in import data');
+  }
+
   const record: CourseRecord = {
     id: generateId(),
     title: input.title,
     curriculum: deepCopy(input.curriculum),
-    snapshot: deepCopy(sanitizeSnapshot(input.snapshot)),
+    snapshot: deepCopy(validatedSnapshot),
     createdAt: now,
     updatedAt: now,
   };

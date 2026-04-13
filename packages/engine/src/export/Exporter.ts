@@ -20,7 +20,8 @@ export class Exporter {
       type: 'coursequizzer-export',
       version: 1,
       timestamp: new Date().toISOString(),
-      data: { ...snapshot },
+      // Deep copy to ensure isolation of the exported bundle
+      data: JSON.parse(JSON.stringify(snapshot)),
     };
   }
 

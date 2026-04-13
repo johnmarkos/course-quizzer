@@ -10,11 +10,37 @@
   } from '$lib/stores/course-progress.js';
   import { normalizeError } from '$lib/errors/app-errors.js';
   import ErrorAlert from '$lib/components/ErrorAlert.svelte';
-  import { Exporter } from 'quizzer-engine';
+  import { Exporter, SNAPSHOT_VERSION } from 'quizzer-engine';
 
   const courseId = $derived(page.params.courseId);
 
-  // ... (rest of imports and state)
+  // Load course — errors are returned as part of the result object to avoid
+  // mutating reactive state inside a $derived computation.
+  const courseResult = $derived.by(() => {
+    if (!courseId) return { data: null, error: '' };
+    try {
+      return { data: getCourse(courseId, localStorage), error: '' };
+    } catch (err) {
+      return { data: null, error: normalizeError(err).message };
+    }
+  });
+
+  const course = $derived(courseResult.data);
+  const loadError = $derived(courseResult.error);
+  const progress = $derived(course ? getCourseProgress(course) : null);
+  const apiKeyStored = $derived(hasApiKey(localStorage));
+
+  // --- Delete confirmation ---
+
+  let confirmingDelete = $state(false);
+
+  function requestDelete() {
+    confirmingDelete = true;
+  }
+
+  function cancelDelete() {
+    confirmingDelete = false;
+  }
 
   function confirmDelete() {
     if (!courseId) return;
@@ -30,7 +56,7 @@
       const exporter = new Exporter();
       // Use the snapshot directly if available, or create a minimal one from curriculum
       const snapshot = course.snapshot || {
-        version: 3,
+        version: SNAPSHOT_VERSION,
         state: 'ready',
         curriculum: course.curriculum,
         currentSectionIndex: -1,
@@ -85,8 +111,15 @@
     <ErrorAlert message={loadError} />
   {:else if course}
     <header>
-      <h1>{course.title}</h1>
-      <p class="description">{course.curriculum.description}</p>
+      <div class="header-main">
+        <div>
+          <h1>{course.title}</h1>
+          <p class="description">{course.curriculum.description}</p>
+        </div>
+        <button type="button" class="btn-secondary" onclick={exportCourse}>
+          Export Course
+        </button>
+      </div>
 
       {#if progress && progress.hasProgress}
         <div class="progress-bar-container">
@@ -143,29 +176,25 @@
       {/each}
     </ol>
 
-    <!-- Export/Delete -->
+    <!-- Delete -->
     <section class="danger-zone">
-      <div class="actions">
-        <button type="button" class="btn-secondary" onclick={exportCourse}>
-          Export Course
-        </button>
-
-        {#if confirmingDelete}
-          <div class="delete-confirm">
-            <span class="confirm-text">Are you sure?</span>
-            <button type="button" class="btn-danger" onclick={confirmDelete}>
-              Yes, delete
-            </button>
-            <button type="button" class="btn-secondary" onclick={cancelDelete}>
-              Cancel
-            </button>
-          </div>
-        {:else}
-          <button type="button" class="btn-secondary" onclick={requestDelete}>
-            Delete course
+      {#if confirmingDelete}
+        <p class="confirm-text">
+          Are you sure you want to delete this course? This cannot be undone.
+        </p>
+        <div class="actions">
+          <button type="button" class="btn-danger" onclick={confirmDelete}>
+            Yes, delete
           </button>
-        {/if}
-      </div>
+          <button type="button" class="btn-secondary" onclick={cancelDelete}>
+            Cancel
+          </button>
+        </div>
+      {:else}
+        <button type="button" class="btn-secondary" onclick={requestDelete}>
+          Delete course
+        </button>
+      {/if}
     </section>
   {:else}
     <h1>Course not found</h1>
@@ -185,6 +214,13 @@
 
   header {
     margin-bottom: 1.5rem;
+  }
+
+  .header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
   }
 
   .description {
@@ -318,20 +354,6 @@
     display: flex;
     gap: 0.5rem;
     margin-top: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .delete-confirm {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .confirm-text {
-    color: #c00;
-    font-weight: 600;
-    margin-right: 0.5rem;
   }
 
   .btn-secondary {

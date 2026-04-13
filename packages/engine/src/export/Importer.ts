@@ -1,5 +1,6 @@
 import type { ExportBundle } from './Exporter.js';
 import type { EngineSnapshot } from '../engine/types.js';
+import { validateCurriculumPlan } from '../curriculum/SyllabusParser.js';
 
 /**
  * Handles importing course data from a portable JSON bundle.
@@ -31,17 +32,31 @@ export class Importer {
 
     // Basic structural validation of EngineSnapshot
     const snapshot = b.data as Partial<EngineSnapshot>;
-    if (
-      typeof snapshot.version !== 'number' ||
-      !snapshot.state ||
-      !snapshot.studentState
-    ) {
+    if (typeof snapshot.version !== 'number' || !snapshot.state) {
       throw new Error('Invalid engine snapshot in export bundle');
     }
 
-    // Ensure it's not a course in planning/analysis (v1 restriction)
+    // Deeper validation of studentState
+    if (
+      !snapshot.studentState ||
+      typeof snapshot.studentState !== 'object' ||
+      typeof snapshot.studentState.masteryByTopic !== 'object' ||
+      snapshot.studentState.masteryByTopic === null ||
+      !Array.isArray(snapshot.studentState.gaps)
+    ) {
+      throw new Error('Invalid student state in export bundle');
+    }
+
+    // Deeper validation of curriculum
     if (!snapshot.curriculum) {
       throw new Error('Cannot import an incomplete course (no curriculum found)');
+    }
+
+    try {
+      validateCurriculumPlan(snapshot.curriculum);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`Invalid curriculum in export bundle: ${message}`);
     }
 
     return b as ExportBundle;

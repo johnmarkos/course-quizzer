@@ -406,4 +406,84 @@ describe('createEngineSession', () => {
     session.dispose();
     expect(session.serialize()).toBeNull();
   });
+
+  // --- Snapshot restore failure (fail-closed) ---
+
+  it('falls back to fresh engine when snapshot has unsupported version', () => {
+    const badSnapshot: EngineSnapshot = {
+      version: 999,
+      state: 'ready',
+      curriculum: mockCurriculumPlan(),
+      currentSectionIndex: -1,
+      currentItemIndex: -1,
+      sectionItems: [],
+      studentState: { topicMastery: {}, totalAnswered: 0, totalCorrect: 0 },
+      lastAnswerResult: null,
+    };
+
+    const session = createEngineSession({ apiKey: 'test-key', snapshot: badSnapshot });
+
+    // Should not crash — falls back to idle (fresh engine)
+    expect(session.engineState).toBe('idle');
+    expect(session.restoreFailed).toBe(true);
+    expect(session.curriculum).toBeNull();
+  });
+
+  it('falls back to fresh engine when snapshot is malformed', () => {
+    // A snapshot missing required fields
+    const malformedSnapshot = {
+      version: 3,
+      state: 'ready',
+      // Missing curriculum, sectionItems, studentState, etc.
+    } as unknown as EngineSnapshot;
+
+    const session = createEngineSession({
+      apiKey: 'test-key',
+      snapshot: malformedSnapshot,
+    });
+
+    expect(session.engineState).toBe('idle');
+    expect(session.restoreFailed).toBe(true);
+  });
+
+  it('sets restoreFailed to false when snapshot restores successfully', () => {
+    const session1 = createEngineSession({ apiKey: 'test-key' });
+    session1.loadCurriculum(mockCurriculumPlan());
+    const snapshot = session1.serialize()!;
+
+    const session2 = createEngineSession({ apiKey: 'test-key', snapshot });
+    expect(session2.restoreFailed).toBe(false);
+    expect(session2.engineState).toBe('ready');
+  });
+
+  it('clears bad snapshot from storage on restore failure', () => {
+    const storage = createLocalStorageMock();
+    const course = createCourse(
+      { title: 'Test', curriculum: mockCurriculumPlan() },
+      storage
+    );
+
+    // Manually set a bad snapshot
+    updateCourse(
+      course.id,
+      { snapshot: { version: 999 } as unknown as EngineSnapshot },
+      storage
+    );
+
+    const stored = getCourse(course.id, storage);
+    expect(stored!.snapshot).not.toBeNull();
+
+    const session = createEngineSession({
+      apiKey: 'test-key',
+      courseId: course.id,
+      storage,
+      snapshot: stored!.snapshot!,
+    });
+
+    expect(session.restoreFailed).toBe(true);
+
+    // The bad snapshot should be cleared from storage
+    const updated = getCourse(course.id, storage);
+    expect(updated!.snapshot).toBeNull();
+  });
 });

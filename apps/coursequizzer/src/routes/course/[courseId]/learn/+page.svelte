@@ -37,8 +37,8 @@
       snapshot: course.snapshot ?? undefined,
     });
 
-    // If no snapshot, load the curriculum fresh
-    if (!course.snapshot) {
+    // If no snapshot or restore failed, load the curriculum fresh
+    if (!course.snapshot || newSession.restoreFailed) {
       newSession.loadCurriculum(course.curriculum);
     }
     session = newSession;

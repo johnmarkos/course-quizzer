@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.2 — 2026-04-12
+## 0.7.3 — 2026-04-12
 
 ### Developer Experience
 

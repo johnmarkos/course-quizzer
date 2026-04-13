@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.3 — 2026-04-12
+
+### Developer Experience
+
+- Add root-level `pnpm dev` script that builds the engine first, then starts the app dev server
+
 ## 0.7.2 — 2026-04-12
 
 ### Fixes

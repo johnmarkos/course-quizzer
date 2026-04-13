@@ -41,17 +41,32 @@ function createLocalStorageMock(): Storage {
 
 function mockCurriculumPlan(): CurriculumPlan {
   return {
-    courseTitle: 'Test Course',
+    title: 'Test Course',
+    description: 'A valid curriculum used for engine-session tests.',
     sections: [
       {
         id: 's1',
         title: 'Section 1',
-        topics: [{ id: 't1', name: 'Topic 1', section: 's1' }],
+        order: 0,
+        topics: [
+          {
+            id: 't1',
+            title: 'Topic 1',
+            description: 'A test topic.',
+          },
+        ],
       },
       {
         id: 's2',
         title: 'Section 2',
-        topics: [{ id: 't2', name: 'Topic 2', section: 's2' }],
+        order: 1,
+        topics: [
+          {
+            id: 't2',
+            title: 'Topic 2',
+            description: 'Another test topic.',
+          },
+        ],
       },
     ],
   };
@@ -108,7 +123,7 @@ describe('createEngineSession', () => {
 
     expect(session.engineState).toBe('ready');
     expect(session.curriculum).not.toBeNull();
-    expect(session.curriculum!.courseTitle).toBe('Test Course');
+    expect(session.curriculum!.title).toBe('Test Course');
     expect(session.curriculum!.sections).toHaveLength(2);
   });
 
@@ -306,7 +321,7 @@ describe('createEngineSession', () => {
 
     expect(session2.engineState).toBe('practicing');
     expect(session2.curriculum).not.toBeNull();
-    expect(session2.curriculum!.courseTitle).toBe('Test Course');
+    expect(session2.curriculum!.title).toBe('Test Course');
   });
 
   // --- Auto-save to course storage ---

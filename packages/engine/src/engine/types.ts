@@ -36,6 +36,7 @@ export type EngineSnapshot = {
   currentSectionIndex: number;
   currentItemIndex: number;
   sectionItems: ContentItem[];
+  allGeneratedContent: Record<string, ContentItem[]>;
   studentState: StudentState;
   lastAnswerResult: AnswerResult | null;
 };

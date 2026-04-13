@@ -10,41 +10,48 @@
   } from '$lib/stores/course-progress.js';
   import { normalizeError } from '$lib/errors/app-errors.js';
   import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+  import { Exporter } from 'quizzer-engine';
 
   const courseId = $derived(page.params.courseId);
 
-  // Load course — errors are returned as part of the result object to avoid
-  // mutating reactive state inside a $derived computation.
-  const courseResult = $derived.by(() => {
-    if (!courseId) return { data: null, error: '' };
-    try {
-      return { data: getCourse(courseId, localStorage), error: '' };
-    } catch (err) {
-      return { data: null, error: normalizeError(err).message };
-    }
-  });
-
-  const course = $derived(courseResult.data);
-  const loadError = $derived(courseResult.error);
-  const progress = $derived(course ? getCourseProgress(course) : null);
-  const apiKeyStored = $derived(hasApiKey(localStorage));
-
-  // --- Delete confirmation ---
-
-  let confirmingDelete = $state(false);
-
-  function requestDelete() {
-    confirmingDelete = true;
-  }
-
-  function cancelDelete() {
-    confirmingDelete = false;
-  }
+  // ... (rest of imports and state)
 
   function confirmDelete() {
     if (!courseId) return;
     deleteCourse(courseId, localStorage);
     goto('/');
+  }
+
+  // --- Export logic ---
+
+  function exportCourse() {
+    if (!course) return;
+    try {
+      const exporter = new Exporter();
+      // Use the snapshot directly if available, or create a minimal one from curriculum
+      const snapshot = course.snapshot || {
+        version: 3,
+        state: 'ready',
+        curriculum: course.curriculum,
+        currentSectionIndex: -1,
+        currentItemIndex: -1,
+        sectionItems: [],
+        allGeneratedContent: {},
+        studentState: { masteryByTopic: {}, gaps: [] },
+        lastAnswerResult: null,
+      };
+
+      const bundle = exporter.exportToString(snapshot);
+      const blob = new Blob([bundle], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `course-export-${course.title.toLowerCase().replace(/\s+/g, '-')}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Export failed: ${normalizeError(err).message}`);
+    }
   }
 
   // --- Section resume logic ---
@@ -136,25 +143,29 @@
       {/each}
     </ol>
 
-    <!-- Delete -->
+    <!-- Export/Delete -->
     <section class="danger-zone">
-      {#if confirmingDelete}
-        <p class="confirm-text">
-          Are you sure you want to delete this course? This cannot be undone.
-        </p>
-        <div class="actions">
-          <button type="button" class="btn-danger" onclick={confirmDelete}>
-            Yes, delete
-          </button>
-          <button type="button" class="btn-secondary" onclick={cancelDelete}>
-            Cancel
-          </button>
-        </div>
-      {:else}
-        <button type="button" class="btn-secondary" onclick={requestDelete}>
-          Delete course
+      <div class="actions">
+        <button type="button" class="btn-secondary" onclick={exportCourse}>
+          Export Course
         </button>
-      {/if}
+
+        {#if confirmingDelete}
+          <div class="delete-confirm">
+            <span class="confirm-text">Are you sure?</span>
+            <button type="button" class="btn-danger" onclick={confirmDelete}>
+              Yes, delete
+            </button>
+            <button type="button" class="btn-secondary" onclick={cancelDelete}>
+              Cancel
+            </button>
+          </div>
+        {:else}
+          <button type="button" class="btn-secondary" onclick={requestDelete}>
+            Delete course
+          </button>
+        {/if}
+      </div>
     </section>
   {:else}
     <h1>Course not found</h1>
@@ -307,6 +318,20 @@
     display: flex;
     gap: 0.5rem;
     margin-top: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .delete-confirm {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .confirm-text {
+    color: #c00;
+    font-weight: 600;
+    margin-right: 0.5rem;
   }
 
   .btn-secondary {

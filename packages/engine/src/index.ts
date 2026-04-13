@@ -10,6 +10,9 @@ export { CurriculumManager } from './curriculum/CurriculumManager.js';
 export { ContentGenerator } from './content/ContentGenerator.js';
 export { ContentManager } from './content/ContentManager.js';
 export { checkQuestionQuality } from './content/quality-filters.js';
+export { Exporter } from './export/Exporter.js';
+export { Importer } from './export/Importer.js';
+export type { ExportBundle } from './export/Exporter.js';
 
 export type {
   CourseEngineConfig,

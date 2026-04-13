@@ -184,7 +184,12 @@ function isValidContentItem(value: unknown): boolean {
 function validateSnapshot(value: unknown): EngineSnapshot | null {
   if (!isPlainObject(value)) return null;
 
-  const snapshot = sanitizeSnapshot(value as EngineSnapshot);
+  let snapshot = sanitizeSnapshot(value as EngineSnapshot);
+
+  // Migration: v3 -> v4
+  if (snapshot.version === 3) {
+    snapshot = { ...snapshot, version: SNAPSHOT_VERSION, allGeneratedContent: {} };
+  }
 
   if (
     snapshot.version !== SNAPSHOT_VERSION ||
@@ -193,6 +198,10 @@ function validateSnapshot(value: unknown): EngineSnapshot | null {
     !Number.isInteger(snapshot.currentItemIndex) ||
     !Array.isArray(snapshot.sectionItems) ||
     !snapshot.sectionItems.every(isValidContentItem) ||
+    !isPlainObject(snapshot.allGeneratedContent) ||
+    !Object.values(snapshot.allGeneratedContent).every(
+      (items) => Array.isArray(items) && items.every(isValidContentItem)
+    ) ||
     !isValidStudentState(snapshot.studentState) ||
     (snapshot.curriculum !== null && !isValidCurriculum(snapshot.curriculum)) ||
     !('lastAnswerResult' in snapshot) ||
@@ -286,6 +295,27 @@ export function createCourse(input: CreateCourseInput, storage: Storage): Course
   saveRecords(records, storage);
 
   return deepCopy(record);
+}
+
+export function importCourse(
+  input: { title: string; curriculum: CurriculumPlan; snapshot: EngineSnapshot },
+  storage: Storage
+): string {
+  const now = new Date().toISOString();
+  const record: CourseRecord = {
+    id: generateId(),
+    title: input.title,
+    curriculum: deepCopy(input.curriculum),
+    snapshot: deepCopy(sanitizeSnapshot(input.snapshot)),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const records = loadRecords(storage);
+  records.push(record);
+  saveRecords(records, storage);
+
+  return record.id;
 }
 
 export function getCourse(id: string, storage: Storage): CourseRecord | null {

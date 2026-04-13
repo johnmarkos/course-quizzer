@@ -159,7 +159,7 @@ run_agent() {
         echo "$(date): Skipping Gemini (cooldown active)..." | tee -a "$logfile"
     else
         echo "$(date): Trying Gemini..." | tee -a "$logfile"
-        if output=$(cat "$PROMPT_FILE" | gemini -y -p "Follow these instructions" 2>&1); then
+        if output=$(echo "$prompt" | gemini -y -p "Follow these instructions" 2>&1); then
             status=0
         else
             status=$?

@@ -4,6 +4,7 @@ export { ClaudeProvider } from './provider/ClaudeProvider.js';
 export { RateLimiter } from './provider/rate-limiter.js';
 export { ProviderError } from './provider/types.js';
 export { StudentModel } from './student/StudentModel.js';
+export { AdaptiveSelector } from './student/AdaptiveSelector.js';
 export { SyllabusParser, validateCurriculumPlan } from './curriculum/SyllabusParser.js';
 export { CurriculumManager } from './curriculum/CurriculumManager.js';
 export { ContentGenerator } from './content/ContentGenerator.js';

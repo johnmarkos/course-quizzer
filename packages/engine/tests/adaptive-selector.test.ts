@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-// @ts-ignore - AdaptiveSelector does not exist yet
 import { AdaptiveSelector } from '../src/student/AdaptiveSelector.js';
 import { StudentModel } from '../src/student/StudentModel.js';
 

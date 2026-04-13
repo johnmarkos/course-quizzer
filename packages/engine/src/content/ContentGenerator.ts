@@ -42,14 +42,14 @@ export class ContentGenerator {
     const items: ContentItem[] = [];
 
     for (const topic of section.topics) {
-      const explanation = await this.#generateExplanation(
+      const explanation = await this.generateTopicExplanation(
         topic,
         courseTitle,
         section.title
       );
       items.push(explanation);
 
-      const questions = await this.#generateQuizBurst(
+      const questions = await this.generateTopicQuizBurst(
         topic,
         courseTitle,
         section.title,
@@ -61,9 +61,9 @@ export class ContentGenerator {
     return items;
   }
 
-  // --- Explanation Generation ---
+  // --- Topic Generation ---
 
-  async #generateExplanation(
+  async generateTopicExplanation(
     topic: Topic,
     courseTitle: string,
     sectionTitle: string
@@ -129,7 +129,7 @@ export class ContentGenerator {
 
   // --- Quiz Generation ---
 
-  async #generateQuizBurst(
+  async generateTopicQuizBurst(
     topic: Topic,
     courseTitle: string,
     sectionTitle: string,

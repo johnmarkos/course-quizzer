@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ContentGenerator } from '../src/content/ContentGenerator.js';
 import { checkQuestionQuality } from '../src/content/quality-filters.js';
+import { StudentModel } from '../src/student/StudentModel.js';
 import {
   buildExplanationPrompt,
   EXPLANATION_VERSION,
@@ -385,5 +386,36 @@ describe('ContentGenerator', () => {
 
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids[0]).toContain('binary-search');
+  });
+
+  it('adjusts question count based on student mastery', async () => {
+    // Mastery > 0.8 should result in 2 questions
+    const student = new StudentModel({
+      masteryByTopic: {
+        'binary-search': {
+          topicId: 'binary-search',
+          score: 0.9,
+          questionsAnswered: 5,
+          questionsCorrect: 5,
+        },
+      },
+      gaps: [],
+    });
+
+    const provider = mockProvider(
+      explanationResponse('Binary Search', 'Content...'),
+      quizResponse([GOOD_MCQ, GOOD_NUMERIC])
+    );
+    const gen = new ContentGenerator(provider);
+
+    await gen.generateSection(SECTION, 'Algorithms', student);
+
+    // Verify the second call (quiz generation) used questionCount: 2
+    const quizCall = (provider.sendMessage as ReturnType<typeof vi.fn>).mock.calls[1][0];
+    expect(quizCall.messages[0].content).toContain('Generate exactly 2 quiz questions');
+    // Also verify tool schema min/max
+    const tool = quizCall.tools[0];
+    expect(tool.inputSchema.properties.questions.minItems).toBe(1);
+    expect(tool.inputSchema.properties.questions.maxItems).toBe(4);
   });
 });

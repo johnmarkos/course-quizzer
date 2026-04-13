@@ -16,10 +16,12 @@
 import { buildExplanationPrompt } from '../prompts/explanation.js';
 import { buildQuizGenerationPrompt } from '../prompts/quiz-generation.js';
 import { checkQuestionQuality } from './quality-filters.js';
+import { AdaptiveSelector } from '../student/AdaptiveSelector.js';
 import type { ClaudeProvider } from '../provider/ClaudeProvider.js';
 import type { ToolUseBlock } from '../provider/types.js';
 import type { Section, Topic } from '../curriculum/types.js';
 import type { ContentItem, Explanation, Question, QuestionType } from './types.js';
+import type { StudentModel } from '../student/StudentModel.js';
 
 const EXPLANATION_MAX_TOKENS = 1024;
 const QUIZ_MAX_TOKENS = 4096;
@@ -38,7 +40,11 @@ export class ContentGenerator {
    * Returns a flat array: [explanation, questions..., explanation, questions..., ...]
    * following the content/quiz loop from the Learning Model.
    */
-  async generateSection(section: Section, courseTitle: string): Promise<ContentItem[]> {
+  async generateSection(
+    section: Section,
+    courseTitle: string,
+    studentModel?: StudentModel
+  ): Promise<ContentItem[]> {
     const items: ContentItem[] = [];
 
     for (const topic of section.topics) {
@@ -49,11 +55,16 @@ export class ContentGenerator {
       );
       items.push(explanation);
 
+      const questionCount = studentModel
+        ? AdaptiveSelector.getQuestionCount(studentModel, topic.id)
+        : 3;
+
       const questions = await this.#generateQuizBurst(
         topic,
         courseTitle,
         section.title,
-        explanation.content
+        explanation.content,
+        questionCount
       );
       items.push(...questions);
     }
@@ -133,7 +144,8 @@ export class ContentGenerator {
     topic: Topic,
     courseTitle: string,
     sectionTitle: string,
-    explanationContent: string
+    explanationContent: string,
+    questionCount: number
   ): Promise<Question[]> {
     const prompt = buildQuizGenerationPrompt({
       topicTitle: topic.title,
@@ -141,6 +153,7 @@ export class ContentGenerator {
       courseTitle,
       sectionTitle,
       explanationContent,
+      questionCount,
     });
 
     const response = await this.#provider.sendMessage({

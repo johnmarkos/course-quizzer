@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.6 — 2026-04-12
+
+### Features
+
+- `AdaptiveSelector`: new class to bias content generation based on student performance
+- Dynamic question counts: `ContentGenerator` now adjusts the number of questions per topic (Mastery < 0.5 → 5 questions, Mastery > 0.8 → 2 questions, else 3)
+- Updated `buildQuizGenerationPrompt` to support configurable `questionCount` and dynamic tool schema limits
+- 4 new `AdaptiveSelector` tests and 1 new `ContentGenerator` integration test for bias verification
+
 ## 0.7.5 — 2026-04-12
 
 ### Fixes

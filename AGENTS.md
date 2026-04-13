@@ -320,7 +320,7 @@ The author and reviewer roles are now **script-driven**:
 
 Any model (Claude, Codex, Gemini) can fill any role. The quality bar is the same regardless of which model is running.
 
-- **Planning agent** — Breaks down ROADMAP.md phases into GitHub issues with clear scope and acceptance criteria. Updates ROADMAP.md and AGENTS.md as the project evolves. Writes failing tests as specs for coding agents.
+- **Planning agent** — Breaks down ROADMAP.md phases into GitHub issues with clear scope and acceptance criteria. Updates ROADMAP.md and AGENTS.md as the project evolves. May work on infrastructure/factory code (like shell scripts in `scripts/`). Does NOT author application code or tests in `packages/` or `apps/`.
 - **Coding agent(s)** — Implement features and fixes. Multiple coding agents can run in parallel on independent issues. Each checks GitHub issues for unclaimed work and their own open PRs for review feedback.
 - **Review agent** — Reviews PRs. Checks open PRs for new or updated submissions. Reviews PRs from any coding agent equally.
 - **John (Owner / Technical Architect)** — Designs the system, sets the quality bar, makes architectural decisions, approves the roadmap, and does live user testing at phase boundaries. Does not author code. John approves phases in ROADMAP.md; once a phase is approved, the planning agent creates issues and agents execute without waiting for per-issue or per-PR approval. The planning agent is John's primary interface — they collaborate interactively on priorities, tradeoffs, and scope.
@@ -453,11 +453,10 @@ When breaking down a phase into issues:
 2. **Atomic issues** — see Granularity Rule. Each issue does exactly one thing. If it needs 10+ files, split it.
 3. Order by dependency; **mark parallelizable issues explicitly**
 4. Include enough context that the coding agent doesn't need to ask clarifying questions (see Issue Format)
-5. Where practical, write failing tests that encode the acceptance criteria (see TDD Workflow)
-6. After creating issues, update ROADMAP.md to link to them
-7. **Schedule user testing** at the end of each phase — John is both owner and first user. Define what to test and what feedback to capture.
-8. **Run milestone reviews** at the end of each phase (see Milestone Reviews below). Create one issue per finding.
-9. Update `PLANNER-HANDOFF.md` before ending an interactive planner session. This is the only handoff file still in active use.
+5. After creating issues, update ROADMAP.md to link to them
+6. **Schedule user testing** at the end of each phase — John is both owner and first user. Define what to test and what feedback to capture.
+7. **Run milestone reviews** at the end of each phase (see Milestone Reviews below). Create one issue per finding.
+8. Update `PLANNER-HANDOFF.md` before ending an interactive planner session. This is the only handoff file still in active use.
 
 ### Milestone Reviews
 
@@ -548,11 +547,11 @@ Svelte stores, data transformations, validation functions — all testable with 
 - Don't TDD CSS, layout, or visual design — those are human judgment calls
 - Even in UI-heavy features, extract testable logic into functions and TDD those
 
-**The TDD handoff pattern:**
+**The TDD pattern:**
 
-1. Planning agent writes failing tests that encode acceptance criteria
+1. Coding agent writes failing tests that encode acceptance criteria for the claimed issue
 2. Coding agent makes them pass
-3. The test is the spec — any model can implement against it
+3. Test suite serves as the source of truth for behavioral correctness
 
 **Testing stack (all free):**
 

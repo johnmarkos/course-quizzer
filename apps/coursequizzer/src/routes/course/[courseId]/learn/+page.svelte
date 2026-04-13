@@ -10,6 +10,7 @@
   import {
     ClaudeProvider,
     ContentGenerator,
+    StudentModel,
     type ContentItem,
     type Section,
   } from 'quizzer-engine';
@@ -70,7 +71,14 @@
     try {
       const provider = new ClaudeProvider({ apiKey });
       const generator = new ContentGenerator(provider);
-      const items = await generator.generateSection(section, course.curriculum.title);
+      const studentModel = session.studentState
+        ? new StudentModel(session.studentState)
+        : undefined;
+      const items = await generator.generateSection(
+        section,
+        course.curriculum.title,
+        studentModel
+      );
       session.setSectionContent(items);
     } catch (err) {
       generateError = normalizeError(err).message;

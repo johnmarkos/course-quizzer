@@ -8,6 +8,7 @@ export { AdaptiveSelector } from './student/AdaptiveSelector.js';
 export { SyllabusParser, validateCurriculumPlan } from './curriculum/SyllabusParser.js';
 export { CurriculumManager } from './curriculum/CurriculumManager.js';
 export { ContentGenerator } from './content/ContentGenerator.js';
+export { ContentManager } from './content/ContentManager.js';
 export { checkQuestionQuality } from './content/quality-filters.js';
 
 export type {

@@ -31,39 +31,9 @@ export class ContentGenerator {
     this.#provider = provider;
   }
 
-  // --- Public API ---
+  // --- Topic Generation ---
 
-  /**
-   * Generate content items for an entire section.
-   * Returns a flat array: [explanation, questions..., explanation, questions..., ...]
-   * following the content/quiz loop from the Learning Model.
-   */
-  async generateSection(section: Section, courseTitle: string): Promise<ContentItem[]> {
-    const items: ContentItem[] = [];
-
-    for (const topic of section.topics) {
-      const explanation = await this.#generateExplanation(
-        topic,
-        courseTitle,
-        section.title
-      );
-      items.push(explanation);
-
-      const questions = await this.#generateQuizBurst(
-        topic,
-        courseTitle,
-        section.title,
-        explanation.content
-      );
-      items.push(...questions);
-    }
-
-    return items;
-  }
-
-  // --- Explanation Generation ---
-
-  async #generateExplanation(
+  async generateTopicExplanation(
     topic: Topic,
     courseTitle: string,
     sectionTitle: string
@@ -129,7 +99,7 @@ export class ContentGenerator {
 
   // --- Quiz Generation ---
 
-  async #generateQuizBurst(
+  async generateTopicQuizBurst(
     topic: Topic,
     courseTitle: string,
     sectionTitle: string,

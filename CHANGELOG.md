@@ -12,6 +12,22 @@
 - Planning Agent instructions updated to write failing tests as specs for coding agents
 - Phase 2 complete: all foundational app and engine features implemented and verified
 
+## 0.7.6 — 2026-04-12
+
+### Added
+
+- `ContentManager` in `packages/engine` to orchestrate content generation.
+- `apiCallStart` and `apiCallComplete` events to `CourseEngine` for better UX feedback during LLM calls.
+- `error` state in `CourseEngine` for persistent visibility of background generation failures.
+
+### Changed
+
+- `CourseEngine` now owns the content generation lifecycle via `ContentManager`.
+- `ContentGenerator` methods are now public to allow orchestration.
+- Simplified `apps/coursequizzer` learn flow by removing direct `ContentGenerator` usage.
+- `CourseEngine.startSection` is now asynchronous internally, automatically triggering content generation.
+- Improved Error UI on the learn page with a Retry button.
+
 ## 0.7.5 — 2026-04-12
 
 ### Fixes

@@ -7,12 +7,7 @@
     createEngineSession,
     type EngineSession,
   } from '$lib/stores/engine-session.svelte.js';
-  import {
-    ClaudeProvider,
-    ContentGenerator,
-    type ContentItem,
-    type Section,
-  } from 'quizzer-engine';
+  import type { ContentItem, Section } from 'quizzer-engine';
   import { normalizeError } from '$lib/errors/app-errors.js';
 
   // --- State ---
@@ -21,8 +16,6 @@
   const course = $derived(courseId ? getCourse(courseId, localStorage) : null);
 
   let session: EngineSession | null = $state(null);
-  let generateError = $state('');
-  let generating = $state(false);
 
   // Initialize session when course loads
   $effect(() => {
@@ -50,33 +43,12 @@
 
   // --- Content generation ---
 
-  async function handleStartSection(sectionId: string) {
+  function handleStartSection(sectionId: string) {
     if (!session || !course) return;
     const apiKey = getApiKey(localStorage);
     if (!apiKey) return;
 
-    generateError = '';
-    generating = true;
-
     session.startSection(sectionId);
-
-    const section = course.curriculum.sections.find((s) => s.id === sectionId);
-    if (!section) {
-      generateError = 'Section not found.';
-      generating = false;
-      return;
-    }
-
-    try {
-      const provider = new ClaudeProvider({ apiKey });
-      const generator = new ContentGenerator(provider);
-      const items = await generator.generateSection(section, course.curriculum.title);
-      session.setSectionContent(items);
-    } catch (err) {
-      generateError = normalizeError(err).message;
-    } finally {
-      generating = false;
-    }
   }
 
   // --- Answer handling ---
@@ -253,7 +225,7 @@
       </ol>
       <p><a href={`/course/${courseId}`}>← Back to course</a></p>
 
-    {:else if session.engineState === 'loading' || generating}
+    {:else if session.engineState === 'loading' || session.apiLoading}
       <!-- Generating content -->
       <h1>{course.title}</h1>
       {#if session.currentSection}
@@ -261,8 +233,8 @@
       {/if}
       <p class="loading">Generating learning content...</p>
       <p>This may take a minute as content is generated for each topic.</p>
-      {#if generateError}
-        <p role="alert" class="error">{generateError}</p>
+      {#if session.error}
+        <p role="alert" class="error">{session.error.message}</p>
         <button type="button" onclick={handleBackToOverview}>Back to Course</button>
       {/if}
 
@@ -525,8 +497,21 @@
     {:else if session.error}
       <!-- Error state -->
       <article>
+        <h1>Error</h1>
         <p role="alert" class="error">{session.error.message}</p>
-        <button type="button" onclick={handleBackToOverview}>Back to Course</button>
+        <div class="actions">
+          {#if session.currentSection}
+            <button
+              type="button"
+              onclick={() => handleStartSection(session.currentSection!.section.id)}
+            >
+              Retry
+            </button>
+          {/if}
+          <button type="button" class="secondary" onclick={handleBackToOverview}>
+            Back to Course
+          </button>
+        </div>
       </article>
 
     {:else}

@@ -8,6 +8,8 @@ import type {
   Explanation,
 } from '../content/types.js';
 import type { StudentState, SessionProgress, TopicMastery } from '../student/types.js';
+import type { ClaudeProvider } from '../provider/ClaudeProvider.js';
+import type { ContentGenerator } from '../content/ContentGenerator.js';
 
 export type EngineState =
   | 'idle' // no syllabus loaded
@@ -17,11 +19,14 @@ export type EngineState =
   | 'practicing' // student is viewing content or answering a question
   | 'answered' // student submitted an answer, viewing result
   | 'sectionComplete' // all items in the current section are done
-  | 'complete'; // all sections done
+  | 'complete' // all sections done
+  | 'error'; // content generation failed
 
 export type CourseEngineConfig = {
   apiKey: string;
   model?: string;
+  provider?: ClaudeProvider;
+  generator?: ContentGenerator;
 };
 
 export type EngineSnapshot = {

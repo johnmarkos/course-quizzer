@@ -54,7 +54,7 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 
 **Goal:** Content adapts to student performance. Pre-fetch hides latency. Export/import works.
 
-- [ ] #50 — [Engine] Refactor content generation lifecycle into the engine (**Prerequisite for #51, #52**)
+- [x] #50 — [Engine] Refactor content generation lifecycle into the engine (**Prerequisite for #51, #52**)
 - [ ] #51 — [Engine] Implement `AdaptiveSelector` to bias content generation
 - [ ] #52 — [Engine] Implement `Prefetcher` for background generation
 - [ ] #53 — [Engine/App] Implement Export and Import functionality (**Parallel**)

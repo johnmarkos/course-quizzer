@@ -7,6 +7,9 @@
 import { EventEmitter } from './events.js';
 import { InvalidTransitionError } from './errors.js';
 import { StudentModel } from '../student/StudentModel.js';
+import { ClaudeProvider } from '../provider/ClaudeProvider.js';
+import { ContentGenerator } from '../content/ContentGenerator.js';
+import { ContentManager } from '../content/ContentManager.js';
 import type {
   CourseEngineConfig,
   EngineSnapshot,
@@ -96,10 +99,28 @@ export class CourseEngine extends EventEmitter {
   #sectionItems: ContentItem[] = [];
   #studentModel: StudentModel = new StudentModel();
   #lastAnswerResult: AnswerResult | null = null;
+  #contentManager: ContentManager;
 
   constructor(config: CourseEngineConfig) {
     super();
     this.#config = { ...config };
+
+    const provider =
+      config.provider ||
+      new ClaudeProvider({
+        apiKey: config.apiKey,
+        model: config.model,
+      });
+
+    const generator = config.generator || new ContentGenerator(provider);
+
+    this.#contentManager = new ContentManager(generator, (payload) => {
+      if (payload.status === 'start') {
+        this.emit('apiCallStart', { purpose: payload.purpose });
+      } else {
+        this.emit('apiCallComplete', { purpose: payload.purpose });
+      }
+    });
   }
 
   // --- State ---
@@ -177,7 +198,7 @@ export class CourseEngine extends EventEmitter {
   // --- Section Lifecycle ---
 
   startSection(sectionId: string): void {
-    this.#requireState('startSection', 'ready', 'sectionComplete');
+    this.#requireState('startSection', 'ready', 'sectionComplete', 'error');
 
     if (!this.#curriculum) {
       throw new InvalidTransitionError('startSection', 'no curriculum loaded');
@@ -203,6 +224,19 @@ export class CourseEngine extends EventEmitter {
       sectionIndex,
       totalSections: this.#curriculum.sections.length,
     });
+
+    // Trigger async generation
+    this.#contentManager
+      .generateSection(section, this.#curriculum.title)
+      .then((items) => {
+        this.setSectionContent(items);
+      })
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.emit('error', { message, recoverable: true });
+        // Transition to error state so UI can show it persistently
+        this.#setState('error');
+      });
   }
 
   // --- Content Loading ---
@@ -466,6 +500,13 @@ export class CourseEngine extends EventEmitter {
     // Restore does NOT emit events — the consumer must resync explicitly.
     const engine = new CourseEngine(config);
     engine.#state = snapshot.state;
+
+    // Fix: If we restore into 'loading' or 'error' state, we'll stay there forever
+    // (or without an error message for 'error'). Revert to 'ready'.
+    if (engine.#state === 'loading' || engine.#state === 'error') {
+      engine.#state = 'ready';
+    }
+
     engine.#curriculum = snapshot.curriculum
       ? copyCurriculumPlan(snapshot.curriculum)
       : null;

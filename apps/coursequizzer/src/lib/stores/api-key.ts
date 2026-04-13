@@ -7,8 +7,14 @@
 export const API_KEY_STORAGE_KEY = 'coursequizzer:api-key';
 
 const MASK_CHAR = '•';
-const VISIBLE_PREFIX_LENGTH = 7; // "sk-ant-" prefix
-const VISIBLE_SUFFIX_LENGTH = 4;
+const LONG_PREFIX_LENGTH = 7; // "sk-ant-" prefix for standard Anthropic keys
+const LONG_SUFFIX_LENGTH = 4;
+const SHORT_PREFIX_LENGTH = 2;
+const SHORT_SUFFIX_LENGTH = 2;
+// Keys shorter than this use the short prefix/suffix; longer keys use the standard masking
+const SHORT_KEY_THRESHOLD = LONG_PREFIX_LENGTH + LONG_SUFFIX_LENGTH + 1;
+// Keys at or below this length are fully masked (no visible chars)
+const FULLY_MASKED_THRESHOLD = SHORT_PREFIX_LENGTH + SHORT_SUFFIX_LENGTH;
 
 /**
  * Save an API key to localStorage.
@@ -46,11 +52,22 @@ export function getMaskedApiKey(storage: Storage): string | null {
   const key = storage.getItem(API_KEY_STORAGE_KEY);
   if (key === null) return null;
 
-  const minMaskableLength = VISIBLE_PREFIX_LENGTH + VISIBLE_SUFFIX_LENGTH + 1;
-  if (key.length <= minMaskableLength) return key;
+  // Short keys: mask entirely or show minimal context
+  if (key.length <= FULLY_MASKED_THRESHOLD) {
+    return MASK_CHAR.repeat(key.length);
+  }
 
-  const prefix = key.slice(0, VISIBLE_PREFIX_LENGTH);
-  const suffix = key.slice(-VISIBLE_SUFFIX_LENGTH);
-  const maskedLength = key.length - VISIBLE_PREFIX_LENGTH - VISIBLE_SUFFIX_LENGTH;
+  // Medium keys: show first 2 + mask + last 2
+  if (key.length < SHORT_KEY_THRESHOLD) {
+    const prefix = key.slice(0, SHORT_PREFIX_LENGTH);
+    const suffix = key.slice(-SHORT_SUFFIX_LENGTH);
+    const maskedLength = key.length - SHORT_PREFIX_LENGTH - SHORT_SUFFIX_LENGTH;
+    return prefix + MASK_CHAR.repeat(maskedLength) + suffix;
+  }
+
+  // Standard Anthropic-style keys: show "sk-ant-" prefix + last 4
+  const prefix = key.slice(0, LONG_PREFIX_LENGTH);
+  const suffix = key.slice(-LONG_SUFFIX_LENGTH);
+  const maskedLength = key.length - LONG_PREFIX_LENGTH - LONG_SUFFIX_LENGTH;
   return prefix + MASK_CHAR.repeat(maskedLength) + suffix;
 }

@@ -31,7 +31,7 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 
 **Checkpoint:** Engine drivable from tests — load syllabus, get curriculum plan, generate section content, answer questions, see mastery update. Integration tests use recorded fixtures (3 diverse syllabi). Real API testing is manual.
 
-## Phase 2: App Shell — Syllabus to First Question ← current
+## Phase 2: App Shell — Syllabus to First Question ✓
 
 **Goal:** A user can paste a syllabus in the browser and answer the first generated question.
 
@@ -44,20 +44,22 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 - [x] #22 — Add app error handling, loading states, and safe rendering checks
 - [x] #23 — Add Phase 2 tests for the critical browser flow
 - [x] #24 — Phase 2 milestone review: app security, UX, and architecture audit
-- [ ] #43 — Harden course-storage validation for persisted curriculum and snapshots
-- [ ] #45 — Fail closed on bad persisted engine snapshots in learn session restore
-- [ ] #46 — Mask short stored API keys in Settings
+- [x] #43/44 — Harden course-storage validation for persisted curriculum and snapshots
+- [x] #45 — Fail closed on bad persisted engine snapshots in learn session restore
+- [x] #46 — Mask short stored API keys in Settings
 
 **Checkpoint:** Full demo flow in the browser: enter API key → paste syllabus → see curriculum plan → start section → answer question → see result.
 
-## Phase 3: Adaptive Learning + Polish
+## Phase 3: Adaptive Learning + Polish ← current
 
 **Goal:** Content adapts to student performance. Pre-fetch hides latency. Export/import works.
 
-- [ ] `AdaptiveSelector`: bias content generation using `StudentModel` gaps
-- [ ] `Prefetcher`: generate next section while student works on current
-- [ ] Section completion: summary, mastery display, "Next Section"
-- [ ] Export/import: JSON bundle (minus API key), download/upload UX
+- [ ] #50 — [Engine] Refactor content generation lifecycle into the engine (**Prerequisite for #51, #52**)
+- [ ] #51 — [Engine] Implement `AdaptiveSelector` to bias content generation
+- [ ] #52 — [Engine] Implement `Prefetcher` for background generation
+- [ ] #53 — [Engine/App] Implement Export and Import functionality (**Parallel**)
+- [ ] #54 — [App] Section completion summary and mastery display (**Parallel**)
+- [ ] #55 — [Engine/App] Support additional question types (**Parallel**)
 - [ ] Prompt refinement: explanation quality, question quality, adaptive follow-up
 - [ ] Mobile-responsive CSS
 - [ ] Loading states and transitions

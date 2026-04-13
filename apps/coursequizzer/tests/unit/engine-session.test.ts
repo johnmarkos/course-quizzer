@@ -11,7 +11,6 @@ import type {
   StudentAnswer,
 } from 'quizzer-engine';
 import {
-  updateCourse,
   createCourse,
   getCourse,
   COURSES_STORAGE_KEY,
@@ -462,28 +461,33 @@ describe('createEngineSession', () => {
       { title: 'Test', curriculum: mockCurriculumPlan() },
       storage
     );
+    const badSnapshot = { version: 999 } as unknown as EngineSnapshot;
 
-    // Manually set a bad snapshot
-    updateCourse(
-      course.id,
-      { snapshot: { version: 999 } as unknown as EngineSnapshot },
-      storage
-    );
+    // Seed raw persisted data with a legacy bad snapshot that storage validation
+    // will null out on read, but that may still be passed into restore by a stale caller.
+    const rawRecords = JSON.parse(storage.getItem(COURSES_STORAGE_KEY) ?? '[]') as Array<
+      Record<string, unknown>
+    >;
+    rawRecords[0] = { ...rawRecords[0], snapshot: badSnapshot };
+    storage.setItem(COURSES_STORAGE_KEY, JSON.stringify(rawRecords));
 
-    const stored = getCourse(course.id, storage);
-    expect(stored!.snapshot).not.toBeNull();
+    const persistedBefore = JSON.parse(
+      storage.getItem(COURSES_STORAGE_KEY) ?? '[]'
+    ) as Array<{ snapshot: EngineSnapshot | null }>;
+    expect(persistedBefore[0]?.snapshot).toEqual(badSnapshot);
 
     const session = createEngineSession({
       apiKey: 'test-key',
       courseId: course.id,
       storage,
-      snapshot: stored!.snapshot!,
+      snapshot: badSnapshot,
     });
 
     expect(session.restoreFailed).toBe(true);
 
-    // The bad snapshot should be cleared from storage
-    const updated = getCourse(course.id, storage);
-    expect(updated!.snapshot).toBeNull();
+    const persistedAfter = JSON.parse(
+      storage.getItem(COURSES_STORAGE_KEY) ?? '[]'
+    ) as Array<{ snapshot: EngineSnapshot | null }>;
+    expect(persistedAfter[0]?.snapshot).toBeNull();
   });
 });

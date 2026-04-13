@@ -3,10 +3,12 @@
 ## [Unreleased]
 
 ### Added
+
 - `ContentManager` in `packages/engine` to orchestrate content generation.
 - `apiCallStart` and `apiCallComplete` events to `CourseEngine` for better UX feedback during LLM calls.
 
 ### Changed
+
 - `CourseEngine` now owns the content generation lifecycle via `ContentManager`.
 - `ContentGenerator` methods are now public to allow orchestration.
 - Simplified `apps/coursequizzer` learn flow by removing direct `ContentGenerator` usage.

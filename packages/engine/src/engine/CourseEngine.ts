@@ -105,11 +105,14 @@ export class CourseEngine extends EventEmitter {
     super();
     this.#config = { ...config };
 
-    const provider = new ClaudeProvider({
-      apiKey: config.apiKey,
-      model: config.model,
-    });
-    const generator = new ContentGenerator(provider);
+    const provider =
+      config.provider ||
+      new ClaudeProvider({
+        apiKey: config.apiKey,
+        model: config.model,
+      });
+
+    const generator = config.generator || new ContentGenerator(provider);
 
     this.#contentManager = new ContentManager(generator, (payload) => {
       if (payload.status === 'start') {
@@ -497,6 +500,13 @@ export class CourseEngine extends EventEmitter {
     // Restore does NOT emit events — the consumer must resync explicitly.
     const engine = new CourseEngine(config);
     engine.#state = snapshot.state;
+
+    // Fix: If we restore into 'loading' state, we'll stay there forever
+    // because the async generation isn't resumed. Revert to 'ready'.
+    if (engine.#state === 'loading') {
+      engine.#state = 'ready';
+    }
+
     engine.#curriculum = snapshot.curriculum
       ? copyCurriculumPlan(snapshot.curriculum)
       : null;

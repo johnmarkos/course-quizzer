@@ -22,6 +22,8 @@ export type EngineState =
 export type CourseEngineConfig = {
   apiKey: string;
   model?: string;
+  provider?: any; // Using any for now to avoid circular deps or complex imports if needed
+  generator?: any;
 };
 
 export type EngineSnapshot = {

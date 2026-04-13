@@ -34,10 +34,10 @@ If a PR needs action:
 
 ## Priority 2: Finish an in-progress issue that has no PR
 
-Check for issues labeled `in-progress` that have NO open PR (the claim is stale — a previous agent started it but never finished):
+Check for issues labeled `in-progress` (but NOT `review`) that have NO open PR (the claim is stale — a previous agent started it but never finished):
 
 ```
-gh issue list --state open --label in-progress --json number,title,createdAt
+gh issue list --state open --label in-progress --json number,title,labels,createdAt --jq '[.[] | select(.labels | map(.name) | index("review") | not)]'
 ```
 
 For each, check if an open PR exists that references it. If no PR exists:
@@ -52,13 +52,14 @@ For each, check if an open PR exists that references it. If no PR exists:
 
 ## Priority 3: Implement the next unclaimed issue
 
-Find the lowest-numbered open issue NOT labeled `in-progress`:
+Find the lowest-numbered open issue NOT labeled `in-progress` and NOT labeled `review`:
 
 ```
-gh issue list --state open --json number,title,labels,createdAt --jq '[.[] | select(.labels | map(.name) | index("in-progress") | not)] | sort_by(.number) | .[0]'
+gh issue list --state open --json number,title,labels,createdAt --jq '[.[] | select(.labels | map(.name) | (index("in-progress") | not) and (index("review") | not))] | sort_by(.number) | .[0]'
 ```
 
 Verify the issue author is johnmarkos (`gh issue view <n> --json author`). Skip if not.
+**Skip issues labeled `review`** — those are milestone reviews handled by the planning agent, not coding tasks.
 
 **Pick the lowest-numbered eligible issue. Do not skip issues because their body mentions dependencies on other issues.** Dependency ordering is the planning agent's job — if an issue exists and is not labeled `in-progress`, it is ready to work on.
 

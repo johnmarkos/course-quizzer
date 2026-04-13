@@ -381,7 +381,7 @@ The goal: small, reviewable PRs that are easy to understand, easy to review, and
 2. **Code** — Coding agent claims an issue, implements via TDD, opens a PR (see Coding Agent Checklist). Moves on to the next independent issue without waiting for review.
 3. **Review** — Review agent reviews the PR, posts findings as comments (see Review Agent Checklist). Coding agent addresses feedback. Iterate until clean.
 4. **Merge** — Review agent approves. Coding agent merges.
-5. **Milestone review** — At the end of each phase, the reviewer agent does a full audit (security, readability, architecture). Each finding becomes a new issue. Those issues go through the same Code → PR → Review → Merge cycle.
+5. **Milestone review** — At the end of each phase, the planning agent runs a full audit (security, readability, architecture). Each finding becomes a new issue. Those issues go through the same Code → PR → Review → Merge cycle. See Milestone Reviews below.
 
 ### Issue Format
 
@@ -417,13 +417,6 @@ For each PR:
 6. After significant reviews: check if Lessons Learned should be updated
 7. Update `REVIEWER-HANDOFF.md` before exiting
 
-For milestone reviews (end-of-phase audits):
-
-1. Full audit: security checklist, readability, architecture rules, test coverage, UX consistency
-2. **Each finding becomes its own GitHub issue** (see Granularity Rule) — not a monolithic "fix these 12 things" issue
-3. Findings should include enough context that a coding agent can fix them without re-deriving the reviewer's reasoning
-4. Flag anything needing John's decision separately
-
 ### Planning Agent Checklist
 
 When breaking down a phase into issues:
@@ -435,7 +428,27 @@ When breaking down a phase into issues:
 5. Where practical, write failing tests that encode the acceptance criteria (see TDD Workflow)
 6. After creating issues, update ROADMAP.md to link to them
 7. **Schedule user testing** at the end of each phase — John is both owner and first user. Define what to test and what feedback to capture.
-8. **After milestone reviews:** the reviewer agent's findings become new issues (one per finding). The planning agent triages these — prioritize, order, and add to ROADMAP.md like any other issue.
+8. **Run milestone reviews** at the end of each phase (see Milestone Reviews below). Create one issue per finding.
+
+### Milestone Reviews
+
+Milestone reviews are a **planning agent responsibility**, not a coding or PR-review task. They are cross-cutting audits that produce new issues — they don't fit the issue → PR → review pipeline.
+
+**Why the planning agent:** Milestone reviews read the entire phase's code, produce findings, and create issues. That's planning work. The reviewer agent is designed for single-PR reviews. The coding agent should never review its own team's work.
+
+**Process:**
+
+1. The planning agent triggers the milestone review when all phase issues are closed.
+2. The planner spawns a sub-agent to read all source files from the phase and audit against: security checklist, architecture rules, readability, test coverage, UX consistency.
+3. Each finding becomes its own GitHub issue (see Granularity Rule) — not a monolithic "fix these 12 things" issue.
+4. Findings should include enough context that a coding agent can fix them without re-deriving the reviewer's reasoning.
+5. Flag anything needing John's decision separately.
+6. Update ROADMAP.md with the new issues.
+7. The new issues go through the normal Code → PR → Review → Merge cycle.
+
+**Issue labeling:** Milestone review issues are regular issues (no `review` label). The `review` label is reserved for the milestone review issue itself, which coding agents skip.
+
+**Future automation:** Eventually, a planner script will poll for phase completion and trigger milestone reviews automatically. For now, milestone reviews happen in interactive planner sessions.
 
 ### Handoff Files
 

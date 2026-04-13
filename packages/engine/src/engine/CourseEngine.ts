@@ -20,7 +20,7 @@ import type {
 import type { StudentAnswer, Question } from '../content/types.js';
 import type { Section } from '../curriculum/types.js';
 
-const SNAPSHOT_VERSION = 3;
+export const SNAPSHOT_VERSION = 3;
 
 function copySection(section: Section): Section {
   return {

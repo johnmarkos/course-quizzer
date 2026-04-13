@@ -8,7 +8,11 @@ import {
   COURSES_STORAGE_KEY,
   type CourseRecord,
 } from '../../src/lib/storage/course-storage.js';
-import type { CurriculumPlan, EngineSnapshot } from 'quizzer-engine';
+import {
+  SNAPSHOT_VERSION,
+  type CurriculumPlan,
+  type EngineSnapshot,
+} from 'quizzer-engine';
 
 // --- localStorage mock ---
 
@@ -55,7 +59,7 @@ function mockCurriculumPlan(): CurriculumPlan {
 
 function mockSnapshot(): EngineSnapshot {
   return {
-    version: 3,
+    version: SNAPSHOT_VERSION,
     state: 'ready',
     curriculum: mockCurriculumPlan(),
     currentSectionIndex: 0,
@@ -235,7 +239,7 @@ describe('course-storage', () => {
       title: 'Broken snapshot',
       curriculum: mockCurriculumPlan(),
       snapshot: {
-        version: 3,
+        version: SNAPSHOT_VERSION,
         state: 'ready',
         curriculum: mockCurriculumPlan(),
         currentSectionIndex: '0',

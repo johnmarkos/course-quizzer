@@ -4,12 +4,12 @@
 
 import {
   validateCurriculumPlan,
+  SNAPSHOT_VERSION,
   type CurriculumPlan,
   type EngineSnapshot,
 } from 'quizzer-engine';
 
 export const COURSES_STORAGE_KEY = 'coursequizzer:courses';
-const SUPPORTED_SNAPSHOT_VERSION = 3;
 
 export type CourseRecord = {
   id: string;
@@ -187,7 +187,7 @@ function validateSnapshot(value: unknown): EngineSnapshot | null {
   const snapshot = sanitizeSnapshot(value as EngineSnapshot);
 
   if (
-    snapshot.version !== SUPPORTED_SNAPSHOT_VERSION ||
+    snapshot.version !== SNAPSHOT_VERSION ||
     !isValidEngineState(snapshot.state) ||
     !Number.isInteger(snapshot.currentSectionIndex) ||
     !Number.isInteger(snapshot.currentItemIndex) ||

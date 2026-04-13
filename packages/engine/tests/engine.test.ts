@@ -706,7 +706,7 @@ describe('async lifecycle and events', () => {
     expect(completeEvents).toHaveLength(2);
   });
 
-  it('reverts to ready state and emits error on generation failure', async () => {
+  it('transitions to error state and emits error on generation failure', async () => {
     let rejectExplanation: (reason: any) => void = () => {};
 
     const generator = {
@@ -726,12 +726,12 @@ describe('async lifecycle and events', () => {
     rejectExplanation(new Error('API Failure'));
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(engine.state).toBe('ready');
+    expect(engine.state).toBe('error');
     expect(errorEvents).toHaveLength(1);
     expect(errorEvents[0].message).toBe('API Failure');
   });
 
-  it('reverts loading to ready state on restore', () => {
+  it('reverts loading or error state to ready state on restore', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
@@ -745,6 +745,14 @@ describe('async lifecycle and events', () => {
       generator: mockGenerator,
     });
     expect(restored.state).toBe('ready');
+
+    // Test error state too
+    const snapshotWithError = { ...snapshot, state: 'error' as const };
+    const restoredFromError = CourseEngine.restore(snapshotWithError, {
+      apiKey: 'test-key',
+      generator: mockGenerator,
+    });
+    expect(restoredFromError.state).toBe('ready');
   });
 });
 

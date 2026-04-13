@@ -198,7 +198,7 @@ export class CourseEngine extends EventEmitter {
   // --- Section Lifecycle ---
 
   startSection(sectionId: string): void {
-    this.#requireState('startSection', 'ready', 'sectionComplete');
+    this.#requireState('startSection', 'ready', 'sectionComplete', 'error');
 
     if (!this.#curriculum) {
       throw new InvalidTransitionError('startSection', 'no curriculum loaded');
@@ -234,8 +234,8 @@ export class CourseEngine extends EventEmitter {
       .catch((err) => {
         const message = err instanceof Error ? err.message : String(err);
         this.emit('error', { message, recoverable: true });
-        // Revert state so user can try again or go back
-        this.#setState('ready');
+        // Transition to error state so UI can show it persistently
+        this.#setState('error');
       });
   }
 
@@ -501,9 +501,9 @@ export class CourseEngine extends EventEmitter {
     const engine = new CourseEngine(config);
     engine.#state = snapshot.state;
 
-    // Fix: If we restore into 'loading' state, we'll stay there forever
-    // because the async generation isn't resumed. Revert to 'ready'.
-    if (engine.#state === 'loading') {
+    // Fix: If we restore into 'loading' or 'error' state, we'll stay there forever
+    // (or without an error message for 'error'). Revert to 'ready'.
+    if (engine.#state === 'loading' || engine.#state === 'error') {
       engine.#state = 'ready';
     }
 

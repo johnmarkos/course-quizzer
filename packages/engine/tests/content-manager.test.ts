@@ -15,18 +15,16 @@ describe('ContentManager', () => {
         title: 'Exp',
         content: 'Content',
       }),
-      generateTopicQuizBurst: vi
-        .fn()
-        .mockResolvedValue([
-          {
-            type: 'multiple-choice',
-            id: 'q1',
-            topicId: 't1',
-            question: 'Q?',
-            options: ['A'],
-            correctIndex: 0,
-          },
-        ]),
+      generateTopicQuizBurst: vi.fn().mockResolvedValue([
+        {
+          type: 'multiple-choice',
+          id: 'q1',
+          topicId: 't1',
+          question: 'Q?',
+          options: ['A'],
+          correctIndex: 0,
+        },
+      ]),
     } as unknown as ContentGenerator;
 
     const events: any[] = [];

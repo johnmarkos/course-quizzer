@@ -497,8 +497,21 @@
     {:else if session.error}
       <!-- Error state -->
       <article>
+        <h1>Error</h1>
         <p role="alert" class="error">{session.error.message}</p>
-        <button type="button" onclick={handleBackToOverview}>Back to Course</button>
+        <div class="actions">
+          {#if session.currentSection}
+            <button
+              type="button"
+              onclick={() => handleStartSection(session.currentSection!.section.id)}
+            >
+              Retry
+            </button>
+          {/if}
+          <button type="button" class="secondary" onclick={handleBackToOverview}>
+            Back to Course
+          </button>
+        </div>
       </article>
 
     {:else}

@@ -128,8 +128,7 @@ run_agent() {
             set_cooldown "claude"
             echo "$(date): Claude out of credits, set 1h cooldown." | tee -a "$logfile"
         else
-            log_error "Claude failed with exit code $status."
-            return 1
+            log_error "Claude failed with exit code $status. Proceeding to fallback..."
         fi
     fi
 
@@ -151,8 +150,7 @@ run_agent() {
             set_cooldown "codex"
             echo "$(date): Codex out of credits, set 1h cooldown." | tee -a "$logfile"
         else
-            log_error "Codex failed with exit code $status."
-            return 1
+            log_error "Codex failed with exit code $status. Proceeding to fallback..."
         fi
     fi
 

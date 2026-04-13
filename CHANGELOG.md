@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0 — 2026-04-13
+
+### Infrastructure
+
+- Model cooldown mechanism: automated fallback cascade (Claude → Codex → Gemini) with 1-hour cooldowns for credit exhaustion or transient failures
+- Fallback logic now proceeds to the next model even on non-credit errors to improve robustness
+
+### Developer Experience
+
+- Planning Agent instructions updated to write failing tests as specs for coding agents
+- Phase 2 complete: all foundational app and engine features implemented and verified
+
 ## 0.7.5 — 2026-04-12
 
 ### Fixes

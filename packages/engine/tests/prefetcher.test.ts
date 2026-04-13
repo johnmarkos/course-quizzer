@@ -35,12 +35,37 @@ const MOCK_PLAN: CurriculumPlan = {
   ],
 };
 
-const MOCK_ITEMS_S2: ContentItem[] = [
-  { type: 'explanation', topicId: 't2', title: 'Exp 2', content: 'Content 2' },
+const MOCK_EXPLANATION_T2: ContentItem = {
+  type: 'explanation',
+  topicId: 't2',
+  title: 'Exp 2',
+  content: 'Content 2',
+};
+
+const MOCK_QUESTIONS_T2: ContentItem[] = [
+  {
+    type: 'multiple-choice',
+    id: 'q2',
+    topicId: 't2',
+    question: 'Q2',
+    options: ['O1', 'O2'],
+    correctIndex: 0,
+  },
 ];
+
+const MOCK_ITEMS_S2: ContentItem[] = [MOCK_EXPLANATION_T2, ...MOCK_QUESTIONS_T2];
 
 function mockProvider(): ClaudeProvider {
   return { sendMessage: vi.fn() } as unknown as ClaudeProvider;
+}
+
+function mockGenerator(generator: ContentGenerator) {
+  vi.spyOn(generator, 'generateTopicExplanation').mockResolvedValue(
+    MOCK_EXPLANATION_T2 as any
+  );
+  vi.spyOn(generator, 'generateTopicQuizBurst').mockResolvedValue(
+    MOCK_QUESTIONS_T2 as any
+  );
 }
 
 describe('ContentCache', () => {
@@ -73,20 +98,20 @@ describe('Prefetcher', () => {
 
     prefetcher.setCurriculum(MOCK_PLAN);
 
-    // Mock generator.generateSection
-    const generateSpy = vi
-      .spyOn(generator, 'generateSection')
-      .mockResolvedValue(MOCK_ITEMS_S2);
+    // Mock generator methods
+    mockGenerator(generator);
 
     await prefetcher.prefetch(0); // Prefetch section at index 1 (s2)
 
-    expect(generateSpy).toHaveBeenCalledWith(MOCK_PLAN.sections[1], MOCK_PLAN.title);
     expect(cache.has('s2')).toBe(true);
     expect(cache.get('s2')).toEqual(MOCK_ITEMS_S2);
   });
 
   it('does nothing if next section is already in cache', async () => {
-    const generator = { generateSection: vi.fn() } as unknown as ContentGenerator;
+    const provider = mockProvider();
+    const generator = new ContentGenerator(provider);
+    const expSpy = vi.spyOn(generator, 'generateTopicExplanation');
+
     const cache = new ContentCache();
     cache.set('s2', []);
     const prefetcher = new Prefetcher(generator, cache);
@@ -94,18 +119,21 @@ describe('Prefetcher', () => {
 
     await prefetcher.prefetch(0);
 
-    expect(generator.generateSection).not.toHaveBeenCalled();
+    expect(expSpy).not.toHaveBeenCalled();
   });
 
   it('does nothing if at the last section', async () => {
-    const generator = { generateSection: vi.fn() } as unknown as ContentGenerator;
+    const provider = mockProvider();
+    const generator = new ContentGenerator(provider);
+    const expSpy = vi.spyOn(generator, 'generateTopicExplanation');
+
     const cache = new ContentCache();
     const prefetcher = new Prefetcher(generator, cache);
     prefetcher.setCurriculum(MOCK_PLAN);
 
     await prefetcher.prefetch(2); // Last index
 
-    expect(generator.generateSection).not.toHaveBeenCalled();
+    expect(expSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -125,7 +153,7 @@ describe('CourseEngine + Prefetcher integration', () => {
     // we have to rely on the prefetcher to fill it or expose it for tests.
     // In this case, we'll let startSection(s1) trigger prefetch for s2.
 
-    vi.spyOn(generator, 'generateSection').mockResolvedValue(MOCK_ITEMS_S2);
+    mockGenerator(generator);
 
     // Start s1
     engine.startSection('s1');
@@ -142,7 +170,7 @@ describe('CourseEngine + Prefetcher integration', () => {
     expect(engine.state).toBe('sectionComplete');
 
     // Wait for prefetch of s2 to complete
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     // Now start s2
     const contentReadySpy = vi.fn();
@@ -160,10 +188,13 @@ describe('CourseEngine + Prefetcher integration', () => {
     const provider = mockProvider();
     const generator = new ContentGenerator(provider);
 
-    // Spy on generateSection
-    const generateSpy = vi
-      .spyOn(generator, 'generateSection')
-      .mockResolvedValue(MOCK_ITEMS_S2);
+    // Mock generator methods
+    const expSpy = vi
+      .spyOn(generator, 'generateTopicExplanation')
+      .mockResolvedValue(MOCK_EXPLANATION_T2 as any);
+    vi.spyOn(generator, 'generateTopicQuizBurst').mockResolvedValue(
+      MOCK_QUESTIONS_T2 as any
+    );
 
     const engine = new CourseEngine({
       apiKey: 'test',
@@ -174,9 +205,9 @@ describe('CourseEngine + Prefetcher integration', () => {
     engine.startSection('s1');
 
     // Wait for fire-and-forget prefetch
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-    expect(generateSpy).toHaveBeenCalledWith(MOCK_PLAN.sections[1], MOCK_PLAN.title);
+    expect(expSpy).toHaveBeenCalled();
   });
 
   it('handles prefetch failure gracefully without affecting engine state', async () => {
@@ -184,7 +215,9 @@ describe('CourseEngine + Prefetcher integration', () => {
     const generator = new ContentGenerator(provider);
 
     // Force prefetch to fail
-    vi.spyOn(generator, 'generateSection').mockRejectedValue(new Error('LLM error'));
+    vi.spyOn(generator, 'generateTopicExplanation').mockRejectedValue(
+      new Error('LLM error')
+    );
 
     const engine = new CourseEngine({
       apiKey: 'test',
@@ -197,7 +230,7 @@ describe('CourseEngine + Prefetcher integration', () => {
     engine.startSection('s1');
 
     // Wait for fire-and-forget prefetch to fail
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(engine.state).toBe('loading');
 

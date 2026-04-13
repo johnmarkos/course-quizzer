@@ -6,6 +6,8 @@
 
 import {
   CourseEngine,
+  ClaudeProvider,
+  ContentGenerator,
   type CourseEngineConfig,
   type CurriculumPlan,
   type EngineState,
@@ -58,7 +60,13 @@ export type EngineSession = ReturnType<typeof createEngineSession>;
 // --- Factory ---
 
 export function createEngineSession(config: EngineSessionConfig) {
-  const engineConfig: CourseEngineConfig = { apiKey: config.apiKey };
+  const engineConfig: CourseEngineConfig = {
+    apiKey: config.apiKey,
+    prefetch: {
+      enabled: true,
+      generator: new ContentGenerator(new ClaudeProvider({ apiKey: config.apiKey })),
+    },
+  };
   let initialError: ErrorInfo | null = null;
 
   function clearBadSnapshot(): void {

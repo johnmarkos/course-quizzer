@@ -13,6 +13,8 @@
 - Harden `course-storage` persisted-data validation so malformed curriculum records are filtered out before app routes read them
 - Null out malformed persisted engine snapshots instead of attempting to restore them
 - Add storage tests covering malformed curriculum and snapshot payloads, and align engine-session test fixtures with the current curriculum shape
+- Fail closed on bad persisted engine snapshots: stale or malformed snapshots no longer crash the learn page — the session falls back to a fresh engine with the curriculum reloaded, and the bad snapshot is cleared from storage
+- Allow `updateCourse` to accept `null` snapshot for clearing persisted snapshots
 
 ## 0.7.3 — 2026-04-12
 

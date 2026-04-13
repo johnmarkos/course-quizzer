@@ -11,7 +11,6 @@ import type {
   StudentAnswer,
 } from 'quizzer-engine';
 import {
-  updateCourse,
   createCourse,
   getCourse,
   COURSES_STORAGE_KEY,
@@ -405,5 +404,131 @@ describe('createEngineSession', () => {
     const session = createEngineSession({ apiKey: 'test-key' });
     session.dispose();
     expect(session.serialize()).toBeNull();
+  });
+
+  // --- Snapshot restore failure (fail-closed) ---
+
+  it('falls back to fresh engine when snapshot has unsupported version', () => {
+    const badSnapshot: EngineSnapshot = {
+      version: 999,
+      state: 'ready',
+      curriculum: mockCurriculumPlan(),
+      currentSectionIndex: -1,
+      currentItemIndex: -1,
+      sectionItems: [],
+      studentState: { topicMastery: {}, totalAnswered: 0, totalCorrect: 0 },
+      lastAnswerResult: null,
+    };
+
+    const session = createEngineSession({ apiKey: 'test-key', snapshot: badSnapshot });
+
+    // Should not crash — falls back to idle (fresh engine)
+    expect(session.engineState).toBe('idle');
+    expect(session.restoreFailed).toBe(true);
+    expect(session.curriculum).toBeNull();
+  });
+
+  it('falls back to fresh engine when snapshot is malformed', () => {
+    // A snapshot missing required fields
+    const malformedSnapshot = {
+      version: 3,
+      state: 'ready',
+      // Missing curriculum, sectionItems, studentState, etc.
+    } as unknown as EngineSnapshot;
+
+    const session = createEngineSession({
+      apiKey: 'test-key',
+      snapshot: malformedSnapshot,
+    });
+
+    expect(session.engineState).toBe('idle');
+    expect(session.restoreFailed).toBe(true);
+  });
+
+  it('sets restoreFailed to false when snapshot restores successfully', () => {
+    const session1 = createEngineSession({ apiKey: 'test-key' });
+    session1.loadCurriculum(mockCurriculumPlan());
+    const snapshot = session1.serialize()!;
+
+    const session2 = createEngineSession({ apiKey: 'test-key', snapshot });
+    expect(session2.restoreFailed).toBe(false);
+    expect(session2.engineState).toBe('ready');
+  });
+
+  it('clears bad snapshot from storage on restore failure', () => {
+    const storage = createLocalStorageMock();
+    const course = createCourse(
+      { title: 'Test', curriculum: mockCurriculumPlan() },
+      storage
+    );
+    const badSnapshot = { version: 999 } as unknown as EngineSnapshot;
+
+    // Seed raw persisted data with a legacy bad snapshot that storage validation
+    // will null out on read, but that may still be passed into restore by a stale caller.
+    const rawRecords = JSON.parse(storage.getItem(COURSES_STORAGE_KEY) ?? '[]') as Array<
+      Record<string, unknown>
+    >;
+    rawRecords[0] = { ...rawRecords[0], snapshot: badSnapshot };
+    storage.setItem(COURSES_STORAGE_KEY, JSON.stringify(rawRecords));
+
+    const persistedBefore = JSON.parse(
+      storage.getItem(COURSES_STORAGE_KEY) ?? '[]'
+    ) as Array<{ snapshot: EngineSnapshot | null }>;
+    expect(persistedBefore[0]?.snapshot).toEqual(badSnapshot);
+
+    const session = createEngineSession({
+      apiKey: 'test-key',
+      courseId: course.id,
+      storage,
+      snapshot: badSnapshot,
+    });
+
+    expect(session.restoreFailed).toBe(true);
+
+    const persistedAfter = JSON.parse(
+      storage.getItem(COURSES_STORAGE_KEY) ?? '[]'
+    ) as Array<{ snapshot: EngineSnapshot | null }>;
+    expect(persistedAfter[0]?.snapshot).toBeNull();
+  });
+
+  it('treats snapshot cleanup storage failures as recoverable restore errors', () => {
+    const storage = createLocalStorageMock();
+    const course = createCourse(
+      { title: 'Test', curriculum: mockCurriculumPlan() },
+      storage
+    );
+    const badSnapshot = { version: 999 } as unknown as EngineSnapshot;
+
+    const rawRecords = JSON.parse(storage.getItem(COURSES_STORAGE_KEY) ?? '[]') as Array<
+      Record<string, unknown>
+    >;
+    rawRecords[0] = { ...rawRecords[0], snapshot: badSnapshot };
+    storage.setItem(COURSES_STORAGE_KEY, JSON.stringify(rawRecords));
+
+    vi.mocked(storage.setItem).mockImplementation(() => {
+      throw new DOMException(
+        'quota hit while clearing bad snapshot',
+        'QuotaExceededError'
+      );
+    });
+
+    let session: EngineSession | null = null;
+
+    expect(() => {
+      session = createEngineSession({
+        apiKey: 'test-key',
+        courseId: course.id,
+        storage,
+        snapshot: badSnapshot,
+      });
+    }).not.toThrow();
+
+    expect(session).not.toBeNull();
+    expect(session!.restoreFailed).toBe(true);
+    expect(session!.engineState).toBe('idle');
+    expect(session!.error).toEqual({
+      message: 'Browser storage is full. Please delete some courses to free space.',
+      recoverable: true,
+    });
   });
 });

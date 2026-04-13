@@ -59,10 +59,37 @@ export type EngineSession = ReturnType<typeof createEngineSession>;
 
 export function createEngineSession(config: EngineSessionConfig) {
   const engineConfig: CourseEngineConfig = { apiKey: config.apiKey };
+  let initialError: ErrorInfo | null = null;
 
-  let engine: CourseEngine | null = config.snapshot
-    ? CourseEngine.restore(config.snapshot, engineConfig)
-    : new CourseEngine(engineConfig);
+  function clearBadSnapshot(): void {
+    if (!config.courseId || !config.storage) return;
+
+    try {
+      updateCourse(config.courseId, { snapshot: null }, config.storage);
+    } catch (err) {
+      const normalized = normalizeError(err);
+      initialError = { message: normalized.message, recoverable: true };
+    }
+  }
+
+  // --- Attempt snapshot restore, fall back to fresh engine on failure ---
+
+  let engine: CourseEngine | null;
+  let didRestoreFail = false;
+
+  if (config.snapshot) {
+    try {
+      engine = CourseEngine.restore(config.snapshot, engineConfig);
+    } catch {
+      engine = new CourseEngine(engineConfig);
+      didRestoreFail = true;
+
+      // Clear the bad snapshot from storage so the next load doesn't repeat the failure
+      clearBadSnapshot();
+    }
+  } else {
+    engine = new CourseEngine(engineConfig);
+  }
 
   // --- Reactive state ---
 
@@ -74,10 +101,10 @@ export function createEngineSession(config: EngineSessionConfig) {
   let studentState = $state<StudentState | null>(null);
   let progress = $state<SessionProgress | null>(null);
   let apiLoading = $state(false);
-  let error = $state<ErrorInfo | null>(null);
+  let error = $state<ErrorInfo | null>(initialError);
 
-  // If restoring, sync initial state from snapshot
-  if (config.snapshot && engine) {
+  // If restoring successfully, sync initial state from snapshot
+  if (config.snapshot && !didRestoreFail && engine) {
     engineState = engine.state;
     curriculum = engine.curriculum;
     studentState = engine.studentState;
@@ -226,6 +253,9 @@ export function createEngineSession(config: EngineSessionConfig) {
     },
     get error() {
       return error;
+    },
+    get restoreFailed() {
+      return didRestoreFail;
     },
 
     // --- Engine actions ---

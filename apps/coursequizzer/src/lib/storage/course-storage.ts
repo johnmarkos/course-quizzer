@@ -27,7 +27,7 @@ export type CreateCourseInput = {
 
 export type UpdateCourseInput = {
   title?: string;
-  snapshot?: EngineSnapshot;
+  snapshot?: EngineSnapshot | null;
   curriculum?: CurriculumPlan;
 };
 
@@ -311,7 +311,7 @@ export function updateCourse(
   if (input.title !== undefined) record.title = input.title;
   if (input.curriculum !== undefined) record.curriculum = deepCopy(input.curriculum);
   if (input.snapshot !== undefined) {
-    record.snapshot = deepCopy(sanitizeSnapshot(input.snapshot));
+    record.snapshot = input.snapshot ? deepCopy(sanitizeSnapshot(input.snapshot)) : null;
   }
   record.updatedAt = new Date().toISOString();
 

@@ -5,7 +5,12 @@ import {
   getProgressLabel,
 } from '../../src/lib/stores/course-progress.js';
 import type { CourseRecord } from '../../src/lib/storage/course-storage.js';
-import type { CurriculumPlan, EngineSnapshot, StudentState } from 'quizzer-engine';
+import {
+  SNAPSHOT_VERSION,
+  type CurriculumPlan,
+  type EngineSnapshot,
+  type StudentState,
+} from 'quizzer-engine';
 
 // --- Fixtures ---
 
@@ -56,7 +61,7 @@ function mockRecord(overrides?: Partial<CourseRecord>): CourseRecord {
 
 function mockSnapshot(overrides?: Partial<EngineSnapshot>): EngineSnapshot {
   return {
-    version: 3,
+    version: SNAPSHOT_VERSION,
     state: 'ready',
     curriculum: mockCurriculum(),
     currentSectionIndex: 0,

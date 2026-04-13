@@ -8,7 +8,11 @@ import {
   COURSES_STORAGE_KEY,
   type CourseRecord,
 } from '../../src/lib/storage/course-storage.js';
-import type { CurriculumPlan, EngineSnapshot } from 'quizzer-engine';
+import {
+  SNAPSHOT_VERSION,
+  type CurriculumPlan,
+  type EngineSnapshot,
+} from 'quizzer-engine';
 
 // --- localStorage mock ---
 
@@ -34,12 +38,20 @@ function createLocalStorageMock(): Storage {
 
 function mockCurriculumPlan(): CurriculumPlan {
   return {
-    courseTitle: 'Test Course',
+    title: 'Test Course',
+    description: 'A valid curriculum used for storage tests.',
     sections: [
       {
         id: 's1',
         title: 'Section 1',
-        topics: [{ id: 't1', name: 'Topic 1', section: 's1' }],
+        order: 0,
+        topics: [
+          {
+            id: 't1',
+            title: 'Topic 1',
+            description: 'A test topic.',
+          },
+        ],
       },
     ],
   };
@@ -47,13 +59,13 @@ function mockCurriculumPlan(): CurriculumPlan {
 
 function mockSnapshot(): EngineSnapshot {
   return {
-    version: 3,
+    version: SNAPSHOT_VERSION,
     state: 'ready',
     curriculum: mockCurriculumPlan(),
     currentSectionIndex: 0,
     currentItemIndex: 0,
     sectionItems: [],
-    studentState: { topicMastery: {}, answeredQuestions: [] },
+    studentState: { masteryByTopic: {}, gaps: [] },
     lastAnswerResult: null,
   };
 }
@@ -193,6 +205,77 @@ describe('course-storage', () => {
     const list = listCourses(storage);
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe('valid-1');
+  });
+
+  it('filters out records with malformed curriculum payloads', () => {
+    const invalidCurriculumRecord = {
+      id: 'bad-curriculum',
+      title: 'Broken curriculum',
+      curriculum: {
+        title: 'Broken curriculum',
+        description: 'Missing section order and topic descriptions.',
+        sections: [
+          {
+            id: 's1',
+            title: 'Section 1',
+            topics: [{ id: 't1', title: 'Topic 1' }],
+          },
+        ],
+      },
+      snapshot: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    storage.setItem(COURSES_STORAGE_KEY, JSON.stringify([invalidCurriculumRecord]));
+
+    expect(listCourses(storage)).toEqual([]);
+    expect(getCourse('bad-curriculum', storage)).toBeNull();
+  });
+
+  it('nulls out malformed snapshot payloads before returning persisted records', () => {
+    const recordWithBadSnapshot = {
+      id: 'bad-snapshot',
+      title: 'Broken snapshot',
+      curriculum: mockCurriculumPlan(),
+      snapshot: {
+        version: SNAPSHOT_VERSION,
+        state: 'ready',
+        curriculum: mockCurriculumPlan(),
+        currentSectionIndex: '0',
+        currentItemIndex: 0,
+        sectionItems: [],
+        studentState: { masteryByTopic: {}, gaps: [] },
+        lastAnswerResult: null,
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    storage.setItem(COURSES_STORAGE_KEY, JSON.stringify([recordWithBadSnapshot]));
+
+    const loaded = getCourse('bad-snapshot', storage);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.snapshot).toBeNull();
+    expect(listCourses(storage)[0].snapshot).toBeNull();
+  });
+
+  it('nulls out snapshots with unsupported persisted versions', () => {
+    const recordWithOldSnapshot = {
+      id: 'old-snapshot',
+      title: 'Old snapshot',
+      curriculum: mockCurriculumPlan(),
+      snapshot: {
+        ...mockSnapshot(),
+        version: 2,
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    storage.setItem(COURSES_STORAGE_KEY, JSON.stringify([recordWithOldSnapshot]));
+
+    expect(getCourse('old-snapshot', storage)?.snapshot).toBeNull();
   });
 
   // --- Security: no API key in persisted data ---

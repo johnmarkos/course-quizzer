@@ -1,4 +1,4 @@
-export { CourseEngine } from './engine/CourseEngine.js';
+export { CourseEngine, SNAPSHOT_VERSION } from './engine/CourseEngine.js';
 export { InvalidTransitionError, EngineError } from './engine/errors.js';
 export { ClaudeProvider } from './provider/ClaudeProvider.js';
 export { RateLimiter } from './provider/rate-limiter.js';

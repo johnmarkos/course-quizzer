@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.4 — 2026-04-12
+
+### Fixes
+
+- Harden `course-storage` persisted-data validation so malformed curriculum records are filtered out before app routes read them
+- Null out malformed persisted engine snapshots instead of attempting to restore them
+- Add storage tests covering malformed curriculum and snapshot payloads, and align engine-session test fixtures with the current curriculum shape
+
 ## 0.7.3 — 2026-04-12
 
 ### Developer Experience

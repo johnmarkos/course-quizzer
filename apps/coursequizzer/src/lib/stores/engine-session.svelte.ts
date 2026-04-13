@@ -59,6 +59,18 @@ export type EngineSession = ReturnType<typeof createEngineSession>;
 
 export function createEngineSession(config: EngineSessionConfig) {
   const engineConfig: CourseEngineConfig = { apiKey: config.apiKey };
+  let initialError: ErrorInfo | null = null;
+
+  function clearBadSnapshot(): void {
+    if (!config.courseId || !config.storage) return;
+
+    try {
+      updateCourse(config.courseId, { snapshot: null }, config.storage);
+    } catch (err) {
+      const normalized = normalizeError(err);
+      initialError = { message: normalized.message, recoverable: true };
+    }
+  }
 
   // --- Attempt snapshot restore, fall back to fresh engine on failure ---
 
@@ -73,9 +85,7 @@ export function createEngineSession(config: EngineSessionConfig) {
       didRestoreFail = true;
 
       // Clear the bad snapshot from storage so the next load doesn't repeat the failure
-      if (config.courseId && config.storage) {
-        updateCourse(config.courseId, { snapshot: null }, config.storage);
-      }
+      clearBadSnapshot();
     }
   } else {
     engine = new CourseEngine(engineConfig);
@@ -91,7 +101,7 @@ export function createEngineSession(config: EngineSessionConfig) {
   let studentState = $state<StudentState | null>(null);
   let progress = $state<SessionProgress | null>(null);
   let apiLoading = $state(false);
-  let error = $state<ErrorInfo | null>(null);
+  let error = $state<ErrorInfo | null>(initialError);
 
   // If restoring successfully, sync initial state from snapshot
   if (config.snapshot && !didRestoreFail && engine) {

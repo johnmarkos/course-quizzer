@@ -490,4 +490,45 @@ describe('createEngineSession', () => {
     ) as Array<{ snapshot: EngineSnapshot | null }>;
     expect(persistedAfter[0]?.snapshot).toBeNull();
   });
+
+  it('treats snapshot cleanup storage failures as recoverable restore errors', () => {
+    const storage = createLocalStorageMock();
+    const course = createCourse(
+      { title: 'Test', curriculum: mockCurriculumPlan() },
+      storage
+    );
+    const badSnapshot = { version: 999 } as unknown as EngineSnapshot;
+
+    const rawRecords = JSON.parse(storage.getItem(COURSES_STORAGE_KEY) ?? '[]') as Array<
+      Record<string, unknown>
+    >;
+    rawRecords[0] = { ...rawRecords[0], snapshot: badSnapshot };
+    storage.setItem(COURSES_STORAGE_KEY, JSON.stringify(rawRecords));
+
+    vi.mocked(storage.setItem).mockImplementation(() => {
+      throw new DOMException(
+        'quota hit while clearing bad snapshot',
+        'QuotaExceededError'
+      );
+    });
+
+    let session: EngineSession | null = null;
+
+    expect(() => {
+      session = createEngineSession({
+        apiKey: 'test-key',
+        courseId: course.id,
+        storage,
+        snapshot: badSnapshot,
+      });
+    }).not.toThrow();
+
+    expect(session).not.toBeNull();
+    expect(session!.restoreFailed).toBe(true);
+    expect(session!.engineState).toBe('idle');
+    expect(session!.error).toEqual({
+      message: 'Browser storage is full. Please delete some courses to free space.',
+      recoverable: true,
+    });
+  });
 });

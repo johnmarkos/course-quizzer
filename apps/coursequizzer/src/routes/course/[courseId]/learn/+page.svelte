@@ -466,7 +466,7 @@
             <h3>Topic Mastery</h3>
             <ul class="topic-mastery-list">
               {#each session.currentSection.section.topics as topic (topic.id)}
-                {@const mastery = session.studentState?.masteryByTopic[topic.id]}
+                {@const mastery = session.studentState?.masteryByTopic?.[topic.id]}
                 {@const score = mastery?.score ?? 0}
                 {@const level =
                   score < 0.5 ? 'struggling' : score < 0.8 ? 'gaining' : 'mastered'}

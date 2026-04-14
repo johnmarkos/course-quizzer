@@ -14,7 +14,7 @@
 
 - **Engine:** Resolved circular dependency between `CourseEngine.ts` and `snapshot-validation.ts` by moving `SNAPSHOT_VERSION` to a new `constants.ts` file — this fixed a runtime error where `validateEngineSnapshot` was `undefined` during tests
 
-## 0.8.3 — 2026-04-14
+## 0.8.3 — 2026-04-13
 
 ### Features
 

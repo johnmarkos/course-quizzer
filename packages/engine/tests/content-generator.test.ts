@@ -217,7 +217,8 @@ describe('ContentGenerator', () => {
       TOPIC,
       'Algorithms',
       'Search',
-      'Explanation content'
+      'Explanation content',
+      2
     );
 
     expect(questions).toHaveLength(2);
@@ -238,7 +239,7 @@ describe('ContentGenerator', () => {
     );
     const gen = new ContentGenerator(provider);
 
-    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E');
+    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E', 5);
 
     expect(questions).toHaveLength(5);
     const types = questions.map((q) => q.type);
@@ -249,16 +250,15 @@ describe('ContentGenerator', () => {
     expect(types).toContain('two-stage');
   });
 
-  it('filters out low-quality questions silently', async () => {
+  it('rejects quiz bursts when validation drops below the requested count', async () => {
     const provider = mockProvider(
-      quizResponse([GOOD_MCQ, LENGTH_OUTLIER_MCQ, FRONT_MATTER_MCQ, GOOD_NUMERIC])
+      quizResponse([GOOD_MCQ, LENGTH_OUTLIER_MCQ, GOOD_NUMERIC])
     );
     const gen = new ContentGenerator(provider);
 
-    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E');
-
-    // LENGTH_OUTLIER_MCQ and FRONT_MATTER_MCQ should be filtered out
-    expect(questions).toHaveLength(2);
+    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E', 3)).rejects.toThrow(
+      'Expected exactly 3 questions for topic "binary-search", got 2 after validation'
+    );
   });
 
   it('retries explanation on malformed response', async () => {
@@ -281,7 +281,7 @@ describe('ContentGenerator', () => {
     );
     const gen = new ContentGenerator(provider);
 
-    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E');
+    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E', 1);
 
     expect(questions).toHaveLength(1);
   });
@@ -309,7 +309,7 @@ describe('ContentGenerator', () => {
     const provider = mockProvider(quizResponse([negTolerance]));
     const gen = new ContentGenerator(provider);
 
-    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E')).rejects.toThrow(
+    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E', 1)).rejects.toThrow(
       'failed validation'
     );
   });
@@ -318,7 +318,7 @@ describe('ContentGenerator', () => {
     const provider = mockProvider(quizResponse([LENGTH_OUTLIER_MCQ, FRONT_MATTER_MCQ]));
     const gen = new ContentGenerator(provider);
 
-    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E')).rejects.toThrow(
+    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E', 2)).rejects.toThrow(
       'failed validation'
     );
   });
@@ -343,7 +343,16 @@ describe('ContentGenerator', () => {
     const quizCall = (provider.sendMessage as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(quizCall.messages[0].content).toContain('Generate exactly 2 quiz questions');
     const tool = quizCall.tools[0];
-    expect(tool.inputSchema.properties.questions.minItems).toBe(1);
-    expect(tool.inputSchema.properties.questions.maxItems).toBe(4);
+    expect(tool.inputSchema.properties.questions.minItems).toBe(2);
+    expect(tool.inputSchema.properties.questions.maxItems).toBe(2);
+  });
+
+  it('rejects quiz bursts that do not return the requested question count', async () => {
+    const provider = mockProvider(quizResponse([GOOD_MCQ, GOOD_NUMERIC, GOOD_ORDERING]));
+    const gen = new ContentGenerator(provider);
+
+    await expect(
+      gen.generateTopicQuizBurst(TOPIC, 'Algorithms', 'Search', 'Content...', 2)
+    ).rejects.toThrow('Expected exactly 2 questions for topic "binary-search", got 3');
   });
 });

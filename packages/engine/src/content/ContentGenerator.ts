@@ -141,19 +141,25 @@ export class ContentGenerator {
         throw new Error(`Failed to generate quiz for topic "${topic.title}" after retry`);
       }
 
-      return this.#parseAndFilterQuestions(retryBlock, topic.id);
+      return this.#parseAndFilterQuestions(retryBlock, topic.id, questionCount);
     }
 
-    return this.#parseAndFilterQuestions(toolBlock, topic.id);
+    return this.#parseAndFilterQuestions(toolBlock, topic.id, questionCount);
   }
 
-  #parseAndFilterQuestions(block: ToolUseBlock, topicId: string): Question[] {
+  #parseAndFilterQuestions(
+    block: ToolUseBlock,
+    topicId: string,
+    expectedQuestionCount: number
+  ): Question[] {
     const input = block.input as Record<string, unknown>;
     const rawQuestions = input.questions;
 
-    if (!Array.isArray(rawQuestions) || rawQuestions.length === 0) {
+    if (!Array.isArray(rawQuestions)) {
       throw new Error(`No questions generated for topic "${topicId}"`);
     }
+
+    this.#assertQuestionCount(topicId, rawQuestions.length, expectedQuestionCount);
 
     const questions: Question[] = [];
     let idCounter = 0;
@@ -176,7 +182,25 @@ export class ContentGenerator {
       throw new Error(`All generated questions for topic "${topicId}" failed validation`);
     }
 
+    this.#assertQuestionCount(topicId, questions.length, expectedQuestionCount, true);
+
     return questions;
+  }
+
+  #assertQuestionCount(
+    topicId: string,
+    actualCount: number,
+    expectedCount: number,
+    afterValidation: boolean = false
+  ): void {
+    if (actualCount === expectedCount) {
+      return;
+    }
+
+    const validationSuffix = afterValidation ? ' after validation' : '';
+    throw new Error(
+      `Expected exactly ${expectedCount} questions for topic "${topicId}", got ${actualCount}${validationSuffix}`
+    );
   }
 
   // --- Question Parsing ---

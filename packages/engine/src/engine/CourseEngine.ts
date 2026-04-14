@@ -250,7 +250,7 @@ export class CourseEngine extends EventEmitter {
 
     // Trigger async generation
     this.#contentManager
-      .generateSection(section, this.#curriculum.title)
+      .generateSection(section, this.#curriculum.title, this.#studentModel)
       .then((items) => {
         this.setSectionContent(items);
       })

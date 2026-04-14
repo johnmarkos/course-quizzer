@@ -11,7 +11,7 @@ import {
 } from '../src/prompts/quiz-generation.js';
 import type { ClaudeProvider } from '../src/provider/ClaudeProvider.js';
 import type { ProviderResponse } from '../src/provider/types.js';
-import type { Section, Topic } from '../src/curriculum/types.js';
+import type { Topic } from '../src/curriculum/types.js';
 import type { Question } from '../src/content/types.js';
 import {
   explanationResponse,
@@ -41,31 +41,6 @@ const TOPIC: Topic = {
   id: 'binary-search',
   title: 'Binary Search',
   description: 'Searching a sorted array by repeatedly dividing the search interval.',
-};
-
-const SECTION: Section = {
-  id: 'searching',
-  title: 'Search Algorithms',
-  order: 0,
-  topics: [TOPIC],
-};
-
-const TWO_TOPIC_SECTION: Section = {
-  id: 'sorting',
-  title: 'Sorting',
-  order: 1,
-  topics: [
-    {
-      id: 'merge-sort',
-      title: 'Merge Sort',
-      description: 'A divide-and-conquer sorting algorithm.',
-    },
-    {
-      id: 'quick-sort',
-      title: 'Quick Sort',
-      description: 'A partition-based sorting algorithm.',
-    },
-  ],
 };
 
 // --- Prompt Builders ---
@@ -105,7 +80,7 @@ describe('explanation prompt', () => {
 
 describe('quiz generation prompt', () => {
   it('exports version constant', () => {
-    expect(QUIZ_GENERATION_VERSION).toBe('1.0');
+    expect(QUIZ_GENERATION_VERSION).toBe('1.1');
   });
 
   it('builds prompt with topic and explanation context', () => {
@@ -242,7 +217,8 @@ describe('ContentGenerator', () => {
       TOPIC,
       'Algorithms',
       'Search',
-      'Explanation content'
+      'Explanation content',
+      2
     );
 
     expect(questions).toHaveLength(2);
@@ -263,7 +239,7 @@ describe('ContentGenerator', () => {
     );
     const gen = new ContentGenerator(provider);
 
-    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E');
+    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E', 5);
 
     expect(questions).toHaveLength(5);
     const types = questions.map((q) => q.type);
@@ -274,16 +250,15 @@ describe('ContentGenerator', () => {
     expect(types).toContain('two-stage');
   });
 
-  it('filters out low-quality questions silently', async () => {
+  it('rejects quiz bursts when validation drops below the requested count', async () => {
     const provider = mockProvider(
-      quizResponse([GOOD_MCQ, LENGTH_OUTLIER_MCQ, FRONT_MATTER_MCQ, GOOD_NUMERIC])
+      quizResponse([GOOD_MCQ, LENGTH_OUTLIER_MCQ, GOOD_NUMERIC])
     );
     const gen = new ContentGenerator(provider);
 
-    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E');
-
-    // LENGTH_OUTLIER_MCQ and FRONT_MATTER_MCQ should be filtered out
-    expect(questions).toHaveLength(2);
+    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E', 3)).rejects.toThrow(
+      'Expected exactly 3 questions for topic "binary-search", got 2 after validation'
+    );
   });
 
   it('retries explanation on malformed response', async () => {
@@ -306,7 +281,7 @@ describe('ContentGenerator', () => {
     );
     const gen = new ContentGenerator(provider);
 
-    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E');
+    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E', 1);
 
     expect(questions).toHaveLength(1);
   });
@@ -334,7 +309,7 @@ describe('ContentGenerator', () => {
     const provider = mockProvider(quizResponse([negTolerance]));
     const gen = new ContentGenerator(provider);
 
-    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E')).rejects.toThrow(
+    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E', 1)).rejects.toThrow(
       'failed validation'
     );
   });
@@ -343,7 +318,7 @@ describe('ContentGenerator', () => {
     const provider = mockProvider(quizResponse([LENGTH_OUTLIER_MCQ, FRONT_MATTER_MCQ]));
     const gen = new ContentGenerator(provider);
 
-    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E')).rejects.toThrow(
+    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E', 2)).rejects.toThrow(
       'failed validation'
     );
   });
@@ -357,5 +332,27 @@ describe('ContentGenerator', () => {
 
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids[0]).toContain('binary-search');
+  });
+
+  it('uses the requested question count when building the quiz prompt', async () => {
+    const provider = mockProvider(quizResponse([GOOD_MCQ, GOOD_NUMERIC]));
+    const gen = new ContentGenerator(provider);
+
+    await gen.generateTopicQuizBurst(TOPIC, 'Algorithms', 'Search', 'Content...', 2);
+
+    const quizCall = (provider.sendMessage as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(quizCall.messages[0].content).toContain('Generate exactly 2 quiz questions');
+    const tool = quizCall.tools[0];
+    expect(tool.inputSchema.properties.questions.minItems).toBe(2);
+    expect(tool.inputSchema.properties.questions.maxItems).toBe(2);
+  });
+
+  it('rejects quiz bursts that do not return the requested question count', async () => {
+    const provider = mockProvider(quizResponse([GOOD_MCQ, GOOD_NUMERIC, GOOD_ORDERING]));
+    const gen = new ContentGenerator(provider);
+
+    await expect(
+      gen.generateTopicQuizBurst(TOPIC, 'Algorithms', 'Search', 'Content...', 2)
+    ).rejects.toThrow('Expected exactly 2 questions for topic "binary-search", got 3');
   });
 });

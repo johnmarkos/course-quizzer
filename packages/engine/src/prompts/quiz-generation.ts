@@ -5,105 +5,109 @@
 
 import type { PromptMessages } from './types.js';
 
-export const QUIZ_GENERATION_VERSION = '1.0';
+export const QUIZ_GENERATION_VERSION = '1.1';
 
 // --- Tool Schema ---
 
-const QUIZ_TOOL = {
-  name: 'create_quiz_questions',
-  description:
-    'Generate 3-5 quiz questions for a single topic. ' +
-    'Use a mix of question types. Questions must be self-contained — ' +
-    'a student should understand the question without needing to reference source material.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      questions: {
-        type: 'array',
-        description: 'Array of quiz questions',
-        items: {
-          type: 'object',
-          properties: {
-            type: {
-              type: 'string',
-              enum: [
-                'multiple-choice',
-                'numeric-input',
-                'ordering',
-                'multi-select',
-                'two-stage',
-              ],
-              description: 'The question type',
+function buildQuizTool(count: number = 3) {
+  return {
+    name: 'create_quiz_questions',
+    description:
+      `Generate ${count} quiz questions for a single topic. ` +
+      'Use a mix of question types. Questions must be self-contained — ' +
+      'a student should understand the question without needing to reference source material.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        questions: {
+          type: 'array',
+          description: 'Array of quiz questions',
+          items: {
+            type: 'object',
+            properties: {
+              type: {
+                type: 'string',
+                enum: [
+                  'multiple-choice',
+                  'numeric-input',
+                  'ordering',
+                  'multi-select',
+                  'two-stage',
+                ],
+                description: 'The question type',
+              },
+              question: {
+                type: 'string',
+                description: 'The question text',
+              },
+              // Multiple choice fields
+              options: {
+                type: 'array',
+                items: { type: 'string' },
+                description:
+                  'Answer options (for multiple-choice, multi-select, two-stage)',
+              },
+              correctIndex: {
+                type: 'number',
+                description:
+                  'Index of the correct option (for multiple-choice, two-stage)',
+              },
+              // Numeric input fields
+              correctValue: {
+                type: 'number',
+                description: 'The correct numeric answer (for numeric-input)',
+              },
+              tolerance: {
+                type: 'number',
+                description: 'Acceptable tolerance (for numeric-input)',
+              },
+              unit: {
+                type: 'string',
+                description: 'Unit of measurement (for numeric-input)',
+              },
+              // Ordering fields
+              items: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Items to be ordered (for ordering)',
+              },
+              correctOrder: {
+                type: 'array',
+                items: { type: 'number' },
+                description:
+                  'Correct sequence as indices into items array (for ordering)',
+              },
+              // Multi-select fields
+              correctIndices: {
+                type: 'array',
+                items: { type: 'number' },
+                description: 'Indices of all correct options (for multi-select)',
+              },
+              // Two-stage fields
+              followUp: {
+                type: 'string',
+                description: 'Follow-up question text (for two-stage)',
+              },
+              followUpOptions: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Follow-up answer options (for two-stage)',
+              },
+              followUpCorrectIndex: {
+                type: 'number',
+                description: 'Index of the correct follow-up option (for two-stage)',
+              },
             },
-            question: {
-              type: 'string',
-              description: 'The question text',
-            },
-            // Multiple choice fields
-            options: {
-              type: 'array',
-              items: { type: 'string' },
-              description:
-                'Answer options (for multiple-choice, multi-select, two-stage)',
-            },
-            correctIndex: {
-              type: 'number',
-              description: 'Index of the correct option (for multiple-choice, two-stage)',
-            },
-            // Numeric input fields
-            correctValue: {
-              type: 'number',
-              description: 'The correct numeric answer (for numeric-input)',
-            },
-            tolerance: {
-              type: 'number',
-              description: 'Acceptable tolerance (for numeric-input)',
-            },
-            unit: {
-              type: 'string',
-              description: 'Unit of measurement (for numeric-input)',
-            },
-            // Ordering fields
-            items: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Items to be ordered (for ordering)',
-            },
-            correctOrder: {
-              type: 'array',
-              items: { type: 'number' },
-              description: 'Correct sequence as indices into items array (for ordering)',
-            },
-            // Multi-select fields
-            correctIndices: {
-              type: 'array',
-              items: { type: 'number' },
-              description: 'Indices of all correct options (for multi-select)',
-            },
-            // Two-stage fields
-            followUp: {
-              type: 'string',
-              description: 'Follow-up question text (for two-stage)',
-            },
-            followUpOptions: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Follow-up answer options (for two-stage)',
-            },
-            followUpCorrectIndex: {
-              type: 'number',
-              description: 'Index of the correct follow-up option (for two-stage)',
-            },
+            required: ['type', 'question'],
           },
-          required: ['type', 'question'],
+          minItems: count,
+          maxItems: count,
         },
-        minItems: 3,
-        maxItems: 5,
       },
+      required: ['questions'],
     },
-    required: ['questions'],
-  },
-};
+  };
+}
 
 // --- Prompt Builders ---
 
@@ -130,9 +134,10 @@ function buildUserPrompt(
   topicDescription: string,
   courseTitle: string,
   sectionTitle: string,
-  explanationContent: string
+  explanationContent: string,
+  count: number = 3
 ): string {
-  return `Generate 3-5 quiz questions for the following topic.
+  return `Generate exactly ${count} quiz questions for the following topic.
 
 Course: ${courseTitle}
 Section: ${sectionTitle}
@@ -155,7 +160,9 @@ export function buildQuizGenerationPrompt(params: {
   courseTitle: string;
   sectionTitle: string;
   explanationContent: string;
+  questionCount?: number;
 }): PromptMessages {
+  const count = params.questionCount ?? 3;
   return {
     system: buildSystemPrompt(),
     messages: [
@@ -166,11 +173,12 @@ export function buildQuizGenerationPrompt(params: {
           params.topicDescription,
           params.courseTitle,
           params.sectionTitle,
-          params.explanationContent
+          params.explanationContent,
+          count
         ),
       },
     ],
-    tools: [QUIZ_TOOL],
+    tools: [buildQuizTool(count)],
     toolChoice: { type: 'tool', name: 'create_quiz_questions' },
   };
 }

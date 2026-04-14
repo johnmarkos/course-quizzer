@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.3 — 2026-04-14
+
+### Features
+
+- **Engine:** Implement `Prefetcher` for background content generation — hides LLM latency by generating the next section while the student works on the current one
+- **Engine:** Implement `ContentCache` for in-memory storage of generated section items
+- **Engine:** Update `CourseEngine` to automatically check `ContentCache` in `startSection` and trigger background prefetching of the next section
+- Add `prefetch` configuration to `CourseEngineConfig` (enabled/disabled, generator reference)
+- 7 new engine tests covering cache, prefetcher, and engine integration (including failure modes)
+
+### Fixes
+
+- **Engine:** Prioritize active section generation over prefetch to ensure zero-latency for the current section
+- **Engine:** Sanitize error logs in `CourseEngine` and `Prefetcher` to avoid raw provider messages and potential sensitive data leaks
+- **Engine:** Update regression tests to assert full shared-limiter order
+- **Engine:** Increase test timeouts and clear mocks between runs for stability
+
 ## 0.8.2 — 2026-04-13
 
 ### Features

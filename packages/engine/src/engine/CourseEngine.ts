@@ -10,6 +10,8 @@ import { StudentModel } from '../student/StudentModel.js';
 import { ClaudeProvider } from '../provider/ClaudeProvider.js';
 import { ContentGenerator } from '../content/ContentGenerator.js';
 import { ContentManager } from '../content/ContentManager.js';
+import { ContentCache } from '../content/ContentCache.js';
+import { Prefetcher } from '../content/Prefetcher.js';
 import type {
   CourseEngineConfig,
   EngineSnapshot,
@@ -123,6 +125,8 @@ export class CourseEngine extends EventEmitter {
   #studentModel: StudentModel = new StudentModel();
   #lastAnswerResult: AnswerResult | null = null;
   #contentManager: ContentManager;
+  #contentCache: ContentCache | null = null;
+  #prefetcher: Prefetcher | null = null;
 
   constructor(config: CourseEngineConfig) {
     super();
@@ -144,6 +148,14 @@ export class CourseEngine extends EventEmitter {
         this.emit('apiCallComplete', { purpose: payload.purpose });
       }
     });
+
+    if (config.prefetch?.enabled) {
+      this.#contentCache = new ContentCache();
+      this.#prefetcher = new Prefetcher(
+        config.prefetch.generator ?? generator,
+        this.#contentCache
+      );
+    }
   }
 
   // --- State ---
@@ -207,6 +219,10 @@ export class CourseEngine extends EventEmitter {
 
     this.#curriculum = copyCurriculumPlan(curriculum);
 
+    if (this.#prefetcher) {
+      this.#prefetcher.setCurriculum(this.#curriculum);
+    }
+
     // Initialize mastery for all topics
     for (const section of this.#curriculum.sections) {
       for (const topic of section.topics) {
@@ -248,6 +264,13 @@ export class CourseEngine extends EventEmitter {
       totalSections: this.#curriculum.sections.length,
     });
 
+    // Check if content is already cached
+    if (this.#contentCache?.has(sectionId)) {
+      const cachedItems = this.#contentCache.get(sectionId)!;
+      this.setSectionContent(cachedItems);
+      return;
+    }
+
     // Trigger async generation
     this.#contentManager
       .generateSection(section, this.#curriculum.title, this.#studentModel)
@@ -281,6 +304,21 @@ export class CourseEngine extends EventEmitter {
 
     this.#setState('practicing');
     this.#emitCurrentItem();
+
+    // Trigger prefetch for the next section now that current content is ready
+    this.#triggerPrefetch(this.#currentSectionIndex);
+  }
+
+  #triggerPrefetch(sectionIndex: number): void {
+    if (!this.#prefetcher) {
+      return;
+    }
+
+    this.#prefetcher.prefetch(sectionIndex).catch((_err) => {
+      // Log but don't crash — prefetching is non-critical.
+      // We log a generic message to avoid leaking provider-specific error details.
+      console.error('Background prefetch failed: non-critical error during generation');
+    });
   }
 
   // --- Student Interaction ---
@@ -551,6 +589,11 @@ export class CourseEngine extends EventEmitter {
     engine.#curriculum = snapshot.curriculum
       ? copyCurriculumPlan(snapshot.curriculum)
       : null;
+
+    if (engine.#prefetcher && engine.#curriculum) {
+      engine.#prefetcher.setCurriculum(engine.#curriculum);
+    }
+
     engine.#currentSectionIndex = snapshot.currentSectionIndex;
     engine.#currentItemIndex = snapshot.currentItemIndex;
     engine.#sectionItems = snapshot.sectionItems.map(copyContentItem);

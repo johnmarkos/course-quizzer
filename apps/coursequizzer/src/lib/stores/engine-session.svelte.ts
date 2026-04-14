@@ -58,7 +58,12 @@ export type EngineSession = ReturnType<typeof createEngineSession>;
 // --- Factory ---
 
 export function createEngineSession(config: EngineSessionConfig) {
-  const engineConfig: CourseEngineConfig = { apiKey: config.apiKey };
+  const engineConfig: CourseEngineConfig = {
+    apiKey: config.apiKey,
+    prefetch: {
+      enabled: true,
+    },
+  };
   let initialError: ErrorInfo | null = null;
 
   function clearBadSnapshot(): void {

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.4 — 2026-04-14
+
+### Features
+
+- **Engine/App:** Support additional question types for practical skills: `checklist`, `code`, and `self-evaluation`
+- **Engine:** Updated `quiz-generation` prompt (v1.2) to support generating these new types for procedural and technical topics
+- **Engine:** Added parsing and grading logic for the new types, including regex-based validation for code snippets
+- **App:** Updated learn flow UI to render interactive checklists, code editors (textarea), and self-evaluation options
+- **App:** Added state management and answer handlers for the new question types in the Svelte 5 learn page
+
+### Fixes
+
+- **Engine:** Updated quality filters to support the new question types, enabling duplicate option checks for checklists and self-evaluations
+- **Engine:** Updated version expectation in content generator tests to match the new prompt version
+- 5 new engine tests covering the grading and serialization of the new question types
+
 ## 0.8.3 — 2026-04-14
 
 ### Features

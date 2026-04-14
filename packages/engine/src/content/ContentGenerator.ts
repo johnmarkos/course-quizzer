@@ -231,6 +231,12 @@ export class ContentGenerator {
         return this.#parseMultiSelect(obj, id, topicId, questionText);
       case 'two-stage':
         return this.#parseTwoStage(obj, id, topicId, questionText);
+      case 'checklist':
+        return this.#parseChecklist(obj, id, topicId, questionText);
+      case 'code':
+        return this.#parseCode(obj, id, topicId, questionText);
+      case 'self-evaluation':
+        return this.#parseSelfEvaluation(obj, id, topicId, questionText);
       default:
         throw new Error(`Unknown question type: ${type}`);
     }
@@ -371,6 +377,63 @@ export class ContentGenerator {
       followUp,
       followUpOptions,
       followUpCorrectIndex,
+    };
+  }
+
+  #parseChecklist(
+    obj: Record<string, unknown>,
+    id: string,
+    topicId: string,
+    question: string
+  ): Question {
+    const items = this.#requireStringArray(obj.items, 'items', 1);
+
+    return {
+      type: 'checklist',
+      id,
+      topicId,
+      question,
+      items,
+    };
+  }
+
+  #parseCode(
+    obj: Record<string, unknown>,
+    id: string,
+    topicId: string,
+    question: string
+  ): Question {
+    const language = this.#requireString(obj.language, 'language');
+    const initialCode =
+      typeof obj.initialCode === 'string' ? obj.initialCode : undefined;
+    const expectedPattern =
+      typeof obj.expectedPattern === 'string' ? obj.expectedPattern : undefined;
+
+    return {
+      type: 'code',
+      id,
+      topicId,
+      question,
+      language,
+      initialCode,
+      expectedPattern,
+    };
+  }
+
+  #parseSelfEvaluation(
+    obj: Record<string, unknown>,
+    id: string,
+    topicId: string,
+    question: string
+  ): Question {
+    const options = this.#requireStringArray(obj.options, 'options', 2);
+
+    return {
+      type: 'self-evaluation',
+      id,
+      topicId,
+      question,
+      options,
     };
   }
 

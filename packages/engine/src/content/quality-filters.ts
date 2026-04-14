@@ -125,7 +125,10 @@ function getOptions(question: Question): string[] | undefined {
     case 'multiple-choice':
     case 'multi-select':
     case 'two-stage':
+    case 'self-evaluation':
       return question.options;
+    case 'checklist':
+      return question.items;
     default:
       return undefined;
   }

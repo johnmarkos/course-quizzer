@@ -31,6 +31,14 @@ function mockSectionContent(): ContentItem[] {
 }
 
 describe('Exporter & Importer', () => {
+  function createValidSnapshot(): ReturnType<CourseEngine['serialize']> {
+    const engine = new CourseEngine({ apiKey: 'sk-test-key' });
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    engine.setSectionContent(mockSectionContent());
+    return engine.serialize();
+  }
+
   it('round-trips full course data with generated content', () => {
     const engine = new CourseEngine({ apiKey: 'sk-test-key' });
     engine.loadCurriculum(mockCurriculum());
@@ -96,5 +104,55 @@ describe('Exporter & Importer', () => {
     expect(() =>
       importer.import('{"type": "coursequizzer-export", "version": 1, "data": {}}')
     ).toThrow('Invalid engine snapshot');
+  });
+
+  it('rejects bundles with malformed snapshot indices and content collections', () => {
+    const importer = new Importer();
+    const validSnapshot = createValidSnapshot();
+
+    const invalidBundles = [
+      {
+        ...validSnapshot,
+        currentSectionIndex: 1.5,
+      },
+      {
+        ...validSnapshot,
+        currentItemIndex: -0.25,
+      },
+      {
+        ...validSnapshot,
+        sectionItems: { bad: true },
+      },
+      {
+        ...validSnapshot,
+        allGeneratedContent: { 'section-1': 1 },
+      },
+    ];
+
+    for (const snapshot of invalidBundles) {
+      const bundle = JSON.stringify({
+        type: 'coursequizzer-export',
+        version: 1,
+        data: snapshot,
+      });
+
+      expect(() => importer.import(bundle)).toThrow('Invalid engine snapshot');
+    }
+  });
+
+  it('rejects version 3 bundles when malformed allGeneratedContent is present', () => {
+    const importer = new Importer();
+    const validSnapshot = createValidSnapshot();
+    const bundle = JSON.stringify({
+      type: 'coursequizzer-export',
+      version: 1,
+      data: {
+        ...validSnapshot,
+        version: 3,
+        allGeneratedContent: { bad: 1 },
+      },
+    });
+
+    expect(() => importer.import(bundle)).toThrow('Invalid engine snapshot');
   });
 });

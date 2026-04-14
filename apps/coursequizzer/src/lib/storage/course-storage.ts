@@ -4,7 +4,7 @@
 
 import {
   validateCurriculumPlan,
-  SNAPSHOT_VERSION,
+  validateEngineSnapshot,
   type CurriculumPlan,
   type EngineSnapshot,
 } from 'quizzer-engine';
@@ -48,170 +48,11 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
-}
-
-function isValidEngineState(value: unknown): boolean {
-  return (
-    value === 'idle' ||
-    value === 'planning' ||
-    value === 'ready' ||
-    value === 'loading' ||
-    value === 'practicing' ||
-    value === 'answered' ||
-    value === 'sectionComplete' ||
-    value === 'complete'
-  );
-}
-
-function isValidStudentState(value: unknown): boolean {
-  if (!isPlainObject(value)) return false;
-  if (!isPlainObject(value.masteryByTopic) || !isStringArray(value.gaps)) return false;
-
-  return Object.entries(value.masteryByTopic).every(([topicId, mastery]) => {
-    if (!isPlainObject(mastery)) return false;
-    return (
-      mastery.topicId === topicId &&
-      typeof mastery.score === 'number' &&
-      typeof mastery.questionsAnswered === 'number' &&
-      typeof mastery.questionsCorrect === 'number'
-    );
-  });
-}
-
-function isValidStudentAnswer(value: unknown): boolean {
-  if (!isPlainObject(value) || typeof value.type !== 'string') return false;
-
-  switch (value.type) {
-    case 'multiple-choice':
-      return typeof value.selectedIndex === 'number';
-    case 'numeric-input':
-      return typeof value.value === 'number';
-    case 'ordering':
-      return (
-        Array.isArray(value.order) &&
-        value.order.every((entry) => typeof entry === 'number')
-      );
-    case 'multi-select':
-      return (
-        Array.isArray(value.selectedIndices) &&
-        value.selectedIndices.every((entry) => typeof entry === 'number')
-      );
-    case 'two-stage':
-      return (
-        typeof value.selectedIndex === 'number' &&
-        typeof value.followUpSelectedIndex === 'number'
-      );
-    default:
-      return false;
-  }
-}
-
-function isValidAnswerResult(value: unknown): boolean {
-  if (!isPlainObject(value)) return false;
-  return (
-    typeof value.correct === 'boolean' &&
-    typeof value.questionId === 'string' &&
-    typeof value.topicId === 'string' &&
-    typeof value.correctAnswer === 'string' &&
-    (value.explanation === undefined || typeof value.explanation === 'string') &&
-    isValidStudentAnswer(value.userAnswer)
-  );
-}
-
-function isValidContentItem(value: unknown): boolean {
-  if (!isPlainObject(value) || typeof value.type !== 'string') return false;
-
-  switch (value.type) {
-    case 'explanation':
-      return (
-        typeof value.topicId === 'string' &&
-        typeof value.title === 'string' &&
-        typeof value.content === 'string'
-      );
-    case 'multiple-choice':
-      return (
-        typeof value.id === 'string' &&
-        typeof value.topicId === 'string' &&
-        typeof value.question === 'string' &&
-        isStringArray(value.options) &&
-        typeof value.correctIndex === 'number'
-      );
-    case 'numeric-input':
-      return (
-        typeof value.id === 'string' &&
-        typeof value.topicId === 'string' &&
-        typeof value.question === 'string' &&
-        typeof value.correctValue === 'number' &&
-        (value.tolerance === undefined || typeof value.tolerance === 'number') &&
-        (value.unit === undefined || typeof value.unit === 'string')
-      );
-    case 'ordering':
-      return (
-        typeof value.id === 'string' &&
-        typeof value.topicId === 'string' &&
-        typeof value.question === 'string' &&
-        isStringArray(value.items) &&
-        Array.isArray(value.correctOrder) &&
-        value.correctOrder.every((entry) => typeof entry === 'number')
-      );
-    case 'multi-select':
-      return (
-        typeof value.id === 'string' &&
-        typeof value.topicId === 'string' &&
-        typeof value.question === 'string' &&
-        isStringArray(value.options) &&
-        Array.isArray(value.correctIndices) &&
-        value.correctIndices.every((entry) => typeof entry === 'number')
-      );
-    case 'two-stage':
-      return (
-        typeof value.id === 'string' &&
-        typeof value.topicId === 'string' &&
-        typeof value.question === 'string' &&
-        isStringArray(value.options) &&
-        typeof value.correctIndex === 'number' &&
-        typeof value.followUp === 'string' &&
-        isStringArray(value.followUpOptions) &&
-        typeof value.followUpCorrectIndex === 'number'
-      );
-    default:
-      return false;
-  }
-}
-
 function validateSnapshot(value: unknown): EngineSnapshot | null {
-  if (!isPlainObject(value)) return null;
-
-  const snapshot = sanitizeSnapshot(value as EngineSnapshot);
-
-  // Supported versions for restoration
-  const supportedVersions = [3, SNAPSHOT_VERSION];
-
-  if (
-    !supportedVersions.includes(snapshot.version) ||
-    !isValidEngineState(snapshot.state) ||
-    !Number.isInteger(snapshot.currentSectionIndex) ||
-    !Number.isInteger(snapshot.currentItemIndex) ||
-    !Array.isArray(snapshot.sectionItems) ||
-    !snapshot.sectionItems.every(isValidContentItem) ||
-    (snapshot.version === SNAPSHOT_VERSION &&
-      !isPlainObject(snapshot.allGeneratedContent)) ||
-    (snapshot.version === SNAPSHOT_VERSION &&
-      !Object.values(snapshot.allGeneratedContent).every(
-        (items) => Array.isArray(items) && items.every(isValidContentItem)
-      )) ||
-    !isValidStudentState(snapshot.studentState) ||
-    (snapshot.curriculum !== null && !isValidCurriculum(snapshot.curriculum)) ||
-    !('lastAnswerResult' in snapshot) ||
-    (snapshot.lastAnswerResult !== null &&
-      !isValidAnswerResult(snapshot.lastAnswerResult))
-  ) {
-    return null;
-  }
-
-  return deepCopy(snapshot);
+  const sanitized = isPlainObject(value)
+    ? sanitizeSnapshot(value as EngineSnapshot)
+    : value;
+  return validateEngineSnapshot(sanitized);
 }
 
 function isValidCurriculum(value: unknown): value is CurriculumPlan {

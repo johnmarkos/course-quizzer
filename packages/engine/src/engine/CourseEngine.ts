@@ -92,6 +92,26 @@ function copyAnswerResult(result: AnswerResult): AnswerResult {
   };
 }
 
+function isValidGeneratedContentRecord(
+  value: unknown
+): value is Record<string, ContentItem[]> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  return Object.values(value).every(
+    (items) =>
+      Array.isArray(items) &&
+      items.every((item) => {
+        try {
+          return copyContentItem(item as ContentItem) !== undefined;
+        } catch {
+          return false;
+        }
+      })
+  );
+}
+
 export class CourseEngine extends EventEmitter {
   #state: EngineState = 'idle';
   #config: CourseEngineConfig;
@@ -504,8 +524,10 @@ export class CourseEngine extends EventEmitter {
       if (snapshot.version === 3) {
         snapshot = {
           ...snapshot,
-          version: 4,
-          allGeneratedContent: snapshot.allGeneratedContent || {},
+          version: SNAPSHOT_VERSION,
+          allGeneratedContent: isValidGeneratedContentRecord(snapshot.allGeneratedContent)
+            ? snapshot.allGeneratedContent
+            : {},
         };
       } else {
         throw new Error(

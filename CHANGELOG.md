@@ -10,6 +10,10 @@
 - **Engine:** Robust validation — Imported bundles are validated for structure and version compatibility before restoration
 - **Engine:** Automatic migration — Support for migrating version 3 snapshots to version 4 (adding `allGeneratedContent` support)
 
+### Fixes
+
+- **Engine/App:** Tighten import validation so malformed snapshot indices, section content, and `allGeneratedContent` payloads are rejected before persistence or restore
+
 ## 0.8.0 — 2026-04-13
 
 ### Infrastructure

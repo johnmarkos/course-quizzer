@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ContentManager } from '../src/content/ContentManager.js';
+import { StudentModel } from '../src/student/StudentModel.js';
 import type { ContentGenerator } from '../src/content/ContentGenerator.js';
 import type { Section, Topic } from '../src/curriculum/types.js';
 
@@ -49,6 +50,41 @@ describe('ContentManager', () => {
     expect(events[1].status).toBe('complete');
     expect(events[2].purpose).toContain('Quiz');
     expect(events[2].status).toBe('start');
+  });
+
+  it('passes adaptive question counts into quiz generation', async () => {
+    const generator = {
+      generateTopicExplanation: vi.fn().mockResolvedValue({
+        type: 'explanation',
+        topicId: 't1',
+        title: 'Exp',
+        content: 'Content',
+      }),
+      generateTopicQuizBurst: vi.fn().mockResolvedValue([]),
+    } as unknown as ContentGenerator;
+
+    const studentModel = new StudentModel({
+      masteryByTopic: {
+        t1: {
+          topicId: 't1',
+          score: 0.9,
+          questionsAnswered: 6,
+          questionsCorrect: 6,
+        },
+      },
+      gaps: [],
+    });
+
+    const manager = new ContentManager(generator, () => {});
+    await manager.generateSection(SECTION, 'Course', studentModel);
+
+    expect(generator.generateTopicQuizBurst).toHaveBeenCalledWith(
+      TOPIC,
+      'Course',
+      'Section 1',
+      'Content',
+      2
+    );
   });
 
   it('emits complete event even if generation fails', async () => {

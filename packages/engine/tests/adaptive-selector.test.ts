@@ -1,52 +1,53 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { AdaptiveSelector } from '../src/student/AdaptiveSelector.js';
 import { StudentModel } from '../src/student/StudentModel.js';
 
-describe.skip('AdaptiveSelector', () => {
-  it('recommends more questions for topics with gaps', () => {
+describe('AdaptiveSelector', () => {
+  it('returns baseline config for untracked topics', () => {
+    const studentModel = new StudentModel();
+    const selector = new AdaptiveSelector(studentModel);
+
+    expect(selector.getTopicConfig('unknown-topic')).toEqual({
+      targetQuestionCount: 3,
+    });
+  });
+
+  it('returns more questions for tracked topics with low mastery', () => {
     const studentModel = new StudentModel();
     studentModel.initializeTopic('gap-topic');
-    studentModel.initializeTopic('mastered-topic');
 
-    // mastered-topic: get above 0.5 threshold
-    // 4 correct answers = 0.60
-    for (let i = 0; i < 4; i++) {
-      studentModel.recordAnswer({ topicId: 'mastered-topic', correct: true });
-    }
-
-    // gap-topic: stays at 0 (a gap)
-
-    const selector = new AdaptiveSelector(studentModel);
-
-    const gapConfig = selector.getTopicConfig('gap-topic');
-    const masteredConfig = selector.getTopicConfig('mastered-topic');
-
-    expect(gapConfig.targetQuestionCount).toBeGreaterThan(
-      masteredConfig.targetQuestionCount
-    );
-    expect(gapConfig.targetQuestionCount).toBe(5); // Default for gaps
-    expect(masteredConfig.targetQuestionCount).toBe(2); // Default for mastered
+    expect(AdaptiveSelector.getQuestionCount(studentModel, 'gap-topic')).toBe(5);
   });
 
-  it('recommends baseline for unknown topics', () => {
-    const studentModel = new StudentModel();
-    const selector = new AdaptiveSelector(studentModel);
+  it('returns fewer questions for highly mastered topics', () => {
+    const studentModel = new StudentModel({
+      masteryByTopic: {
+        topic1: {
+          topicId: 'topic1',
+          score: 0.9,
+          questionsAnswered: 5,
+          questionsCorrect: 5,
+        },
+      },
+      gaps: [],
+    });
 
-    const config = selector.getTopicConfig('unknown-topic');
-    expect(config.targetQuestionCount).toBe(3); // Baseline
+    expect(AdaptiveSelector.getQuestionCount(studentModel, 'topic1')).toBe(2);
   });
 
-  it('adjusts question difficulty based on mastery', () => {
-    // Placeholder for future adaptive logic
-    const studentModel = new StudentModel();
-    studentModel.initializeTopic('struggling-topic');
-    // 0.15 score
-    studentModel.recordAnswer({ topicId: 'struggling-topic', correct: true });
+  it('returns default question count for in-progress topics', () => {
+    const studentModel = new StudentModel({
+      masteryByTopic: {
+        topic1: {
+          topicId: 'topic1',
+          score: 0.6,
+          questionsAnswered: 2,
+          questionsCorrect: 1,
+        },
+      },
+      gaps: [],
+    });
 
-    const selector = new AdaptiveSelector(studentModel);
-    const config = selector.getTopicConfig('struggling-topic');
-
-    // For now just check it returns a valid config
-    expect(config).toHaveProperty('targetQuestionCount');
+    expect(AdaptiveSelector.getQuestionCount(studentModel, 'topic1')).toBe(3);
   });
 });

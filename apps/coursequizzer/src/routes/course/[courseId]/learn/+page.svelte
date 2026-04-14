@@ -7,8 +7,6 @@
     createEngineSession,
     type EngineSession,
   } from '$lib/stores/engine-session.svelte.js';
-  import type { ContentItem, Section } from 'quizzer-engine';
-  import { normalizeError } from '$lib/errors/app-errors.js';
 
   // --- State ---
 

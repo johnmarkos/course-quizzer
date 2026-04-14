@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.1 — 2026-04-13
+
+### Features
+
+- `AdaptiveSelector` now sizes quiz bursts from student mastery within the engine-owned content generation flow
+- `ContentManager` passes adaptive question counts into `ContentGenerator.generateTopicQuizBurst`
+- Updated `buildQuizGenerationPrompt` to support configurable `questionCount` and dynamic tool schema limits
+- 4 new `AdaptiveSelector` tests and 1 new `ContentManager` bias verification test
+
+### Fixes
+
+- Enforce exact adaptive quiz burst counts in both the quiz tool schema and `ContentGenerator` validation so generated bursts cannot drift above or below the requested size
+
 ## 0.8.0 — 2026-04-13
 
 ### Infrastructure

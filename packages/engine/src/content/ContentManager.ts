@@ -1,4 +1,6 @@
 import type { Section } from '../curriculum/types.js';
+import { AdaptiveSelector } from '../student/AdaptiveSelector.js';
+import type { StudentModel } from '../student/StudentModel.js';
 import type { ContentItem } from './types.js';
 import type { ContentGenerator } from './ContentGenerator.js';
 
@@ -24,8 +26,13 @@ export class ContentManager {
    * Generates all content for a section.
    * Emits apiCallStart/Complete events for each topic's generation steps.
    */
-  async generateSection(section: Section, courseTitle: string): Promise<ContentItem[]> {
+  async generateSection(
+    section: Section,
+    courseTitle: string,
+    studentModel?: StudentModel
+  ): Promise<ContentItem[]> {
     const items: ContentItem[] = [];
+    const adaptiveSelector = studentModel ? new AdaptiveSelector(studentModel) : null;
 
     for (const topic of section.topics) {
       // 1. Explanation
@@ -54,11 +61,14 @@ export class ContentManager {
         status: 'start',
       });
       try {
+        const questionCount =
+          adaptiveSelector?.getTopicConfig(topic.id).targetQuestionCount ?? 3;
         const questions = await this.#generator.generateTopicQuizBurst(
           topic,
           courseTitle,
           section.title,
-          explanation.content
+          explanation.content,
+          questionCount
         );
         items.push(...questions);
       } finally {

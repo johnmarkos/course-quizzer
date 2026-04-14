@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.4 — 2026-04-13
+
+### Features
+
+- **App:** Detailed section completion summary with topic-level mastery display
+- **App:** Visual cues for topic mastery (Green: Mastered, Amber: Gaining, Red: Struggling)
+- **App:** "Review suggested" badges for topics identified as knowledge gaps (< 0.5 mastery)
+- **App:** Enhanced "Next Section" button with smoother transitions and improved styling
+- **App:** New unit test `section-summary.test.ts` verifying summary data availability
+
+### Fixes
+
+- **Engine:** Resolved circular dependency between `CourseEngine.ts` and `snapshot-validation.ts` by moving `SNAPSHOT_VERSION` to a new `constants.ts` file — this fixed a runtime error where `validateEngineSnapshot` was `undefined` during tests
+
 ## 0.8.3 — 2026-04-14
 
 ### Features

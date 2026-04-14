@@ -1,5 +1,5 @@
 import { validateCurriculumPlan } from '../curriculum/SyllabusParser.js';
-import { SNAPSHOT_VERSION } from '../engine/CourseEngine.js';
+import { SNAPSHOT_VERSION } from '../engine/constants.js';
 import type { CurriculumPlan, EngineSnapshot } from '../engine/types.js';
 
 function deepCopy<T>(value: T): T {

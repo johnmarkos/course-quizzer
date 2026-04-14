@@ -87,6 +87,51 @@ describe('ContentCache', () => {
     cache.clear();
     expect(cache.has('s1')).toBe(false);
   });
+
+  it('defensively copies cached items on set and get', () => {
+    const cache = new ContentCache();
+    const sourceItems: ContentItem[] = [
+      {
+        type: 'multiple-choice',
+        id: 'q1',
+        topicId: 't1',
+        question: 'Original question',
+        options: ['A', 'B'],
+        correctIndex: 0,
+      },
+    ];
+
+    cache.set('s1', sourceItems);
+
+    sourceItems[0].question = 'Mutated source question';
+    sourceItems[0].options[0] = 'Mutated source option';
+
+    const firstRead = cache.get('s1');
+    expect(firstRead).toEqual([
+      {
+        type: 'multiple-choice',
+        id: 'q1',
+        topicId: 't1',
+        question: 'Original question',
+        options: ['A', 'B'],
+        correctIndex: 0,
+      },
+    ]);
+
+    firstRead![0].question = 'Mutated cached question';
+    firstRead![0].options[0] = 'Mutated cached option';
+
+    expect(cache.get('s1')).toEqual([
+      {
+        type: 'multiple-choice',
+        id: 'q1',
+        topicId: 't1',
+        question: 'Original question',
+        options: ['A', 'B'],
+        correctIndex: 0,
+      },
+    ]);
+  });
 });
 
 describe('Prefetcher', () => {
@@ -143,7 +188,8 @@ describe('CourseEngine + Prefetcher integration', () => {
     const generator = new ContentGenerator(provider);
     const engine = new CourseEngine({
       apiKey: 'test',
-      prefetch: { enabled: true, generator },
+      generator,
+      prefetch: { enabled: true },
     });
 
     engine.loadCurriculum(MOCK_PLAN);
@@ -188,17 +234,22 @@ describe('CourseEngine + Prefetcher integration', () => {
     const provider = mockProvider();
     const generator = new ContentGenerator(provider);
 
-    // Mock generator methods
     const expSpy = vi
       .spyOn(generator, 'generateTopicExplanation')
-      .mockResolvedValue(MOCK_EXPLANATION_T2 as any);
+      .mockImplementation(async (topic) => ({
+        type: 'explanation',
+        topicId: topic.id,
+        title: `Explanation for ${topic.id}`,
+        content: `Content for ${topic.id}`,
+      }));
     vi.spyOn(generator, 'generateTopicQuizBurst').mockResolvedValue(
       MOCK_QUESTIONS_T2 as any
     );
 
     const engine = new CourseEngine({
       apiKey: 'test',
-      prefetch: { enabled: true, generator },
+      generator,
+      prefetch: { enabled: true },
     });
 
     engine.loadCurriculum(MOCK_PLAN);
@@ -207,21 +258,45 @@ describe('CourseEngine + Prefetcher integration', () => {
     // Wait for fire-and-forget prefetch
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    expect(expSpy).toHaveBeenCalled();
+    expect(expSpy).toHaveBeenCalledTimes(2);
+    expect(expSpy).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ id: 't2' }),
+      'Test Course',
+      'Section 2'
+    );
+    expect(expSpy).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ id: 't1' }),
+      'Test Course',
+      'Section 1'
+    );
   });
 
   it('handles prefetch failure gracefully without affecting engine state', async () => {
     const provider = mockProvider();
     const generator = new ContentGenerator(provider);
 
-    // Force prefetch to fail
-    vi.spyOn(generator, 'generateTopicExplanation').mockRejectedValue(
-      new Error('LLM error')
+    vi.spyOn(generator, 'generateTopicExplanation').mockImplementation(async (topic) => {
+      if (topic.id === 't2') {
+        throw new Error('LLM error');
+      }
+
+      return {
+        type: 'explanation',
+        topicId: topic.id,
+        title: `Explanation for ${topic.id}`,
+        content: `Content for ${topic.id}`,
+      };
+    });
+    vi.spyOn(generator, 'generateTopicQuizBurst').mockResolvedValue(
+      MOCK_QUESTIONS_T2 as any
     );
 
     const engine = new CourseEngine({
       apiKey: 'test',
-      prefetch: { enabled: true, generator },
+      generator,
+      prefetch: { enabled: true },
     });
 
     engine.loadCurriculum(MOCK_PLAN);
@@ -232,13 +307,18 @@ describe('CourseEngine + Prefetcher integration', () => {
     // Wait for fire-and-forget prefetch to fail
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    expect(engine.state).toBe('loading');
+    expect(engine.state).toBe('practicing');
+    expect(engine.currentItem).toEqual({
+      type: 'explanation',
+      topicId: 't1',
+      title: 'Explanation for t1',
+      content: 'Content for t1',
+    });
 
     // Now startSection(s2) should work normally and transition to loading
-    engine.setSectionContent([
-      { type: 'explanation', topicId: 't1', title: 'E1', content: 'C1' },
-    ]);
-    engine.nextItem(); // complete s1
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem();
 
     engine.startSection('s2');
     expect(engine.state).toBe('loading');

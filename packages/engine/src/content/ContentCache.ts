@@ -5,6 +5,35 @@
 
 import type { ContentItem } from './types.js';
 
+function copyContentItem(item: ContentItem): ContentItem {
+  switch (item.type) {
+    case 'explanation':
+      return { ...item };
+    case 'multiple-choice':
+      return { ...item, options: [...item.options] };
+    case 'numeric-input':
+      return { ...item };
+    case 'ordering':
+      return {
+        ...item,
+        items: [...item.items],
+        correctOrder: [...item.correctOrder],
+      };
+    case 'multi-select':
+      return {
+        ...item,
+        options: [...item.options],
+        correctIndices: [...item.correctIndices],
+      };
+    case 'two-stage':
+      return {
+        ...item,
+        options: [...item.options],
+        followUpOptions: [...item.followUpOptions],
+      };
+  }
+}
+
 export class ContentCache {
   #cache = new Map<string, ContentItem[]>();
 
@@ -12,14 +41,15 @@ export class ContentCache {
    * Set the content items for a specific section.
    */
   set(sectionId: string, items: ContentItem[]): void {
-    this.#cache.set(sectionId, items);
+    this.#cache.set(sectionId, items.map(copyContentItem));
   }
 
   /**
    * Retrieve the content items for a section.
    */
   get(sectionId: string): ContentItem[] | undefined {
-    return this.#cache.get(sectionId);
+    const items = this.#cache.get(sectionId);
+    return items?.map(copyContentItem);
   }
 
   /**

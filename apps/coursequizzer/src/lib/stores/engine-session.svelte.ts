@@ -6,8 +6,6 @@
 
 import {
   CourseEngine,
-  ClaudeProvider,
-  ContentGenerator,
   type CourseEngineConfig,
   type CurriculumPlan,
   type EngineState,
@@ -64,7 +62,6 @@ export function createEngineSession(config: EngineSessionConfig) {
     apiKey: config.apiKey,
     prefetch: {
       enabled: true,
-      generator: new ContentGenerator(new ClaudeProvider({ apiKey: config.apiKey })),
     },
   };
   let initialError: ErrorInfo | null = null;

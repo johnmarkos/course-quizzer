@@ -151,7 +151,10 @@ export class CourseEngine extends EventEmitter {
 
     if (config.prefetch?.enabled) {
       this.#contentCache = new ContentCache();
-      this.#prefetcher = new Prefetcher(config.prefetch.generator, this.#contentCache);
+      this.#prefetcher = new Prefetcher(
+        config.prefetch.generator ?? generator,
+        this.#contentCache
+      );
     }
   }
 

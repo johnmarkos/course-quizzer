@@ -29,7 +29,7 @@ export type CourseEngineConfig = {
   generator?: ContentGenerator;
   prefetch?: {
     enabled: boolean;
-    generator: ContentGenerator;
+    generator?: ContentGenerator;
   };
 };
 

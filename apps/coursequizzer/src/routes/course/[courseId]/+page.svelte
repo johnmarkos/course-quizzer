@@ -10,6 +10,7 @@
   } from '$lib/stores/course-progress.js';
   import { normalizeError } from '$lib/errors/app-errors.js';
   import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+  import { Exporter, SNAPSHOT_VERSION } from 'quizzer-engine';
 
   const courseId = $derived(page.params.courseId);
 
@@ -47,6 +48,38 @@
     goto('/');
   }
 
+  // --- Export logic ---
+
+  function exportCourse() {
+    if (!course) return;
+    try {
+      const exporter = new Exporter();
+      // Use the snapshot directly if available, or create a minimal one from curriculum
+      const snapshot = course.snapshot || {
+        version: SNAPSHOT_VERSION,
+        state: 'ready',
+        curriculum: course.curriculum,
+        currentSectionIndex: -1,
+        currentItemIndex: -1,
+        sectionItems: [],
+        allGeneratedContent: {},
+        studentState: { masteryByTopic: {}, gaps: [] },
+        lastAnswerResult: null,
+      };
+
+      const bundle = exporter.exportToString(snapshot);
+      const blob = new Blob([bundle], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `course-export-${course.title.toLowerCase().replace(/\s+/g, '-')}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Export failed: ${normalizeError(err).message}`);
+    }
+  }
+
   // --- Section resume logic ---
 
   /**
@@ -78,8 +111,15 @@
     <ErrorAlert message={loadError} />
   {:else if course}
     <header>
-      <h1>{course.title}</h1>
-      <p class="description">{course.curriculum.description}</p>
+      <div class="header-main">
+        <div>
+          <h1>{course.title}</h1>
+          <p class="description">{course.curriculum.description}</p>
+        </div>
+        <button type="button" class="btn-secondary" onclick={exportCourse}>
+          Export Course
+        </button>
+      </div>
 
       {#if progress && progress.hasProgress}
         <div class="progress-bar-container">
@@ -174,6 +214,13 @@
 
   header {
     margin-bottom: 1.5rem;
+  }
+
+  .header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
   }
 
   .description {

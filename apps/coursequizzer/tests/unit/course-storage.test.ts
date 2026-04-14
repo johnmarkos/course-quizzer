@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   createCourse,
   getCourse,
+  importCourse,
   listCourses,
   updateCourse,
   deleteCourse,
@@ -65,6 +66,7 @@ function mockSnapshot(): EngineSnapshot {
     currentSectionIndex: 0,
     currentItemIndex: 0,
     sectionItems: [],
+    allGeneratedContent: {},
     studentState: { masteryByTopic: {}, gaps: [] },
     lastAnswerResult: null,
   };
@@ -276,6 +278,25 @@ describe('course-storage', () => {
     storage.setItem(COURSES_STORAGE_KEY, JSON.stringify([recordWithOldSnapshot]));
 
     expect(getCourse('old-snapshot', storage)?.snapshot).toBeNull();
+  });
+
+  it('rejects imported version 3 snapshots with malformed allGeneratedContent', () => {
+    const version3Snapshot = {
+      ...mockSnapshot(),
+      version: 3,
+      allGeneratedContent: { bad: 1 },
+    } as EngineSnapshot;
+
+    expect(() =>
+      importCourse(
+        {
+          title: 'Imported course',
+          curriculum: mockCurriculumPlan(),
+          snapshot: version3Snapshot,
+        },
+        storage
+      )
+    ).toThrow('Invalid course snapshot in import data');
   });
 
   // --- Security: no API key in persisted data ---

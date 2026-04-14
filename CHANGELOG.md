@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.2 — 2026-04-13
+
+### Features
+
+- **Engine/App:** Implement Export and Import functionality — users can now download a JSON bundle of their course progress and import it on other machines
+- **Engine:** Export bundle includes curriculum, student mastery, and all generated content across all sections
+- **Engine:** Secure by design — API keys are strictly excluded from all export bundles
+- **Engine:** Robust validation — Imported bundles are validated for structure and version compatibility before restoration
+- **Engine:** Automatic migration — Support for migrating version 3 snapshots to version 4 (adding `allGeneratedContent` support)
+
+### Fixes
+
+- **Engine/App:** Tighten import validation so malformed snapshot indices, section content, and `allGeneratedContent` payloads are rejected before persistence or restore
+
 ## 0.8.1 — 2026-04-13
 
 ### Features

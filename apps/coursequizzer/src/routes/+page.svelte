@@ -63,6 +63,7 @@
 
   <nav>
     <a href="/course/new">New Course</a>
+    <a href="/import">Import Course</a>
     <a href="/settings">Settings</a>
   </nav>
 

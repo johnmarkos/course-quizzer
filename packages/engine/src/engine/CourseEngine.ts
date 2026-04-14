@@ -23,9 +23,11 @@ import type {
 import type { StudentAnswer, Question } from '../content/types.js';
 import type { Section } from '../curriculum/types.js';
 
-export const SNAPSHOT_VERSION = 3;
+export const SNAPSHOT_VERSION = 4;
 
 function copySection(section: Section): Section {
+  // ... (omitting for brevity in this thought but I'll provide full in the call)
+
   return {
     ...section,
     topics: section.topics.map((topic) => ({ ...topic })),
@@ -90,6 +92,26 @@ function copyAnswerResult(result: AnswerResult): AnswerResult {
   };
 }
 
+function isValidGeneratedContentRecord(
+  value: unknown
+): value is Record<string, ContentItem[]> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  return Object.values(value).every(
+    (items) =>
+      Array.isArray(items) &&
+      items.every((item) => {
+        try {
+          return copyContentItem(item as ContentItem) !== undefined;
+        } catch {
+          return false;
+        }
+      })
+  );
+}
+
 export class CourseEngine extends EventEmitter {
   #state: EngineState = 'idle';
   #config: CourseEngineConfig;
@@ -97,6 +119,7 @@ export class CourseEngine extends EventEmitter {
   #currentSectionIndex = -1;
   #currentItemIndex = -1;
   #sectionItems: ContentItem[] = [];
+  #allGeneratedContent: Record<string, ContentItem[]> = {};
   #studentModel: StudentModel = new StudentModel();
   #lastAnswerResult: AnswerResult | null = null;
   #contentManager: ContentManager;
@@ -246,10 +269,11 @@ export class CourseEngine extends EventEmitter {
   setSectionContent(items: ContentItem[]): void {
     this.#requireState('setSectionContent', 'loading');
 
+    const section = this.currentSection!;
     this.#sectionItems = items.map(copyContentItem);
+    this.#allGeneratedContent[section.id] = items.map(copyContentItem);
     this.#currentItemIndex = 0;
 
-    const section = this.currentSection!;
     this.emit('contentReady', {
       items: this.#sectionItems.map(copyContentItem),
       section,
@@ -474,6 +498,11 @@ export class CourseEngine extends EventEmitter {
   // --- Persistence ---
 
   serialize(): EngineSnapshot {
+    const allGeneratedContent: Record<string, ContentItem[]> = {};
+    for (const [id, items] of Object.entries(this.#allGeneratedContent)) {
+      allGeneratedContent[id] = items.map(copyContentItem);
+    }
+
     return {
       version: SNAPSHOT_VERSION,
       state: this.#state,
@@ -481,6 +510,7 @@ export class CourseEngine extends EventEmitter {
       currentSectionIndex: this.#currentSectionIndex,
       currentItemIndex: this.#currentItemIndex,
       sectionItems: this.#sectionItems.map(copyContentItem),
+      allGeneratedContent,
       studentState: this.#studentModel.getState(),
       lastAnswerResult: this.#lastAnswerResult
         ? copyAnswerResult(this.#lastAnswerResult)
@@ -490,9 +520,20 @@ export class CourseEngine extends EventEmitter {
 
   static restore(snapshot: EngineSnapshot, config: CourseEngineConfig): CourseEngine {
     if (snapshot.version !== SNAPSHOT_VERSION) {
-      throw new Error(
-        `Unsupported snapshot version: ${snapshot.version} (expected ${SNAPSHOT_VERSION})`
-      );
+      // Migrate version 3 to version 4
+      if (snapshot.version === 3) {
+        snapshot = {
+          ...snapshot,
+          version: SNAPSHOT_VERSION,
+          allGeneratedContent: isValidGeneratedContentRecord(snapshot.allGeneratedContent)
+            ? snapshot.allGeneratedContent
+            : {},
+        };
+      } else {
+        throw new Error(
+          `Unsupported snapshot version: ${snapshot.version} (expected ${SNAPSHOT_VERSION})`
+        );
+      }
     }
 
     // Constructor does not emit events for idle state.
@@ -513,6 +554,15 @@ export class CourseEngine extends EventEmitter {
     engine.#currentSectionIndex = snapshot.currentSectionIndex;
     engine.#currentItemIndex = snapshot.currentItemIndex;
     engine.#sectionItems = snapshot.sectionItems.map(copyContentItem);
+
+    const allGeneratedContent: Record<string, ContentItem[]> = {};
+    if (snapshot.allGeneratedContent) {
+      for (const [id, items] of Object.entries(snapshot.allGeneratedContent)) {
+        allGeneratedContent[id] = items.map(copyContentItem);
+      }
+    }
+    engine.#allGeneratedContent = allGeneratedContent;
+
     engine.#studentModel = new StudentModel(snapshot.studentState);
     engine.#lastAnswerResult = snapshot.lastAnswerResult
       ? copyAnswerResult(snapshot.lastAnswerResult)

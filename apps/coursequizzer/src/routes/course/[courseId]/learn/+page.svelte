@@ -460,17 +460,49 @@
       <article class="section-complete">
         <h2>Section Complete!</h2>
         {#if session.currentSection}
-          <p>You finished <strong>{session.currentSection.section.title}</strong>.</p>
+          <p>You've finished <strong>{session.currentSection.section.title}</strong>.</p>
+
+          <div class="mastery-summary">
+            <h3>Topic Mastery</h3>
+            <ul class="topic-mastery-list">
+              {#each session.currentSection.section.topics as topic (topic.id)}
+                {@const mastery = session.studentState?.masteryByTopic?.[topic.id]}
+                {@const score = mastery?.score ?? 0}
+                {@const level =
+                  score < 0.5 ? 'struggling' : score < 0.8 ? 'gaining' : 'mastered'}
+                <li class="topic-mastery-item">
+                  <div class="topic-info">
+                    <span class="topic-title">{topic.title}</span>
+                    {#if score < 0.5}
+                      <span class="gap-badge">Review suggested</span>
+                    {/if}
+                  </div>
+                  <div class="mastery-bar-container">
+                    <div
+                      class="mastery-bar {level}"
+                      style="width: {Math.round(score * 100)}%"
+                    ></div>
+                  </div>
+                  <span class="mastery-score">{Math.round(score * 100)}%</span>
+                </li>
+              {/each}
+            </ul>
+          </div>
         {/if}
+
         {#if session.progress}
-          <p>
+          <p class="overall-progress">
             Section {session.progress.currentSectionIndex + 1}
-            of {session.progress.totalSections} |
-            Overall mastery: {Math.round(session.progress.overallMastery * 100)}%
+            of {session.progress.totalSections} | Overall course mastery: {Math.round(
+              session.progress.overallMastery * 100
+            )}%
           </p>
         {/if}
-        <div class="actions">
-          <button type="button" onclick={handleNextSection}>Next Section</button>
+
+        <div class="actions center">
+          <button type="button" class="primary-large" onclick={handleNextSection}>
+            Next Section
+          </button>
           <button type="button" class="secondary" onclick={handleBackToOverview}>
             Back to Course
           </button>
@@ -657,11 +689,130 @@
     text-align: center;
   }
 
+  .mastery-summary {
+    margin: 2.5rem 0;
+    text-align: left;
+    background: #fcfcfc;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #f0f0f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .mastery-summary h3 {
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+    font-size: 1.1rem;
+    color: #444;
+    font-weight: 600;
+  }
+
+  .topic-mastery-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .topic-mastery-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .topic-mastery-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .topic-info {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .topic-title {
+    font-size: 0.95rem;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gap-badge {
+    font-size: 0.75rem;
+    color: #ea4335;
+    font-weight: 600;
+    margin-top: 0.1rem;
+  }
+
+  .mastery-bar-container {
+    flex: 3;
+    height: 0.5rem;
+    background: #eee;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .mastery-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .mastery-bar.struggling {
+    background: #ea4335;
+  }
+
+  .mastery-bar.gaining {
+    background: #fbbc04;
+  }
+
+  .mastery-bar.mastered {
+    background: #34a853;
+  }
+
+  .mastery-score {
+    flex: 0 0 3rem;
+    text-align: right;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+  }
+
+  .overall-progress {
+    font-size: 0.95rem;
+    color: #666;
+    margin-bottom: 2.5rem;
+  }
+
   .actions {
     display: flex;
     gap: 0.75rem;
     margin-top: 1rem;
     align-items: center;
+  }
+
+  .actions.center {
+    justify-content: center;
+  }
+
+  .primary-large {
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    background: #333;
+    color: #fff;
+    border: 1px solid #333;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .primary-large:hover {
+    background: #000;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   }
 
   .section-list {

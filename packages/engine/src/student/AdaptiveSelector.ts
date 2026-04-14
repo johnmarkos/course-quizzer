@@ -1,30 +1,43 @@
 import type { StudentModel } from './StudentModel.js';
 
+const GAP_THRESHOLD = 0.5;
+const PROFICIENT_THRESHOLD = 0.8;
+const GAP_QUESTION_COUNT = 5;
+const DEFAULT_QUESTION_COUNT = 3;
+const PROFICIENT_QUESTION_COUNT = 2;
+
+export type TopicGenerationConfig = {
+  targetQuestionCount: number;
+};
+
 export class AdaptiveSelector {
-  /**
-   * Determine the number of questions to generate for a topic based on student mastery.
-   *
-   * Rules:
-   * - Mastery < 0.5: 5 questions (Focus on knowledge gaps)
-   * - Mastery > 0.8: 2 questions (Maintain proficiency with minimal overhead)
-   * - Otherwise: 3 questions (Default reinforcement)
-   */
+  #studentModel: StudentModel;
+
+  constructor(studentModel: StudentModel) {
+    this.#studentModel = studentModel;
+  }
+
+  getTopicConfig(topicId: string): TopicGenerationConfig {
+    return {
+      targetQuestionCount: AdaptiveSelector.getQuestionCount(this.#studentModel, topicId),
+    };
+  }
+
   static getQuestionCount(studentModel: StudentModel, topicId: string): number {
     const mastery = studentModel.getTopicMastery(topicId);
 
     if (!mastery) {
-      // New topic, treat as gap
-      return 5;
+      return DEFAULT_QUESTION_COUNT;
     }
 
-    if (mastery.score < 0.5) {
-      return 5;
+    if (mastery.score < GAP_THRESHOLD) {
+      return GAP_QUESTION_COUNT;
     }
 
-    if (mastery.score > 0.8) {
-      return 2;
+    if (mastery.score > PROFICIENT_THRESHOLD) {
+      return PROFICIENT_QUESTION_COUNT;
     }
 
-    return 3;
+    return DEFAULT_QUESTION_COUNT;
   }
 }

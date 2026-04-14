@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ContentGenerator } from '../src/content/ContentGenerator.js';
 import { checkQuestionQuality } from '../src/content/quality-filters.js';
-import { StudentModel } from '../src/student/StudentModel.js';
 import {
   buildExplanationPrompt,
   EXPLANATION_VERSION,
@@ -12,7 +11,7 @@ import {
 } from '../src/prompts/quiz-generation.js';
 import type { ClaudeProvider } from '../src/provider/ClaudeProvider.js';
 import type { ProviderResponse } from '../src/provider/types.js';
-import type { Section, Topic } from '../src/curriculum/types.js';
+import type { Topic } from '../src/curriculum/types.js';
 import type { Question } from '../src/content/types.js';
 import {
   explanationResponse,
@@ -42,31 +41,6 @@ const TOPIC: Topic = {
   id: 'binary-search',
   title: 'Binary Search',
   description: 'Searching a sorted array by repeatedly dividing the search interval.',
-};
-
-const SECTION: Section = {
-  id: 'searching',
-  title: 'Search Algorithms',
-  order: 0,
-  topics: [TOPIC],
-};
-
-const TWO_TOPIC_SECTION: Section = {
-  id: 'sorting',
-  title: 'Sorting',
-  order: 1,
-  topics: [
-    {
-      id: 'merge-sort',
-      title: 'Merge Sort',
-      description: 'A divide-and-conquer sorting algorithm.',
-    },
-    {
-      id: 'quick-sort',
-      title: 'Quick Sort',
-      description: 'A partition-based sorting algorithm.',
-    },
-  ],
 };
 
 // --- Prompt Builders ---
@@ -222,47 +196,38 @@ describe('quality filters', () => {
 // --- ContentGenerator ---
 
 describe('ContentGenerator', () => {
-  it('generates explanation + quiz burst for a single topic', async () => {
+  it('generates a valid explanation for a topic', async () => {
     const provider = mockProvider(
-      explanationResponse('Binary Search', 'Binary search divides...'),
-      quizResponse([GOOD_MCQ, GOOD_NUMERIC])
+      explanationResponse('Binary Search', 'Binary search divides...')
     );
     const gen = new ContentGenerator(provider);
 
-    const items = await gen.generateSection(SECTION, 'Algorithms');
+    const item = await gen.generateTopicExplanation(TOPIC, 'Algorithms', 'Search');
 
-    expect(items).toHaveLength(3); // 1 explanation + 2 questions
-    expect(items[0].type).toBe('explanation');
-    expect(items[0].topicId).toBe('binary-search');
-    expect(items[1].type).toBe('multiple-choice');
-    expect(items[2].type).toBe('numeric-input');
+    expect(item.type).toBe('explanation');
+    expect(item.topicId).toBe('binary-search');
+    expect(item.content).toBe('Binary search divides...');
   });
 
-  it('generates content for multiple topics in order', async () => {
-    const provider = mockProvider(
-      // Topic 1: merge-sort
-      explanationResponse('Merge Sort', 'Merge sort divides...'),
-      quizResponse([GOOD_MCQ]),
-      // Topic 2: quick-sort
-      explanationResponse('Quick Sort', 'Quick sort partitions...'),
-      quizResponse([GOOD_ORDERING])
-    );
+  it('generates a valid quiz burst for a topic', async () => {
+    const provider = mockProvider(quizResponse([GOOD_MCQ, GOOD_NUMERIC]));
     const gen = new ContentGenerator(provider);
 
-    const items = await gen.generateSection(TWO_TOPIC_SECTION, 'Algorithms');
+    const questions = await gen.generateTopicQuizBurst(
+      TOPIC,
+      'Algorithms',
+      'Search',
+      'Explanation content'
+    );
 
-    expect(items).toHaveLength(4); // 2 explanations + 2 questions
-    expect(items[0].type).toBe('explanation');
-    expect(items[0].topicId).toBe('merge-sort');
-    expect(items[1].topicId).toBe('merge-sort');
-    expect(items[2].type).toBe('explanation');
-    expect(items[2].topicId).toBe('quick-sort');
-    expect(items[3].topicId).toBe('quick-sort');
+    expect(questions).toHaveLength(2);
+    expect(questions[0].type).toBe('multiple-choice');
+    expect(questions[1].type).toBe('numeric-input');
+    expect(questions[0].topicId).toBe('binary-search');
   });
 
   it('parses all 5 question types', async () => {
     const provider = mockProvider(
-      explanationResponse('Topic', 'Content...'),
       quizResponse([
         GOOD_MCQ,
         GOOD_NUMERIC,
@@ -273,8 +238,7 @@ describe('ContentGenerator', () => {
     );
     const gen = new ContentGenerator(provider);
 
-    const items = await gen.generateSection(SECTION, 'Course');
-    const questions = items.filter((i) => i.type !== 'explanation');
+    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E');
 
     expect(questions).toHaveLength(5);
     const types = questions.map((q) => q.type);
@@ -287,13 +251,11 @@ describe('ContentGenerator', () => {
 
   it('filters out low-quality questions silently', async () => {
     const provider = mockProvider(
-      explanationResponse('Topic', 'Content...'),
       quizResponse([GOOD_MCQ, LENGTH_OUTLIER_MCQ, FRONT_MATTER_MCQ, GOOD_NUMERIC])
     );
     const gen = new ContentGenerator(provider);
 
-    const items = await gen.generateSection(SECTION, 'Course');
-    const questions = items.filter((i) => i.type !== 'explanation');
+    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E');
 
     // LENGTH_OUTLIER_MCQ and FRONT_MATTER_MCQ should be filtered out
     expect(questions).toHaveLength(2);
@@ -302,118 +264,84 @@ describe('ContentGenerator', () => {
   it('retries explanation on malformed response', async () => {
     const provider = mockProvider(
       textOnlyResponse(), // first attempt fails
-      explanationResponse('Binary Search', 'Content...'), // retry succeeds
-      quizResponse([GOOD_MCQ])
+      explanationResponse('Binary Search', 'Content...') // retry succeeds
     );
     const gen = new ContentGenerator(provider);
 
-    const items = await gen.generateSection(SECTION, 'Course');
+    const item = await gen.generateTopicExplanation(TOPIC, 'C', 'S');
 
-    expect(items[0].type).toBe('explanation');
-    expect((provider.sendMessage as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(3);
+    expect(item.type).toBe('explanation');
+    expect((provider.sendMessage as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(2);
   });
 
   it('retries quiz on malformed response', async () => {
     const provider = mockProvider(
-      explanationResponse('Topic', 'Content...'),
       textOnlyResponse(), // first quiz attempt fails
       quizResponse([GOOD_MCQ]) // retry succeeds
     );
     const gen = new ContentGenerator(provider);
 
-    const items = await gen.generateSection(SECTION, 'Course');
+    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E');
 
-    expect(items).toHaveLength(2); // explanation + 1 question
+    expect(questions).toHaveLength(1);
   });
 
   it('throws after retry if explanation still fails', async () => {
     const provider = mockProvider(textOnlyResponse(), textOnlyResponse());
     const gen = new ContentGenerator(provider);
 
-    await expect(gen.generateSection(SECTION, 'Course')).rejects.toThrow(
+    await expect(gen.generateTopicExplanation(TOPIC, 'C', 'S')).rejects.toThrow(
       'Failed to generate explanation'
     );
   });
 
   it('throws after retry if quiz still fails', async () => {
-    const provider = mockProvider(
-      explanationResponse('Topic', 'Content...'),
-      textOnlyResponse(),
-      textOnlyResponse()
-    );
+    const provider = mockProvider(textOnlyResponse(), textOnlyResponse());
     const gen = new ContentGenerator(provider);
 
-    await expect(gen.generateSection(SECTION, 'Course')).rejects.toThrow(
+    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E')).rejects.toThrow(
       'Failed to generate quiz'
     );
   });
 
   it('rejects numeric-input with negative tolerance', async () => {
     const negTolerance = { ...GOOD_NUMERIC, tolerance: -1 };
-    const provider = mockProvider(
-      explanationResponse('Topic', 'Content...'),
-      quizResponse([negTolerance])
-    );
+    const provider = mockProvider(quizResponse([negTolerance]));
     const gen = new ContentGenerator(provider);
 
-    await expect(gen.generateSection(SECTION, 'Course')).rejects.toThrow(
+    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E')).rejects.toThrow(
       'failed validation'
     );
   });
 
   it('throws if all questions fail validation', async () => {
-    const provider = mockProvider(
-      explanationResponse('Topic', 'Content...'),
-      quizResponse([LENGTH_OUTLIER_MCQ, FRONT_MATTER_MCQ])
-    );
+    const provider = mockProvider(quizResponse([LENGTH_OUTLIER_MCQ, FRONT_MATTER_MCQ]));
     const gen = new ContentGenerator(provider);
 
-    await expect(gen.generateSection(SECTION, 'Course')).rejects.toThrow(
+    await expect(gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E')).rejects.toThrow(
       'failed validation'
     );
   });
 
   it('assigns unique IDs to questions', async () => {
-    const provider = mockProvider(
-      explanationResponse('Topic', 'Content...'),
-      quizResponse([GOOD_MCQ, GOOD_NUMERIC, GOOD_ORDERING])
-    );
+    const provider = mockProvider(quizResponse([GOOD_MCQ, GOOD_NUMERIC, GOOD_ORDERING]));
     const gen = new ContentGenerator(provider);
 
-    const items = await gen.generateSection(SECTION, 'Course');
-    const questions = items.filter((i) => i.type !== 'explanation');
+    const questions = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E');
     const ids = questions.map((q) => (q as Question).id);
 
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids[0]).toContain('binary-search');
   });
 
-  it('adjusts question count based on student mastery', async () => {
-    // Mastery > 0.8 should result in 2 questions
-    const student = new StudentModel({
-      masteryByTopic: {
-        'binary-search': {
-          topicId: 'binary-search',
-          score: 0.9,
-          questionsAnswered: 5,
-          questionsCorrect: 5,
-        },
-      },
-      gaps: [],
-    });
-
-    const provider = mockProvider(
-      explanationResponse('Binary Search', 'Content...'),
-      quizResponse([GOOD_MCQ, GOOD_NUMERIC])
-    );
+  it('uses the requested question count when building the quiz prompt', async () => {
+    const provider = mockProvider(quizResponse([GOOD_MCQ, GOOD_NUMERIC]));
     const gen = new ContentGenerator(provider);
 
-    await gen.generateSection(SECTION, 'Algorithms', student);
+    await gen.generateTopicQuizBurst(TOPIC, 'Algorithms', 'Search', 'Content...', 2);
 
-    // Verify the second call (quiz generation) used questionCount: 2
-    const quizCall = (provider.sendMessage as ReturnType<typeof vi.fn>).mock.calls[1][0];
+    const quizCall = (provider.sendMessage as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(quizCall.messages[0].content).toContain('Generate exactly 2 quiz questions');
-    // Also verify tool schema min/max
     const tool = quizCall.tools[0];
     expect(tool.inputSchema.properties.questions.minItems).toBe(1);
     expect(tool.inputSchema.properties.questions.maxItems).toBe(4);

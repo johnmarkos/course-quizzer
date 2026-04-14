@@ -16,12 +16,10 @@
 import { buildExplanationPrompt } from '../prompts/explanation.js';
 import { buildQuizGenerationPrompt } from '../prompts/quiz-generation.js';
 import { checkQuestionQuality } from './quality-filters.js';
-import { AdaptiveSelector } from '../student/AdaptiveSelector.js';
 import type { ClaudeProvider } from '../provider/ClaudeProvider.js';
 import type { ToolUseBlock } from '../provider/types.js';
-import type { Section, Topic } from '../curriculum/types.js';
-import type { ContentItem, Explanation, Question, QuestionType } from './types.js';
-import type { StudentModel } from '../student/StudentModel.js';
+import type { Topic } from '../curriculum/types.js';
+import type { Explanation, Question, QuestionType } from './types.js';
 
 const EXPLANATION_MAX_TOKENS = 1024;
 const QUIZ_MAX_TOKENS = 4096;
@@ -33,48 +31,9 @@ export class ContentGenerator {
     this.#provider = provider;
   }
 
-  // --- Public API ---
+  // --- Topic Generation ---
 
-  /**
-   * Generate content items for an entire section.
-   * Returns a flat array: [explanation, questions..., explanation, questions..., ...]
-   * following the content/quiz loop from the Learning Model.
-   */
-  async generateSection(
-    section: Section,
-    courseTitle: string,
-    studentModel?: StudentModel
-  ): Promise<ContentItem[]> {
-    const items: ContentItem[] = [];
-
-    for (const topic of section.topics) {
-      const explanation = await this.#generateExplanation(
-        topic,
-        courseTitle,
-        section.title
-      );
-      items.push(explanation);
-
-      const questionCount = studentModel
-        ? AdaptiveSelector.getQuestionCount(studentModel, topic.id)
-        : 3;
-
-      const questions = await this.#generateQuizBurst(
-        topic,
-        courseTitle,
-        section.title,
-        explanation.content,
-        questionCount
-      );
-      items.push(...questions);
-    }
-
-    return items;
-  }
-
-  // --- Explanation Generation ---
-
-  async #generateExplanation(
+  async generateTopicExplanation(
     topic: Topic,
     courseTitle: string,
     sectionTitle: string
@@ -140,12 +99,12 @@ export class ContentGenerator {
 
   // --- Quiz Generation ---
 
-  async #generateQuizBurst(
+  async generateTopicQuizBurst(
     topic: Topic,
     courseTitle: string,
     sectionTitle: string,
     explanationContent: string,
-    questionCount: number
+    questionCount: number = 3
   ): Promise<Question[]> {
     const prompt = buildQuizGenerationPrompt({
       topicTitle: topic.title,
@@ -262,7 +221,14 @@ export class ContentGenerator {
     const options = this.#requireStringArray(obj.options, 'options', 2);
     const correctIndex = this.#requireIndex(obj.correctIndex, options.length);
 
-    return { type: 'multiple-choice', id, topicId, question, options, correctIndex };
+    return {
+      type: 'multiple-choice',
+      id,
+      topicId,
+      question,
+      options,
+      correctIndex,
+    };
   }
 
   #parseNumeric(
@@ -271,13 +237,12 @@ export class ContentGenerator {
     topicId: string,
     question: string
   ): Question {
-    if (typeof obj.correctValue !== 'number') {
-      throw new Error('numeric-input missing correctValue');
-    }
+    const correctValue = this.#requireNumber(obj.correctValue, 'correctValue');
+    const tolerance =
+      obj.tolerance === undefined ? 0 : this.#requireNumber(obj.tolerance, 'tolerance');
 
-    const tolerance = typeof obj.tolerance === 'number' ? obj.tolerance : 0;
     if (tolerance < 0) {
-      throw new Error('numeric-input tolerance must be >= 0');
+      throw new Error('Numeric tolerance must be non-negative');
     }
 
     return {
@@ -285,7 +250,7 @@ export class ContentGenerator {
       id,
       topicId,
       question,
-      correctValue: obj.correctValue,
+      correctValue,
       tolerance,
       unit: typeof obj.unit === 'string' ? obj.unit : undefined,
     };
@@ -298,13 +263,30 @@ export class ContentGenerator {
     question: string
   ): Question {
     const items = this.#requireStringArray(obj.items, 'items', 2);
-    const correctOrder = this.#requireNumberArray(obj.correctOrder, 'correctOrder');
+    const correctOrder = this.#requireNumberArray(
+      obj.correctOrder,
+      'correctOrder',
+      items.length
+    );
 
-    if (correctOrder.length !== items.length) {
-      throw new Error('ordering: correctOrder length must match items length');
+    if (new Set(correctOrder).size !== items.length) {
+      throw new Error('correctOrder must contain each index exactly once');
     }
 
-    return { type: 'ordering', id, topicId, question, items, correctOrder };
+    for (const index of correctOrder) {
+      if (index < 0 || index >= items.length) {
+        throw new Error('correctOrder index out of range');
+      }
+    }
+
+    return {
+      type: 'ordering',
+      id,
+      topicId,
+      question,
+      items,
+      correctOrder,
+    };
   }
 
   #parseMultiSelect(
@@ -314,17 +296,26 @@ export class ContentGenerator {
     question: string
   ): Question {
     const options = this.#requireStringArray(obj.options, 'options', 2);
-    const correctIndices = this.#requireNumberArray(obj.correctIndices, 'correctIndices');
+    const correctIndices = this.#requireNumberArray(
+      obj.correctIndices,
+      'correctIndices',
+      1
+    );
 
-    for (const idx of correctIndices) {
-      if (idx < 0 || idx >= options.length) {
-        throw new Error(
-          `multi-select: correctIndices contains out-of-range index ${idx}`
-        );
+    for (const index of correctIndices) {
+      if (index < 0 || index >= options.length) {
+        throw new Error('correctIndices index out of range');
       }
     }
 
-    return { type: 'multi-select', id, topicId, question, options, correctIndices };
+    return {
+      type: 'multi-select',
+      id,
+      topicId,
+      question,
+      options,
+      correctIndices,
+    };
   }
 
   #parseTwoStage(
@@ -335,10 +326,7 @@ export class ContentGenerator {
   ): Question {
     const options = this.#requireStringArray(obj.options, 'options', 2);
     const correctIndex = this.#requireIndex(obj.correctIndex, options.length);
-    const followUp = obj.followUp;
-    if (typeof followUp !== 'string' || followUp.length === 0) {
-      throw new Error('two-stage missing followUp');
-    }
+    const followUp = this.#requireString(obj.followUp, 'followUp');
     const followUpOptions = this.#requireStringArray(
       obj.followUpOptions,
       'followUpOptions',
@@ -364,34 +352,53 @@ export class ContentGenerator {
 
   // --- Validation Helpers ---
 
-  #requireStringArray(value: unknown, name: string, minLength: number): string[] {
-    if (!Array.isArray(value) || value.length < minLength) {
-      throw new Error(`${name} must be an array with at least ${minLength} items`);
-    }
-    for (const item of value) {
-      if (typeof item !== 'string') {
-        throw new Error(`${name} must contain only strings`);
-      }
-    }
-    return value as string[];
-  }
-
-  #requireNumberArray(value: unknown, name: string): number[] {
-    if (!Array.isArray(value) || value.length === 0) {
-      throw new Error(`${name} must be a non-empty array`);
-    }
-    for (const item of value) {
-      if (typeof item !== 'number') {
-        throw new Error(`${name} must contain only numbers`);
-      }
-    }
-    return value as number[];
-  }
-
-  #requireIndex(value: unknown, maxExclusive: number): number {
-    if (typeof value !== 'number' || value < 0 || value >= maxExclusive) {
-      throw new Error(`Index must be a number in [0, ${maxExclusive})`);
+  #requireString(value: unknown, field: string): string {
+    if (typeof value !== 'string' || value.length === 0) {
+      throw new Error(`Missing or invalid ${field}`);
     }
     return value;
+  }
+
+  #requireNumber(value: unknown, field: string): number {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      throw new Error(`Missing or invalid ${field}`);
+    }
+    return value;
+  }
+
+  #requireIndex(value: unknown, length: number): number {
+    const index = this.#requireNumber(value, 'index');
+    if (!Number.isInteger(index) || index < 0 || index >= length) {
+      throw new Error('Index out of range');
+    }
+    return index;
+  }
+
+  #requireStringArray(value: unknown, field: string, minLength: number): string[] {
+    if (!Array.isArray(value) || value.length < minLength) {
+      throw new Error(`Missing or invalid ${field}`);
+    }
+
+    const strings = value.filter((item): item is string => typeof item === 'string');
+    if (strings.length !== value.length) {
+      throw new Error(`${field} must be an array of strings`);
+    }
+
+    return [...strings];
+  }
+
+  #requireNumberArray(value: unknown, field: string, minLength: number): number[] {
+    if (!Array.isArray(value) || value.length < minLength) {
+      throw new Error(`Missing or invalid ${field}`);
+    }
+
+    const numbers = value.filter(
+      (item): item is number => typeof item === 'number' && !Number.isNaN(item)
+    );
+    if (numbers.length !== value.length) {
+      throw new Error(`${field} must be an array of numbers`);
+    }
+
+    return [...numbers];
   }
 }

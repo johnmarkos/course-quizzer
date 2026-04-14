@@ -1,0 +1,11 @@
+Closes #52
+
+Implemented a background prefetcher to hide LLM latency by generating the next section while the student is working on the current one.
+
+Key changes:
+- `ContentCache`: In-memory storage for generated section content items.
+- `Prefetcher`: Handles background content generation using `ContentGenerator`.
+- `CourseEngine`: Updated `startSection` to check the cache and trigger prefetching for the next section.
+- Added 7 new tests in `packages/engine/tests/prefetcher.test.ts` covering success and failure modes.
+
+Verified with `pnpm -r test` and `pnpm -r build`.

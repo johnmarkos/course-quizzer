@@ -73,7 +73,34 @@ is_out_of_credits() {
     echo "$output" | grep -qi "extra usage" && return 0
     echo "$output" | grep -qi "exceeded your current quota" && return 0
     echo "$output" | grep -qi "exhausted your daily quota" && return 0
+    echo "$output" | grep -qi "hit your limit" && return 0
+    echo "$output" | grep -qi "usage limit" && return 0
+    echo "$output" | grep -qi "rate limit" && return 0
     return 1
+}
+
+# --- Cooldown management ---
+# Marker files in logs/cooldown/ prevent trying exhausted models for 1 hour.
+COOLDOWN_DIR="$REPO_ROOT/logs/cooldown"
+mkdir -p "$COOLDOWN_DIR"
+
+check_cooldown() {
+    local model="$1"
+    local marker="$COOLDOWN_DIR/$model"
+    if [ -f "$marker" ]; then
+        # If marker is older than 60 mins, remove it and return success (not in cooldown)
+        if [ -n "$(find "$marker" -mmin +60)" ]; then
+            rm -f "$marker"
+            return 1
+        fi
+        return 0 # Still in cooldown
+    fi
+    return 1 # Not in cooldown
+}
+
+set_cooldown() {
+    local model="$1"
+    touch "$COOLDOWN_DIR/$model"
 }
 
 # --- Run agent with fallback cascade ---
@@ -81,34 +108,76 @@ run_agent() {
     local prompt="$1"
     local logfile="$2"
     local output
+    local status
 
     # Try Claude
-    echo "$(date): Trying Claude..." | tee -a "$logfile"
-    output=$(claude -p "$prompt" --dangerously-skip-permissions --verbose 2>&1) || true
-    echo "$output" | tee -a "$logfile"
-    if ! is_out_of_credits "$output"; then
-        return 0
+    if check_cooldown "claude"; then
+        echo "$(date): Skipping Claude (cooldown active)..." | tee -a "$logfile"
+    else
+        echo "$(date): Trying Claude..." | tee -a "$logfile"
+        if output=$(claude -p "$prompt" --dangerously-skip-permissions --verbose 2>&1); then
+            status=0
+        else
+            status=$?
+        fi
+        echo "$output" | tee -a "$logfile"
+        if [ "$status" -eq 0 ]; then
+            return 0
+        fi
+        if is_out_of_credits "$output"; then
+            set_cooldown "claude"
+            echo "$(date): Claude out of credits, set 1h cooldown." | tee -a "$logfile"
+        else
+            log_error "Claude failed with exit code $status. Proceeding to fallback..."
+        fi
     fi
-    echo "$(date): Claude out of credits, trying Codex..." | tee -a "$logfile"
 
     # Try Codex
-    output=$(codex exec "$prompt" --yolo 2>&1) || true
-    echo "$output" | tee -a "$logfile"
-    if ! is_out_of_credits "$output"; then
-        return 0
+    if check_cooldown "codex"; then
+        echo "$(date): Skipping Codex (cooldown active)..." | tee -a "$logfile"
+    else
+        echo "$(date): Trying Codex..." | tee -a "$logfile"
+        if output=$(codex exec "$prompt" --yolo 2>&1); then
+            status=0
+        else
+            status=$?
+        fi
+        echo "$output" | tee -a "$logfile"
+        if [ "$status" -eq 0 ]; then
+            return 0
+        fi
+        if is_out_of_credits "$output"; then
+            set_cooldown "codex"
+            echo "$(date): Codex out of credits, set 1h cooldown." | tee -a "$logfile"
+        else
+            log_error "Codex failed with exit code $status. Proceeding to fallback..."
+        fi
     fi
-    echo "$(date): Codex out of credits, trying Gemini..." | tee -a "$logfile"
 
     # Try Gemini
-    output=$(cat "$PROMPT_FILE" | gemini -y -p "Follow these instructions" 2>&1) || true
-    echo "$output" | tee -a "$logfile"
-    if is_out_of_credits "$output"; then
-        log_error "All models exhausted."
-        return 1
+    if check_cooldown "gemini"; then
+        echo "$(date): Skipping Gemini (cooldown active)..." | tee -a "$logfile"
+    else
+        echo "$(date): Trying Gemini..." | tee -a "$logfile"
+        if output=$(echo "$prompt" | gemini -y -p "Follow these instructions" 2>&1); then
+            status=0
+        else
+            status=$?
+        fi
+        echo "$output" | tee -a "$logfile"
+        if [ "$status" -eq 0 ]; then
+            return 0
+        fi
+        if is_out_of_credits "$output"; then
+            set_cooldown "gemini"
+            echo "$(date): Gemini out of credits, set 1h cooldown." | tee -a "$logfile"
+            log_error "All models exhausted (Gemini hit limit)."
+        else
+            log_error "Gemini failed with exit code $status."
+        fi
     fi
-    return 0
+    return 1
 }
-
 # --- Backoff sleep ---
 backoff_sleep() {
     local base="$1"

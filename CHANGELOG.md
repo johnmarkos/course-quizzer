@@ -1,13 +1,41 @@
 # Changelog
 
-## 0.7.6 — 2026-04-12
+## 0.8.1 — 2026-04-13
 
 ### Features
 
-- `AdaptiveSelector`: new class to bias content generation based on student performance
-- Dynamic question counts: `ContentGenerator` now adjusts the number of questions per topic (Mastery < 0.5 → 5 questions, Mastery > 0.8 → 2 questions, else 3)
+- `AdaptiveSelector` now sizes quiz bursts from student mastery within the engine-owned content generation flow
+- `ContentManager` passes adaptive question counts into `ContentGenerator.generateTopicQuizBurst`
 - Updated `buildQuizGenerationPrompt` to support configurable `questionCount` and dynamic tool schema limits
-- 4 new `AdaptiveSelector` tests and 1 new `ContentGenerator` integration test for bias verification
+- 4 new `AdaptiveSelector` tests and 1 new `ContentManager` bias verification test
+
+## 0.8.0 — 2026-04-13
+
+### Infrastructure
+
+- Model cooldown mechanism: automated fallback cascade (Claude → Codex → Gemini) with 1-hour cooldowns for credit exhaustion or transient failures
+- Fallback logic now proceeds to the next model even on non-credit errors to improve robustness
+
+### Developer Experience
+
+- Planning Agent instructions updated to write failing tests as specs for coding agents
+- Phase 2 complete: all foundational app and engine features implemented and verified
+
+## 0.7.6 — 2026-04-12
+
+### Added
+
+- `ContentManager` in `packages/engine` to orchestrate content generation.
+- `apiCallStart` and `apiCallComplete` events to `CourseEngine` for better UX feedback during LLM calls.
+- `error` state in `CourseEngine` for persistent visibility of background generation failures.
+
+### Changed
+
+- `CourseEngine` now owns the content generation lifecycle via `ContentManager`.
+- `ContentGenerator` methods are now public to allow orchestration.
+- Simplified `apps/coursequizzer` learn flow by removing direct `ContentGenerator` usage.
+- `CourseEngine.startSection` is now asynchronous internally, automatically triggering content generation.
+- Improved Error UI on the learn page with a Retry button.
 
 ## 0.7.5 — 2026-04-12
 

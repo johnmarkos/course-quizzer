@@ -5,7 +5,7 @@
 
 import type { PromptMessages } from './types.js';
 
-export const QUIZ_GENERATION_VERSION = '1.1';
+export const QUIZ_GENERATION_VERSION = '1.2';
 
 // --- Tool Schema ---
 
@@ -33,6 +33,9 @@ function buildQuizTool(count: number = 3) {
                   'ordering',
                   'multi-select',
                   'two-stage',
+                  'checklist',
+                  'code',
+                  'self-evaluation',
                 ],
                 description: 'The question type',
               },
@@ -40,12 +43,12 @@ function buildQuizTool(count: number = 3) {
                 type: 'string',
                 description: 'The question text',
               },
-              // Multiple choice fields
+              // Multiple choice, multi-select, two-stage, checklist, self-evaluation
               options: {
                 type: 'array',
                 items: { type: 'string' },
                 description:
-                  'Answer options (for multiple-choice, multi-select, two-stage)',
+                  'Answer options (for multiple-choice, multi-select, two-stage, self-evaluation)',
               },
               correctIndex: {
                 type: 'number',
@@ -65,11 +68,11 @@ function buildQuizTool(count: number = 3) {
                 type: 'string',
                 description: 'Unit of measurement (for numeric-input)',
               },
-              // Ordering fields
+              // Ordering, checklist
               items: {
                 type: 'array',
                 items: { type: 'string' },
-                description: 'Items to be ordered (for ordering)',
+                description: 'Items to be ordered or checked off (for ordering, checklist)',
               },
               correctOrder: {
                 type: 'array',
@@ -97,6 +100,19 @@ function buildQuizTool(count: number = 3) {
                 type: 'number',
                 description: 'Index of the correct follow-up option (for two-stage)',
               },
+              // Code fields
+              language: {
+                type: 'string',
+                description: 'Programming language (for code)',
+              },
+              initialCode: {
+                type: 'string',
+                description: 'Starter code provided to the student (for code)',
+              },
+              expectedPattern: {
+                type: 'string',
+                description: 'Regex pattern to check student code for correctness (for code)',
+              },
             },
             required: ['type', 'question'],
           },
@@ -120,6 +136,9 @@ Question type guidelines:
 - **ordering**: 3-5 items that have a natural sequence (chronological, logical steps, ranked). Provide items in a shuffled order; correctOrder gives the right sequence as indices.
 - **multi-select**: 4-6 options, 2-3 correct. Clearly ask "select ALL that apply."
 - **two-stage**: First question + follow-up. Both are multiple-choice. The follow-up probes deeper understanding.
+- **checklist**: Used for practical tasks or procedures. List 3-5 specific steps the student should perform or verify.
+- **code**: Ask the student to write a short code snippet. Provide the programming language and optionally some initial code. Use expectedPattern to provide a regex that verifies key parts of the solution.
+- **self-evaluation**: Used for open-ended or subjective practical mastery. Provide 2-4 levels of mastery as options (e.g., "I can do this reliably", "I need more practice").
 
 Quality rules:
 - Questions must be self-contained — answerable without the source material

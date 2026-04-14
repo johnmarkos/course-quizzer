@@ -80,6 +80,21 @@
     });
   }
 
+  function handleChecklist(indices: number[]) {
+    if (!session) return;
+    session.submitAnswer({ type: 'checklist', checkedIndices: indices });
+  }
+
+  function handleCode(code: string) {
+    if (!session) return;
+    session.submitAnswer({ type: 'code', code });
+  }
+
+  function handleSelfEvaluation(selectedIndex: number) {
+    if (!session) return;
+    session.submitAnswer({ type: 'self-evaluation', selectedIndex });
+  }
+
   function handleNext() {
     session?.nextItem();
   }
@@ -165,6 +180,38 @@
     }
     multiSelectChoices = copy;
   }
+
+  // --- Checklist local state ---
+
+  let checklistChoices = $state<Set<number>>(new Set());
+
+  $effect(() => {
+    const item = session?.currentItem?.item;
+    if (item && item.type === 'checklist') {
+      checklistChoices = new Set();
+    }
+  });
+
+  function toggleCheck(index: number) {
+    const copy = new Set(checklistChoices);
+    if (copy.has(index)) {
+      copy.delete(index);
+    } else {
+      copy.add(index);
+    }
+    checklistChoices = copy;
+  }
+
+  // --- Code local state ---
+
+  let codeValue = $state('');
+
+  $effect(() => {
+    const item = session?.currentItem?.item;
+    if (item && item.type === 'code') {
+      codeValue = item.initialCode ?? '';
+    }
+  });
 
   // --- Numeric input local state ---
 
@@ -428,6 +475,85 @@
             </button>
           </div>
         </article>
+
+      {:else if session.currentItem.item.type === 'checklist'}
+        <!-- Checklist -->
+        <article class="question">
+          <h2>{session.currentItem.item.question}</h2>
+          <p class="hint">Check off each step as you complete it.</p>
+          <div class="options">
+            {#each session.currentItem.item.items as item, i}
+              <button
+                type="button"
+                class="option-button"
+                class:selected={checklistChoices.has(i)}
+                onclick={() => toggleCheck(i)}
+              >
+                <span class="checkbox">{checklistChoices.has(i) ? '☑' : '☐'}</span>
+                {item}
+              </button>
+            {/each}
+          </div>
+          <div class="actions">
+            <button
+              type="button"
+              onclick={() => handleChecklist([...checklistChoices])}
+              disabled={checklistChoices.size === 0}
+            >
+              Confirm Completion
+            </button>
+            <button type="button" class="secondary" onclick={handleSkip}>Skip</button>
+            <button type="button" class="text-button" onclick={handleReportIssue}>
+              {reportedItem ? 'Reported' : 'Report issue'}
+            </button>
+          </div>
+        </article>
+
+      {:else if session.currentItem.item.type === 'code'}
+        <!-- Code -->
+        <article class="question">
+          <h2>{session.currentItem.item.question}</h2>
+          <p class="hint">Language: {session.currentItem.item.language}</p>
+          <textarea
+            bind:value={codeValue}
+            placeholder="Write your code here..."
+            class="code-editor"
+            spellcheck="false"
+          ></textarea>
+          <div class="actions">
+            <button type="button" onclick={() => handleCode(codeValue)}>
+              Submit Code
+            </button>
+            <button type="button" class="secondary" onclick={handleSkip}>Skip</button>
+            <button type="button" class="text-button" onclick={handleReportIssue}>
+              {reportedItem ? 'Reported' : 'Report issue'}
+            </button>
+          </div>
+        </article>
+
+      {:else if session.currentItem.item.type === 'self-evaluation'}
+        <!-- Self-evaluation -->
+        <article class="question">
+          <h2>{session.currentItem.item.question}</h2>
+          <p class="hint">Rate your mastery of this task.</p>
+          <div class="options">
+            {#each session.currentItem.item.options as option, i}
+              <button
+                type="button"
+                class="option-button"
+                onclick={() => handleSelfEvaluation(i)}
+              >
+                {option}
+              </button>
+            {/each}
+          </div>
+          <div class="actions">
+            <button type="button" class="secondary" onclick={handleSkip}>Skip</button>
+            <button type="button" class="text-button" onclick={handleReportIssue}>
+              {reportedItem ? 'Reported' : 'Report issue'}
+            </button>
+          </div>
+        </article>
       {/if}
 
     {:else if session.engineState === 'answered' && session.lastResult}
@@ -614,6 +740,31 @@
     background: #e8f0fe;
     border-color: #1a73e8;
     color: #1a73e8;
+  }
+
+  .checkbox {
+    margin-right: 0.5rem;
+    font-family: monospace;
+    font-size: 1.2rem;
+  }
+
+  .code-editor {
+    width: 100%;
+    min-height: 12rem;
+    padding: 0.75rem;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.95rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fafafa;
+    resize: vertical;
+    margin-bottom: 1rem;
+  }
+
+  .code-editor:focus {
+    outline: none;
+    border-color: #999;
+    background: #fff;
   }
 
   .numeric-input {

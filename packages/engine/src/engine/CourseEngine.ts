@@ -68,6 +68,18 @@ function copyContentItem(item: ContentItem): ContentItem {
         options: [...item.options],
         followUpOptions: [...item.followUpOptions],
       };
+    case 'checklist':
+      return {
+        ...item,
+        items: [...item.items],
+      };
+    case 'code':
+      return { ...item };
+    case 'self-evaluation':
+      return {
+        ...item,
+        options: [...item.options],
+      };
   }
 }
 
@@ -82,6 +94,12 @@ function copyStudentAnswer(answer: StudentAnswer): StudentAnswer {
     case 'multi-select':
       return { ...answer, selectedIndices: [...answer.selectedIndices] };
     case 'two-stage':
+      return { ...answer };
+    case 'checklist':
+      return { ...answer, checkedIndices: [...answer.checkedIndices] };
+    case 'code':
+      return { ...answer };
+    case 'self-evaluation':
       return { ...answer };
   }
 }
@@ -512,6 +530,27 @@ export class CourseEngine extends EventEmitter {
           a.followUpSelectedIndex === question.followUpCorrectIndex
         );
       }
+      case 'checklist': {
+        const a = answer as { type: 'checklist'; checkedIndices: number[] };
+        // Correct if all items are checked
+        return a.checkedIndices.length === question.items.length;
+      }
+      case 'code': {
+        const a = answer as { type: 'code'; code: string };
+        if (question.expectedPattern) {
+          try {
+            const regex = new RegExp(question.expectedPattern, 's');
+            return regex.test(a.code);
+          } catch {
+            // If regex is invalid, we fallback to true (trust the student)
+            return true;
+          }
+        }
+        return true; // Trust the student if no pattern provided
+      }
+      case 'self-evaluation': {
+        return true; // Always "correct" to report completion
+      }
     }
   }
 
@@ -529,6 +568,14 @@ export class CourseEngine extends EventEmitter {
         return question.correctIndices.map((i) => question.options[i]).join(', ');
       case 'two-stage':
         return `${question.options[question.correctIndex]}, then ${question.followUpOptions[question.followUpCorrectIndex]}`;
+      case 'checklist':
+        return 'Completion of all steps';
+      case 'code':
+        return question.expectedPattern
+          ? `Code matching pattern: ${question.expectedPattern}`
+          : 'Correct implementation of the requested logic';
+      case 'self-evaluation':
+        return 'Self-assessment submitted';
     }
   }
 

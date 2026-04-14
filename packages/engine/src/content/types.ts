@@ -63,12 +63,41 @@ export type TwoStageQuestion = {
   followUpCorrectIndex: number;
 };
 
+export type ChecklistQuestion = {
+  type: 'checklist';
+  id: string;
+  topicId: string;
+  question: string;
+  items: string[];
+};
+
+export type CodeQuestion = {
+  type: 'code';
+  id: string;
+  topicId: string;
+  question: string;
+  language: string;
+  initialCode?: string;
+  expectedPattern?: string; // Optional regex to check for correctness
+};
+
+export type SelfEvaluationQuestion = {
+  type: 'self-evaluation';
+  id: string;
+  topicId: string;
+  question: string;
+  options: string[]; // Options for self-evaluation, e.g., ["Need more practice", "Got it"]
+};
+
 export type Question =
   | MultipleChoiceQuestion
   | NumericInputQuestion
   | OrderingQuestion
   | MultiSelectQuestion
-  | TwoStageQuestion;
+  | TwoStageQuestion
+  | ChecklistQuestion
+  | CodeQuestion
+  | SelfEvaluationQuestion;
 
 export type QuestionType = Question['type'];
 
@@ -89,7 +118,10 @@ export type StudentAnswer =
       type: 'two-stage';
       selectedIndex: number;
       followUpSelectedIndex: number;
-    };
+    }
+  | { type: 'checklist'; checkedIndices: number[] }
+  | { type: 'code'; code: string }
+  | { type: 'self-evaluation'; selectedIndex: number };
 
 export type AnswerResult = {
   correct: boolean;

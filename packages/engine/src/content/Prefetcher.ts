@@ -48,14 +48,13 @@ export class Prefetcher {
         this.#curriculum.title
       );
       this.#cache.set(nextSection.id, items);
-    } catch (err) {
+    } catch (_err) {
       // Errors in the background prefetcher are ignored — the engine
       // will just fall back to its standard generation when the student
       // reaches that section.
-      const message = err instanceof Error ? err.message : String(err);
+      // We log a generic message to avoid leaking provider-specific error details.
       console.error(
-        `Prefetch background generation failed for section "${nextSection.id}":`,
-        message
+        `Prefetch background generation failed for section "${nextSection.id}": non-critical error during generation`
       );
     } finally {
       this.#inProgress.delete(nextSection.id);

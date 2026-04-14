@@ -1,6 +1,6 @@
 // --- Prefetcher Tests ---
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CourseEngine } from '../src/engine/CourseEngine.js';
 import { ContentGenerator } from '../src/content/ContentGenerator.js';
 import { ContentCache } from '../src/content/ContentCache.js';
@@ -183,6 +183,10 @@ describe('Prefetcher', () => {
 });
 
 describe('CourseEngine + Prefetcher integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('uses cached content if available in startSection', async () => {
     const provider = mockProvider();
     const generator = new ContentGenerator(provider);
@@ -216,7 +220,7 @@ describe('CourseEngine + Prefetcher integration', () => {
     expect(engine.state).toBe('sectionComplete');
 
     // Wait for prefetch of s2 to complete
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Now start s2
     const contentReadySpy = vi.fn();
@@ -256,7 +260,7 @@ describe('CourseEngine + Prefetcher integration', () => {
     engine.startSection('s1');
 
     // Wait for fire-and-forget prefetch
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     expect(expSpy).toHaveBeenCalledTimes(2);
     expect(expSpy).toHaveBeenNthCalledWith(
@@ -305,7 +309,7 @@ describe('CourseEngine + Prefetcher integration', () => {
     engine.startSection('s1');
 
     // Wait for fire-and-forget prefetch to fail
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     expect(engine.state).toBe('practicing');
     expect(engine.currentItem).toEqual({
@@ -315,13 +319,66 @@ describe('CourseEngine + Prefetcher integration', () => {
       content: 'Content for t1',
     });
 
-    // Now startSection(s2) should work normally and transition to loading
-    engine.nextItem();
-    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
-    engine.nextItem();
+    // Complete s1
+    engine.nextItem(); // Moves from Exp 0 to Question 1
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 }); // State: answered
+    engine.nextItem(); // Moves from Question 1 to 2. >= length 2. Calls #completeSection()
+    expect(engine.state).toBe('sectionComplete');
 
     engine.startSection('s2');
     expect(engine.state).toBe('loading');
     expect(engine.currentItem).toBeNull();
+  });
+
+  it('does not allow prefetch to interrupt active section generation', async () => {
+    const provider = mockProvider();
+    const generator = new ContentGenerator(provider);
+
+    const callOrder: string[] = [];
+
+    vi.spyOn(generator, 'generateTopicExplanation').mockImplementation(async (topic) => {
+      callOrder.push(`exp:${topic.id}`);
+      return {
+        type: 'explanation',
+        topicId: topic.id,
+        title: `Exp ${topic.id}`,
+        content: `Content ${topic.id}`,
+      };
+    });
+
+    vi.spyOn(generator, 'generateTopicQuizBurst').mockImplementation(async (topic) => {
+      callOrder.push(`quiz:${topic.id}`);
+      return [
+        {
+          type: 'multiple-choice',
+          id: `q-${topic.id}`,
+          topicId: topic.id,
+          question: `Q ${topic.id}`,
+          options: ['A', 'B'],
+          correctIndex: 0,
+        },
+      ];
+    });
+
+    const engine = new CourseEngine({
+      apiKey: 'test',
+      generator,
+      prefetch: { enabled: true },
+    });
+
+    engine.loadCurriculum(MOCK_PLAN);
+
+    // Start s1. This should trigger generation for s1 (t1) and then prefetch for s2 (t2).
+    engine.startSection('s1');
+
+    // Wait for everything to settle
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // The order should be:
+    // 1. Section 1 Explanation (t1)
+    // 2. Section 1 Quiz (t1)
+    // 3. Section 2 Explanation (t2) -- prefetched
+    // 4. Section 2 Quiz (t2) -- prefetched
+    expect(callOrder).toEqual(['exp:t1', 'quiz:t1', 'exp:t2', 'quiz:t2']);
   });
 });

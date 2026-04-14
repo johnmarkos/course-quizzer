@@ -268,7 +268,6 @@ export class CourseEngine extends EventEmitter {
     if (this.#contentCache?.has(sectionId)) {
       const cachedItems = this.#contentCache.get(sectionId)!;
       this.setSectionContent(cachedItems);
-      this.#triggerPrefetch(sectionIndex);
       return;
     }
 
@@ -284,8 +283,6 @@ export class CourseEngine extends EventEmitter {
         // Transition to error state so UI can show it persistently
         this.#setState('error');
       });
-
-    this.#triggerPrefetch(sectionIndex);
   }
 
   // --- Content Loading ---
@@ -307,6 +304,9 @@ export class CourseEngine extends EventEmitter {
 
     this.#setState('practicing');
     this.#emitCurrentItem();
+
+    // Trigger prefetch for the next section now that current content is ready
+    this.#triggerPrefetch(this.#currentSectionIndex);
   }
 
   #triggerPrefetch(sectionIndex: number): void {
@@ -314,10 +314,10 @@ export class CourseEngine extends EventEmitter {
       return;
     }
 
-    this.#prefetcher.prefetch(sectionIndex).catch((err) => {
+    this.#prefetcher.prefetch(sectionIndex).catch((_err) => {
       // Log but don't crash — prefetching is non-critical.
-      const message = err instanceof Error ? err.message : String(err);
-      console.error('Background prefetch failed:', message);
+      // We log a generic message to avoid leaking provider-specific error details.
+      console.error('Background prefetch failed: non-critical error during generation');
     });
   }
 

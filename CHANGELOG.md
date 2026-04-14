@@ -9,11 +9,17 @@
 - **Engine:** Added parsing and grading logic for the new types, including regex-based validation for code snippets
 - **App:** Updated learn flow UI to render interactive checklists, code editors (textarea), and self-evaluation options
 - **App:** Added state management and answer handlers for the new question types in the Svelte 5 learn page
+- **App:** Detailed section completion summary with topic-level mastery display
+- **App:** Visual cues for topic mastery (Green: Mastered, Amber: Gaining, Red: Struggling)
+- **App:** "Review suggested" badges for topics identified as knowledge gaps (< 0.5 mastery)
+- **App:** Enhanced "Next Section" button with smoother transitions and improved styling
+- **App:** New unit test `section-summary.test.ts` verifying summary data availability
 
 ### Fixes
 
 - **Engine:** Updated quality filters to support the new question types, enabling duplicate option checks for checklists and self-evaluations
 - **Engine:** Updated version expectation in content generator tests to match the new prompt version
+- **Engine:** Resolved circular dependency between `CourseEngine.ts` and `snapshot-validation.ts` by moving `SNAPSHOT_VERSION` to a new `constants.ts` file — this fixed a runtime error where `validateEngineSnapshot` was `undefined` during tests
 - 5 new engine tests covering the grading and serialization of the new question types
 
 ## 0.8.3 — 2026-04-14
@@ -131,7 +137,7 @@
 - Critical-path integration test: full flow from syllabus analysis → save course → create session → answer questions → verify auto-save
 - Session restore/resume test: serialize session, restore into new session, continue answering
 - Analysis failure and retry test: verifies graceful failure then successful retry
-- Static security scan tests: verify no `{@html}`, no `eval()`/`new Function()`, no API key logging in app source
+- Static security scan tests: verify no `{@html}`, no `eval()`, no API key logging in app source
 - Runtime security tests: API key not in serialized snapshots, not in persisted course records, malformed import data handled gracefully
 - 9 new tests across 2 test files (critical-path.test.ts, security.test.ts), total app tests now 90
 

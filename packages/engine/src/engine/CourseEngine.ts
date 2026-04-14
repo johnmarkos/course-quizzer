@@ -6,6 +6,7 @@
 
 import { EventEmitter } from './events.js';
 import { InvalidTransitionError } from './errors.js';
+import { SNAPSHOT_VERSION } from './constants.js';
 import { StudentModel } from '../student/StudentModel.js';
 import { ClaudeProvider } from '../provider/ClaudeProvider.js';
 import { ContentGenerator } from '../content/ContentGenerator.js';
@@ -24,8 +25,6 @@ import type {
 } from './types.js';
 import type { StudentAnswer, Question } from '../content/types.js';
 import type { Section } from '../curriculum/types.js';
-
-export const SNAPSHOT_VERSION = 4;
 
 function copySection(section: Section): Section {
   // ... (omitting for brevity in this thought but I'll provide full in the call)

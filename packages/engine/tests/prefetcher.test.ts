@@ -261,15 +261,15 @@ describe('CourseEngine + Prefetcher integration', () => {
     expect(expSpy).toHaveBeenCalledTimes(2);
     expect(expSpy).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ id: 't2' }),
-      'Test Course',
-      'Section 2'
-    );
-    expect(expSpy).toHaveBeenNthCalledWith(
-      2,
       expect.objectContaining({ id: 't1' }),
       'Test Course',
       'Section 1'
+    );
+    expect(expSpy).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ id: 't2' }),
+      'Test Course',
+      'Section 2'
     );
   });
 

@@ -264,21 +264,11 @@ export class CourseEngine extends EventEmitter {
       totalSections: this.#curriculum.sections.length,
     });
 
-    // Trigger prefetch for the next section
-    if (this.#prefetcher) {
-      // Fire and forget
-      this.#prefetcher.prefetch(sectionIndex).catch((err) => {
-        // Log but don't crash — prefetching is non-critical
-        // Fix for finding 5: use sanitized error message
-        const message = err instanceof Error ? err.message : String(err);
-        console.error('Background prefetch failed:', message);
-      });
-    }
-
     // Check if content is already cached
     if (this.#contentCache?.has(sectionId)) {
       const cachedItems = this.#contentCache.get(sectionId)!;
       this.setSectionContent(cachedItems);
+      this.#triggerPrefetch(sectionIndex);
       return;
     }
 
@@ -294,6 +284,8 @@ export class CourseEngine extends EventEmitter {
         // Transition to error state so UI can show it persistently
         this.#setState('error');
       });
+
+    this.#triggerPrefetch(sectionIndex);
   }
 
   // --- Content Loading ---
@@ -315,6 +307,18 @@ export class CourseEngine extends EventEmitter {
 
     this.#setState('practicing');
     this.#emitCurrentItem();
+  }
+
+  #triggerPrefetch(sectionIndex: number): void {
+    if (!this.#prefetcher) {
+      return;
+    }
+
+    this.#prefetcher.prefetch(sectionIndex).catch((err) => {
+      // Log but don't crash — prefetching is non-critical.
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('Background prefetch failed:', message);
+    });
   }
 
   // --- Student Interaction ---

@@ -12,6 +12,7 @@ import { ClaudeProvider } from '../provider/ClaudeProvider.js';
 import { ContentGenerator } from '../content/ContentGenerator.js';
 import { ContentManager } from '../content/ContentManager.js';
 import { ContentCache } from '../content/ContentCache.js';
+import { copyContentItem } from '../content/copy-utils.js';
 import { Prefetcher } from '../content/Prefetcher.js';
 import type {
   CourseEngineConfig,
@@ -40,47 +41,6 @@ function copyCurriculumPlan(curriculum: CurriculumPlan): CurriculumPlan {
     ...curriculum,
     sections: curriculum.sections.map(copySection),
   };
-}
-
-function copyContentItem(item: ContentItem): ContentItem {
-  switch (item.type) {
-    case 'explanation':
-      return { ...item };
-    case 'multiple-choice':
-      return { ...item, options: [...item.options] };
-    case 'numeric-input':
-      return { ...item };
-    case 'ordering':
-      return {
-        ...item,
-        items: [...item.items],
-        correctOrder: [...item.correctOrder],
-      };
-    case 'multi-select':
-      return {
-        ...item,
-        options: [...item.options],
-        correctIndices: [...item.correctIndices],
-      };
-    case 'two-stage':
-      return {
-        ...item,
-        options: [...item.options],
-        followUpOptions: [...item.followUpOptions],
-      };
-    case 'checklist':
-      return {
-        ...item,
-        items: [...item.items],
-      };
-    case 'code':
-      return { ...item };
-    case 'self-evaluation':
-      return {
-        ...item,
-        options: [...item.options],
-      };
-  }
 }
 
 function copyStudentAnswer(answer: StudentAnswer): StudentAnswer {

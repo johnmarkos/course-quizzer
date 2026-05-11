@@ -1,7 +1,7 @@
 // --- SyllabusParser ---
 // Orchestrates the syllabus → CurriculumPlan pipeline:
 //   1. Build the prompt from raw syllabus text
-//   2. Send to Claude via ClaudeProvider
+//   2. Send to the configured provider
 //   3. Parse and validate the response
 //   4. Retry once on malformed response
 //
@@ -10,16 +10,19 @@
 // ProviderRequest/ProviderResponse types.
 
 import { buildSyllabusAnalysisPrompt } from '../prompts/syllabus-analysis.js';
-import type { ClaudeProvider } from '../provider/ClaudeProvider.js';
-import type { ProviderResponse, ToolUseBlock } from '../provider/types.js';
+import type {
+  ProviderClient,
+  ProviderResponse,
+  ToolUseBlock,
+} from '../provider/types.js';
 import type { CurriculumPlan, Section, Topic } from './types.js';
 
 const MAX_TOKENS = 4096;
 
 export class SyllabusParser {
-  #provider: ClaudeProvider;
+  #provider: ProviderClient;
 
-  constructor(provider: ClaudeProvider) {
+  constructor(provider: ProviderClient) {
     this.#provider = provider;
   }
 

@@ -3,7 +3,7 @@
 // This hides the LLM latency by pre-generating content while the student
 // is working on the current section.
 
-import type { ContentGenerator } from './ContentGenerator.js';
+import type { TopicContentGenerator } from './ContentGenerator.js';
 import type { ContentCache } from './ContentCache.js';
 import type { CurriculumPlan } from '../curriculum/types.js';
 import type { StudentModel } from '../student/StudentModel.js';
@@ -15,7 +15,7 @@ export class Prefetcher {
   #curriculum: CurriculumPlan | null = null;
   #inProgress = new Set<string>();
 
-  constructor(generator: ContentGenerator, cache: ContentCache) {
+  constructor(generator: TopicContentGenerator, cache: ContentCache) {
     this.#manager = new ContentManager(generator, () => {
       // No-op for prefetch background generation (silences UI events)
     });

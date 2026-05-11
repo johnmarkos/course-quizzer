@@ -13,6 +13,7 @@ import type { RateLimiterConfig } from './rate-limiter.js';
 import {
   ProviderError,
   type ProviderConfig,
+  type ProviderClient,
   type ProviderRequest,
   type ProviderResponse,
   type ContentBlock,
@@ -68,7 +69,7 @@ export type ClaudeProviderConfig = ProviderConfig & {
   rateLimiter?: Partial<RateLimiterConfig>;
 };
 
-export class ClaudeProvider {
+export class ClaudeProvider implements ProviderClient {
   #apiKey: string;
   #model: string;
   #rateLimiter: RateLimiter;

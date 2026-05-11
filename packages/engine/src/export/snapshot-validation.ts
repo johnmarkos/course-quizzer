@@ -193,6 +193,15 @@ function isValidGeneratedContentRecord(value: unknown): boolean {
 
 // --- Canonical copies ---
 
+function setRecordEntry<T>(record: Record<string, T>, key: string, value: T): void {
+  Object.defineProperty(record, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+}
+
 function copyStudentAnswer(answer: StudentAnswer): StudentAnswer {
   switch (answer.type) {
     case 'multiple-choice':
@@ -332,7 +341,7 @@ function copyGeneratedContentRecord(
   if (!allGeneratedContent) return copy;
 
   for (const [sectionId, items] of Object.entries(allGeneratedContent)) {
-    copy[sectionId] = items.map(copyContentItem);
+    setRecordEntry(copy, sectionId, items.map(copyContentItem));
   }
 
   return copy;
@@ -342,12 +351,12 @@ function copyStudentState(state: StudentState): StudentState {
   const masteryByTopic: StudentState['masteryByTopic'] = {};
 
   for (const [topicId, mastery] of Object.entries(state.masteryByTopic)) {
-    masteryByTopic[topicId] = {
+    setRecordEntry(masteryByTopic, topicId, {
       topicId: mastery.topicId,
       score: mastery.score,
       questionsAnswered: mastery.questionsAnswered,
       questionsCorrect: mastery.questionsCorrect,
-    };
+    });
   }
 
   return {

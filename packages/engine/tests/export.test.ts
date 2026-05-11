@@ -185,4 +185,78 @@ describe('Exporter & Importer', () => {
     expect(exported).not.toContain('sk-ant-header-secret');
     expect(exported).not.toContain('sk-ant-debug-secret');
   });
+
+  it('copies imported generated content __proto__ keys as own data properties', () => {
+    const importer = new Importer();
+    const validSnapshot = createValidSnapshot();
+    const generatedContentWithProtoKey = {
+      ...validSnapshot.allGeneratedContent,
+      ['__proto__']: mockSectionContent(),
+    };
+
+    const importedSnapshot = importer.import(
+      JSON.stringify({
+        type: 'coursequizzer-export',
+        version: 1,
+        data: {
+          ...validSnapshot,
+          allGeneratedContent: generatedContentWithProtoKey,
+        },
+      })
+    );
+
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        importedSnapshot.allGeneratedContent,
+        '__proto__'
+      )
+    ).toBe(true);
+    expect(Object.getPrototypeOf(importedSnapshot.allGeneratedContent)).toBe(
+      Object.prototype
+    );
+    expect(importedSnapshot.allGeneratedContent['__proto__']).toEqual(
+      mockSectionContent()
+    );
+  });
+
+  it('copies imported mastery __proto__ keys as own data properties', () => {
+    const importer = new Importer();
+    const validSnapshot = createValidSnapshot();
+    const protoMastery = {
+      topicId: '__proto__',
+      score: 0.5,
+      questionsAnswered: 2,
+      questionsCorrect: 1,
+    };
+
+    const importedSnapshot = importer.import(
+      JSON.stringify({
+        type: 'coursequizzer-export',
+        version: 1,
+        data: {
+          ...validSnapshot,
+          studentState: {
+            masteryByTopic: {
+              ...validSnapshot.studentState.masteryByTopic,
+              ['__proto__']: protoMastery,
+            },
+            gaps: [],
+          },
+        },
+      })
+    );
+
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        importedSnapshot.studentState.masteryByTopic,
+        '__proto__'
+      )
+    ).toBe(true);
+    expect(Object.getPrototypeOf(importedSnapshot.studentState.masteryByTopic)).toBe(
+      Object.prototype
+    );
+    expect(importedSnapshot.studentState.masteryByTopic['__proto__']).toEqual(
+      protoMastery
+    );
+  });
 });

@@ -5,7 +5,7 @@
 
 import type { PromptMessages } from './types.js';
 
-export const QUIZ_GENERATION_VERSION = '1.2';
+export const QUIZ_GENERATION_VERSION = '1.3';
 
 // --- Tool Schema ---
 

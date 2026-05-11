@@ -8,6 +8,7 @@
 - **Engine:** Pass the engine-owned `StudentModel` into background prefetch generation so cached next-section content uses adaptive quiz burst sizing instead of the default question count
 - **Engine:** Extend quality-filter length-outlier coverage to `checklist` and `self-evaluation` questions, and make all question-type switch branches explicit
 - **Engine:** Extract shared `copyContentItem` utility so `ContentCache` and `CourseEngine` cannot drift when new content item types are added
+- **Engine:** Bump `QUIZ_GENERATION_VERSION` to `1.3` to track the prompt expansion for checklist, code, and self-evaluation questions
 
 ## 0.9.0 — 2026-05-10
 

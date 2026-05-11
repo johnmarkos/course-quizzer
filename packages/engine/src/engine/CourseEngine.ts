@@ -511,8 +511,12 @@ export class CourseEngine extends EventEmitter {
       }
       case 'checklist': {
         const a = answer as { type: 'checklist'; checkedIndices: number[] };
-        // Correct if all items are checked
-        return a.checkedIndices.length === question.items.length;
+        const checked = new Set(a.checkedIndices);
+        return (
+          a.checkedIndices.length === question.items.length &&
+          checked.size === question.items.length &&
+          question.items.every((_, index) => checked.has(index))
+        );
       }
       case 'code': {
         const a = answer as { type: 'code'; code: string };
@@ -528,7 +532,12 @@ export class CourseEngine extends EventEmitter {
         return true; // Trust the student if no pattern provided
       }
       case 'self-evaluation': {
-        return true; // Always "correct" to report completion
+        const a = answer as { type: 'self-evaluation'; selectedIndex: number };
+        return (
+          Number.isInteger(a.selectedIndex) &&
+          a.selectedIndex >= 0 &&
+          a.selectedIndex < question.options.length
+        );
       }
     }
   }

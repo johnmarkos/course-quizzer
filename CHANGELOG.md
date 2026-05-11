@@ -21,6 +21,7 @@
 - **Engine/App:** Move topic mastery display status, review flags, and snapshot progress summaries into the engine so the app only formats engine-provided progress values
 - **Engine:** Retry explanation and quiz generation once when tool payload parsing or content validation fails
 - **Engine:** Reuse in-flight prefetch generation when starting a prefetched section so the engine does not make duplicate foreground and background API calls for the same section
+- **Engine:** Reject duplicate, fractional, and out-of-range practical-question answer indices during checklist and self-evaluation grading
 
 ## 0.9.0 — 2026-05-10
 

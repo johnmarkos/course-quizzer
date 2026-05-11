@@ -60,6 +60,44 @@ describe('New Question Types', () => {
     expect(resultIncorrect.correct).toBe(false);
   });
 
+  it('rejects duplicate and out-of-range checklist indices', () => {
+    const checklistItem: ContentItem = {
+      type: 'checklist',
+      id: 'q-checklist',
+      topicId: 'topic-1',
+      question: 'Perform the following steps:',
+      items: ['Plug in guitar', 'Turn on amp', 'Tune strings'],
+    };
+
+    const engineWithDuplicates = new CourseEngine({
+      apiKey: 'test-key',
+      generator: mockGenerator,
+    });
+    engineWithDuplicates.loadCurriculum(mockCurriculum());
+    engineWithDuplicates.startSection('section-1');
+    engineWithDuplicates.setSectionContent([checklistItem]);
+
+    const duplicateResult = engineWithDuplicates.submitAnswer({
+      type: 'checklist',
+      checkedIndices: [0, 0, 0],
+    });
+    expect(duplicateResult.correct).toBe(false);
+
+    const engineWithOutOfRangeIndex = new CourseEngine({
+      apiKey: 'test-key',
+      generator: mockGenerator,
+    });
+    engineWithOutOfRangeIndex.loadCurriculum(mockCurriculum());
+    engineWithOutOfRangeIndex.startSection('section-1');
+    engineWithOutOfRangeIndex.setSectionContent([checklistItem]);
+
+    const outOfRangeResult = engineWithOutOfRangeIndex.submitAnswer({
+      type: 'checklist',
+      checkedIndices: [0, 1, 99],
+    });
+    expect(outOfRangeResult.correct).toBe(false);
+  });
+
   it('grades code correctly with expectedPattern', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
@@ -118,7 +156,7 @@ describe('New Question Types', () => {
     expect(result.correct).toBe(true);
   });
 
-  it('grades self-evaluation correctly (always true)', () => {
+  it('grades self-evaluation correctly when a valid option is selected', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
@@ -138,6 +176,44 @@ describe('New Question Types', () => {
       selectedIndex: 0,
     });
     expect(result.correct).toBe(true);
+  });
+
+  it('rejects invalid self-evaluation selected indices', () => {
+    const selfEvalItem: ContentItem = {
+      type: 'self-evaluation',
+      id: 'q-self-eval',
+      topicId: 'topic-1',
+      question: 'How do you feel about your progress?',
+      options: ['Need more practice', 'Got it'],
+    };
+
+    const engineWithOutOfRangeIndex = new CourseEngine({
+      apiKey: 'test-key',
+      generator: mockGenerator,
+    });
+    engineWithOutOfRangeIndex.loadCurriculum(mockCurriculum());
+    engineWithOutOfRangeIndex.startSection('section-1');
+    engineWithOutOfRangeIndex.setSectionContent([selfEvalItem]);
+
+    const outOfRangeResult = engineWithOutOfRangeIndex.submitAnswer({
+      type: 'self-evaluation',
+      selectedIndex: 2,
+    });
+    expect(outOfRangeResult.correct).toBe(false);
+
+    const engineWithFractionalIndex = new CourseEngine({
+      apiKey: 'test-key',
+      generator: mockGenerator,
+    });
+    engineWithFractionalIndex.loadCurriculum(mockCurriculum());
+    engineWithFractionalIndex.startSection('section-1');
+    engineWithFractionalIndex.setSectionContent([selfEvalItem]);
+
+    const fractionalResult = engineWithFractionalIndex.submitAnswer({
+      type: 'self-evaluation',
+      selectedIndex: 0.5,
+    });
+    expect(fractionalResult.correct).toBe(false);
   });
 
   it('round-trips new question types via serialization', () => {

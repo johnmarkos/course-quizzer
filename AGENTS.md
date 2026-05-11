@@ -297,7 +297,7 @@ All changes to `main` require a pull request. No direct commits to `main`.
 - **Review via PR comments, not GitHub review approvals.** All agents share one GitHub account (`johnmarkos`), so `gh pr review --approve` doesn't work (you can't approve your own PR). Instead:
   - **Reviewer posts** a PR comment prefixed with `## Review — Reviewer Agent`, ending with a status line: `**Status: APPROVED**` or `**Status: CHANGES REQUESTED**`.
   - **Coding agent detects review feedback** by checking PR comments (`gh pr view <n> --json comments`) for comments containing `## Review — Reviewer Agent`. Do NOT look for GitHub review approvals — they won't exist.
-  - **Merge after approval:** Once a comment contains `**Status: APPROVED**` and CI is green, the coding agent merges with `gh pr merge <n> --squash --delete-branch --admin`; the author script wraps `gh` and refuses this merge while any status check is failing or still running.
+  - **Merge after approval:** Once a comment contains `**Status: APPROVED**` and CI is green, the coding agent merges with `gh pr merge <n> --squash --delete-branch --admin`; the author script wraps `gh` and refuses this merge unless at least one status check is reported and every check is `SUCCESS` or `SKIPPED`.
   - Trivial PRs (version bumps, typos, config tweaks) can merge after CI passes without a review comment.
 - **Cross-package PRs:** When a PR touches both `packages/engine` and `apps/coursequizzer`, the PR description must explain why both are changing together.
 

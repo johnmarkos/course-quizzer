@@ -28,11 +28,11 @@ If a PR needs action:
 
 1. Check out the PR branch
 2. Read the review comment — the entire comment, not just the status line
-3. If verdict is `Clean approve`: verify CI is green (`gh pr checks <n>`), then merge with `gh pr merge <n> --squash --delete-branch --admin`. The author script also guards this command and will refuse the merge if any status check is failing or still running. Exit.
+3. If verdict is `Clean approve`: verify CI is green (`gh pr checks <n>`), then merge with `gh pr merge <n> --squash --delete-branch --admin`. The author script also guards this command and will refuse the merge unless at least one status check is reported and every check is `SUCCESS` or `SKIPPED`. Exit.
 4. Otherwise, address **every finding**. No exceptions. If the reviewer mentioned it, fix it.
 5. Run `pnpm -r test`, `pnpm -r build`, `pnpm format`
 6. Commit and push
-7. If verdict was `Approved with required fixes`: verify CI is green, then merge with `gh pr merge <n> --squash --delete-branch --admin`. The author script will refuse the merge if any status check is failing or still running.
+7. If verdict was `Approved with required fixes`: verify CI is green, then merge with `gh pr merge <n> --squash --delete-branch --admin`. The author script will refuse the merge unless at least one status check is reported and every check is `SUCCESS` or `SKIPPED`.
 8. Exit
 
 ## Priority 2: Finish an in-progress issue that has no PR
@@ -86,4 +86,4 @@ If none of the above apply, say "Nothing to do" and exit.
 - One thing per invocation. Do not start a second task.
 - Follow all Architecture Rules and Conventions in AGENTS.md.
 - Commit attribution matches the model running: `Co-Authored-By: Codex <noreply@openai.com>`, `Co-Authored-By: Gemini <noreply@google.com>`, etc.
-- The author owns the merge after the reviewer approves. Do not wait for a human to merge. Merging without `**Status: APPROVED**` (or, for trivial PRs, without green CI) is forbidden.
+- The author owns the merge after the reviewer approves. Do not wait for a human to merge. Merging without `**Status: APPROVED**` (or, for trivial PRs, without at least one reported green CI check) is forbidden, and the author script's guarded `gh` wrapper blocks `gh pr merge` unless every reported check is `SUCCESS` or `SKIPPED`.

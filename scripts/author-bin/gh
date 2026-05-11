@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Author-agent guard for GitHub CLI usage.
-# Blocks `gh pr merge` unless all reported PR checks are successful or skipped.
+# Blocks `gh pr merge` unless at least one reported PR check exists and every
+# reported check is successful or skipped.
 # All other gh commands pass through unchanged.
 
 set -uo pipefail
@@ -87,19 +88,24 @@ assert_checks_green() {
     local failures
     # shellcheck disable=SC2016
     if ! failures="$("$REAL_GH" pr view "$pr_number" "$@" --json statusCheckRollup --jq '
-        .statusCheckRollup[]?
-        | {
-            name: (.name // .context // .workflowName // "unknown"),
-            status: (.status // ""),
-            conclusion: (.conclusion // .state // "")
-        }
-        | (.status | ascii_upcase) as $status
-        | (.conclusion | ascii_upcase) as $conclusion
-        | select(
-            ($conclusion != "SUCCESS" and $conclusion != "SKIPPED")
-            or ($status != "" and $status != "COMPLETED")
-        )
-        | "- \(.name): status=\(.status) conclusion=\(.conclusion)"
+        (.statusCheckRollup // []) as $checks
+        | if ($checks | length) == 0 then
+            "- no status checks reported"
+        else
+            $checks[]
+            | {
+                name: (.name // .context // .workflowName // "unknown"),
+                status: (.status // ""),
+                conclusion: (.conclusion // .state // "")
+            }
+            | (.status | ascii_upcase) as $status
+            | (.conclusion | ascii_upcase) as $conclusion
+            | select(
+                ($conclusion != "SUCCESS" and $conclusion != "SKIPPED")
+                or ($status != "" and $status != "COMPLETED")
+            )
+            | "- \(.name): status=\(.status) conclusion=\(.conclusion)"
+        end
     ')"; then
         log_guard_error "Could not read status checks for PR #$pr_number; refusing to merge."
         return 1
@@ -125,7 +131,11 @@ if is_pr_merge_command "$@" && ! is_auto_merge_abort "$@"; then
         repo_args+=("$repo_arg")
     done < <(collect_repo_args "$@")
 
-    assert_checks_green "$pr_number" "${repo_args[@]}" || exit 1
+    if [ "${#repo_args[@]}" -gt 0 ]; then
+        assert_checks_green "$pr_number" "${repo_args[@]}" || exit 1
+    else
+        assert_checks_green "$pr_number" || exit 1
+    fi
 fi
 
 exec "$REAL_GH" "$@"

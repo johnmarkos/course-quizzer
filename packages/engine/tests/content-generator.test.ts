@@ -80,7 +80,7 @@ describe('explanation prompt', () => {
 
 describe('quiz generation prompt', () => {
   it('exports version constant', () => {
-    expect(QUIZ_GENERATION_VERSION).toBe('1.2');
+    expect(QUIZ_GENERATION_VERSION).toBe('1.3');
   });
 
   it('builds prompt with topic and explanation context', () => {

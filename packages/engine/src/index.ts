@@ -31,7 +31,12 @@ export type {
   TopicMastery,
 } from './engine/types.js';
 
-export type { EngineEvent, EngineEventMap, Listener } from './engine/events.js';
+export type {
+  ApiCallEvent,
+  EngineEvent,
+  EngineEventMap,
+  Listener,
+} from './engine/events.js';
 
 export type { Topic } from './curriculum/types.js';
 

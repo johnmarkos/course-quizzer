@@ -13,6 +13,11 @@ import type {
 import type { StudentState, SessionProgress } from '../student/types.js';
 import type { EngineState } from './types.js';
 
+export type ApiCallEvent = {
+  id: string;
+  purpose: string;
+};
+
 export type EngineEventMap = {
   stateChange: { from: EngineState; to: EngineState };
   error: { message: string; recoverable: boolean };
@@ -44,8 +49,8 @@ export type EngineEventMap = {
   };
 
   // --- API activity (for loading indicators) ---
-  apiCallStart: { purpose: string };
-  apiCallComplete: { purpose: string };
+  apiCallStart: ApiCallEvent;
+  apiCallComplete: ApiCallEvent;
 };
 
 export type EngineEvent = keyof EngineEventMap;

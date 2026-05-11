@@ -684,6 +684,7 @@ describe('async lifecycle and events', () => {
 
     // Should have started explanation for first topic
     expect(apiEvents).toHaveLength(1);
+    expect(apiEvents[0].id).toBe('api-call-1');
     expect(apiEvents[0].purpose).toContain('Explanation');
 
     // Resolve explanation
@@ -696,7 +697,10 @@ describe('async lifecycle and events', () => {
     await new Promise((r) => setTimeout(r, 0)); // let microtasks run
 
     expect(completeEvents).toHaveLength(1);
+    expect(completeEvents[0].id).toBe(apiEvents[0].id);
     expect(apiEvents).toHaveLength(2); // Should have started quiz
+    expect(apiEvents[1].id).toBe('api-call-2');
+    expect(apiEvents[1].id).not.toBe(apiEvents[0].id);
     expect(apiEvents[1].purpose).toContain('Quiz');
 
     // Resolve quiz
@@ -704,6 +708,7 @@ describe('async lifecycle and events', () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(completeEvents).toHaveLength(2);
+    expect(completeEvents[1].id).toBe(apiEvents[1].id);
   });
 
   it('transitions to error state and emits error on generation failure', async () => {

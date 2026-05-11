@@ -5,6 +5,7 @@ import type { ContentItem } from './types.js';
 import type { ContentGenerator } from './ContentGenerator.js';
 
 export type ApiCallEventHandler = (payload: {
+  id: string;
   purpose: string;
   status: 'start' | 'complete';
 }) => void;
@@ -16,6 +17,7 @@ export type ApiCallEventHandler = (payload: {
 export class ContentManager {
   #generator: ContentGenerator;
   #onApiCall: ApiCallEventHandler;
+  #apiCallSequence = 0;
 
   constructor(generator: ContentGenerator, onApiCall: ApiCallEventHandler) {
     this.#generator = generator;
@@ -36,49 +38,42 @@ export class ContentManager {
 
     for (const topic of section.topics) {
       // 1. Explanation
-      this.#onApiCall({
-        purpose: `Explanation for topic: ${topic.title}`,
-        status: 'start',
-      });
-      let explanation;
-      try {
-        explanation = await this.#generator.generateTopicExplanation(
-          topic,
-          courseTitle,
-          section.title
-        );
-      } finally {
-        this.#onApiCall({
-          purpose: `Explanation for topic: ${topic.title}`,
-          status: 'complete',
-        });
-      }
+      const explanation = await this.#withApiCall(
+        `Explanation for topic: ${topic.title}`,
+        () => this.#generator.generateTopicExplanation(topic, courseTitle, section.title)
+      );
       items.push(explanation);
 
       // 2. Quiz Burst
-      this.#onApiCall({
-        purpose: `Quiz for topic: ${topic.title}`,
-        status: 'start',
-      });
-      try {
+      const questions = await this.#withApiCall(`Quiz for topic: ${topic.title}`, () => {
         const questionCount =
           adaptiveSelector?.getTopicConfig(topic.id).targetQuestionCount ?? 3;
-        const questions = await this.#generator.generateTopicQuizBurst(
+        return this.#generator.generateTopicQuizBurst(
           topic,
           courseTitle,
           section.title,
           explanation.content,
           questionCount
         );
-        items.push(...questions);
-      } finally {
-        this.#onApiCall({
-          purpose: `Quiz for topic: ${topic.title}`,
-          status: 'complete',
-        });
-      }
+      });
+      items.push(...questions);
     }
 
     return items;
+  }
+
+  async #withApiCall<T>(purpose: string, generate: () => Promise<T>): Promise<T> {
+    const id = this.#nextApiCallId();
+    this.#onApiCall({ id, purpose, status: 'start' });
+    try {
+      return await generate();
+    } finally {
+      this.#onApiCall({ id, purpose, status: 'complete' });
+    }
+  }
+
+  #nextApiCallId(): string {
+    this.#apiCallSequence += 1;
+    return `api-call-${this.#apiCallSequence}`;
   }
 }

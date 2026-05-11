@@ -72,15 +72,26 @@ describe('section summary data', () => {
 
     expect(session.engineState).toBe('sectionComplete');
     expect(session.studentState).not.toBeNull();
+    expect(session.progress?.currentSection).not.toBeNull();
 
-    const mastery = session.studentState!.masteryByTopic;
-    expect(mastery['t1']).toBeDefined();
-    expect(mastery['t1'].score).toBeGreaterThan(0);
-    expect(mastery['t1'].questionsCorrect).toBe(1);
+    const topicProgress = session.progress!.currentSection!.topics;
+    expect(topicProgress[0]).toMatchObject({
+      topicId: 't1',
+      title: 'What is a Unit Test?',
+      score: 0.15,
+      questionsCorrect: 1,
+      status: 'struggling',
+      needsReview: true,
+    });
 
-    expect(mastery['t2']).toBeDefined();
-    expect(mastery['t2'].score).toBe(0);
-    expect(mastery['t2'].questionsCorrect).toBe(0);
+    expect(topicProgress[1]).toMatchObject({
+      topicId: 't2',
+      title: 'Test Runners',
+      score: 0,
+      questionsCorrect: 0,
+      status: 'struggling',
+      needsReview: true,
+    });
 
     // Check if we can identify topics for the current section
     const currentSectionTopics = session.currentSection!.section.topics;

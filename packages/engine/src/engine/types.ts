@@ -7,7 +7,15 @@ import type {
   Question,
   Explanation,
 } from '../content/types.js';
-import type { StudentState, SessionProgress, TopicMastery } from '../student/types.js';
+import type {
+  CourseProgressSummary,
+  MasteryStatus,
+  SectionProgressSummary,
+  StudentState,
+  SessionProgress,
+  TopicMastery,
+  TopicProgress,
+} from '../student/types.js';
 import type { ProviderClient } from '../provider/types.js';
 import type { TopicContentGenerator } from '../content/ContentGenerator.js';
 
@@ -56,4 +64,8 @@ export type {
   StudentState,
   SessionProgress,
   TopicMastery,
+  MasteryStatus,
+  TopicProgress,
+  SectionProgressSummary,
+  CourseProgressSummary,
 };

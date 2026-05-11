@@ -11,11 +11,10 @@
 // The model is serializable: getState() returns a snapshot,
 // and the constructor can restore from a prior StudentState.
 
+import { summarizeSectionProgress } from './progress.js';
+import { BASE_GAIN, BASE_LOSS, GAP_THRESHOLD } from './mastery-policy.js';
+import type { Section } from '../curriculum/types.js';
 import type { StudentState, TopicMastery, SessionProgress } from './types.js';
-
-const GAP_THRESHOLD = 0.5;
-const BASE_GAIN = 0.15;
-const BASE_LOSS = 0.1;
 
 export type MasteryUpdate = {
   topicId: string;
@@ -129,13 +128,24 @@ export class StudentModel {
     totalSections: number;
     currentItemIndex: number;
     totalItemsInSection: number;
+    currentSection?: Section | null;
   }): SessionProgress {
+    const currentSection = position.currentSection
+      ? summarizeSectionProgress(
+          position.currentSection,
+          position.currentSectionIndex,
+          position.currentSectionIndex,
+          this.getState()
+        )
+      : null;
+
     return {
       currentSectionIndex: position.currentSectionIndex,
       totalSections: position.totalSections,
       currentItemIndex: position.currentItemIndex,
       totalItemsInSection: position.totalItemsInSection,
       overallMastery: this.overallMastery,
+      currentSection,
     };
   }
 

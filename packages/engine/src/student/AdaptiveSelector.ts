@@ -1,7 +1,5 @@
 import type { StudentModel } from './StudentModel.js';
-
-const GAP_THRESHOLD = 0.5;
-const PROFICIENT_THRESHOLD = 0.8;
+import { GAP_THRESHOLD, PROFICIENT_THRESHOLD } from './mastery-policy.js';
 const GAP_QUESTION_COUNT = 5;
 const DEFAULT_QUESTION_COUNT = 3;
 const PROFICIENT_QUESTION_COUNT = 2;

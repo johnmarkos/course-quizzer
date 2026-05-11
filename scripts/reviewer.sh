@@ -13,7 +13,10 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-WORKTREE="/home/nhoj/Documents/learning/cq-reviewer"
+# Default: a sibling directory of the repo (e.g., $REPO_ROOT/../cq-reviewer).
+# Override via CQ_WORKTREE_REVIEWER when the default doesn't fit (different
+# layout on a second factory node, etc.).
+WORKTREE="${CQ_WORKTREE_REVIEWER:-$REPO_ROOT/../cq-reviewer}"
 PROMPT_FILE="$SCRIPT_DIR/prompts/reviewer.md"
 LOGDIR="$REPO_ROOT/logs/reviewer"
 ERRORLOG="$REPO_ROOT/logs/reviewer-errors.log"

@@ -108,11 +108,11 @@ The shape we're moving toward: the **planner role becomes interactive-only** (ch
 - [x] Author script: stop fallback on non-credit agent failures (PR #78, closes #65)
 - [x] Running agents restarted on 2026-05-10 to pick up the new cascade and prompts
 - [x] Planner state migrated to pinned GitHub issue #85 (label `planner-state`); AGENTS.md updated; PLANNER-HANDOFF.md replaced with a redirect stub
+- [x] Mac onboarded as a second factory node on 2026-05-10 — author + reviewer running on both machines; the `in-progress` label prevents collisions
 
 **Backlog (ordered by intended next move):**
 
 - [ ] First real run of `scripts/audit.sh 3` once Phase 3 cleanup queue drains
-- [ ] Onboard the new Mac as a second factory node (clone, env vars, CLI installs)
 - [ ] `scripts/start-agents.sh` / `stop-agents.sh` / `status.sh` — quality-of-life supervisor for multi-machine ops
 - [ ] AGENTS.md catch-up: document the new cascade, `audit.sh`, and the planner-state issue
 - [ ] **Deferred:** `scripts/dispatch.sh` (translate ROADMAP phase → issues) — build only when interactive planner dispatch starts to feel slow

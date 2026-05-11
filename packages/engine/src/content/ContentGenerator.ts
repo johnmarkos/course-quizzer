@@ -16,7 +16,7 @@
 import { buildExplanationPrompt } from '../prompts/explanation.js';
 import { buildQuizGenerationPrompt } from '../prompts/quiz-generation.js';
 import { checkQuestionQuality } from './quality-filters.js';
-import type { ProviderClient, ToolUseBlock } from '../provider/types.js';
+import type { ProviderClient, ProviderRequest, ToolUseBlock } from '../provider/types.js';
 import type { Topic } from '../curriculum/types.js';
 import type { Explanation, Question, QuestionType } from './types.js';
 
@@ -59,38 +59,47 @@ export class ContentGenerator implements TopicContentGenerator {
       sectionTitle,
     });
 
-    const response = await this.#provider.sendMessage({
-      ...prompt,
-      maxTokens: EXPLANATION_MAX_TOKENS,
-    });
-
-    const toolBlock = response.content.find(
-      (block): block is ToolUseBlock =>
-        block.type === 'tool_use' && block.name === 'create_explanation'
-    );
-
-    if (!toolBlock) {
-      // Retry once
-      const retryResponse = await this.#provider.sendMessage({
+    return this.#sendAndParseToolWithRetry(
+      {
         ...prompt,
         maxTokens: EXPLANATION_MAX_TOKENS,
-      });
+      },
+      'create_explanation',
+      `Failed to generate explanation for topic "${topic.title}" after retry`,
+      (toolBlock) => this.#parseExplanation(toolBlock, topic.id)
+    );
+  }
 
-      const retryBlock = retryResponse.content.find(
+  // --- Provider Response Handling ---
+
+  async #sendAndParseToolWithRetry<T>(
+    request: ProviderRequest,
+    toolName: string,
+    failureMessage: string,
+    parse: (block: ToolUseBlock) => T
+  ): Promise<T> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await this.#provider.sendMessage(request);
+      const toolBlock = response.content.find(
         (block): block is ToolUseBlock =>
-          block.type === 'tool_use' && block.name === 'create_explanation'
+          block.type === 'tool_use' && block.name === toolName
       );
 
-      if (!retryBlock) {
-        throw new Error(
-          `Failed to generate explanation for topic "${topic.title}" after retry`
-        );
+      if (!toolBlock) {
+        lastError = new Error(failureMessage);
+        continue;
       }
 
-      return this.#parseExplanation(retryBlock, topic.id);
+      try {
+        return parse(toolBlock);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+      }
     }
 
-    return this.#parseExplanation(toolBlock, topic.id);
+    throw lastError ?? new Error(failureMessage);
   }
 
   #parseExplanation(block: ToolUseBlock, topicId: string): Explanation {
@@ -129,36 +138,15 @@ export class ContentGenerator implements TopicContentGenerator {
       questionCount,
     });
 
-    const response = await this.#provider.sendMessage({
-      ...prompt,
-      maxTokens: QUIZ_MAX_TOKENS,
-    });
-
-    const toolBlock = response.content.find(
-      (block): block is ToolUseBlock =>
-        block.type === 'tool_use' && block.name === 'create_quiz_questions'
-    );
-
-    if (!toolBlock) {
-      // Retry once
-      const retryResponse = await this.#provider.sendMessage({
+    return this.#sendAndParseToolWithRetry(
+      {
         ...prompt,
         maxTokens: QUIZ_MAX_TOKENS,
-      });
-
-      const retryBlock = retryResponse.content.find(
-        (block): block is ToolUseBlock =>
-          block.type === 'tool_use' && block.name === 'create_quiz_questions'
-      );
-
-      if (!retryBlock) {
-        throw new Error(`Failed to generate quiz for topic "${topic.title}" after retry`);
-      }
-
-      return this.#parseAndFilterQuestions(retryBlock, topic.id, questionCount);
-    }
-
-    return this.#parseAndFilterQuestions(toolBlock, topic.id, questionCount);
+      },
+      'create_quiz_questions',
+      `Failed to generate quiz for topic "${topic.title}" after retry`,
+      (toolBlock) => this.#parseAndFilterQuestions(toolBlock, topic.id, questionCount)
+    );
   }
 
   #parseAndFilterQuestions(

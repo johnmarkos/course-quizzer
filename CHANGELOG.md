@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.5 — 2026-05-10
+
+### Fixes
+
+- **Engine:** Extend `ContentCache.copyContentItem` switch to cover the `checklist`, `code`, and `self-evaluation` question types — restores `pnpm -r build` after the regression introduced by #62
+- **Engine:** Extend `snapshot-validation` to validate the new question shapes and their student-answer shapes; previously, export → import of a course containing any of the three new types would reject the snapshot as malformed
+- **Engine:** Reformat `ContentGenerator.ts`, `prompts/quiz-generation.ts`, and `tests/new-question-types.test.ts` to satisfy `pnpm format:check` (pre-existing drift from #62)
+- 35 new engine tests in `content-roundtrip.test.ts` that enumerate every member of the `Question` union and assert round-trip through both the cache and the snapshot validator — a dropped switch case in either location now breaks the suite
+
 ## 0.8.4 — 2026-04-14
 
 ### Features

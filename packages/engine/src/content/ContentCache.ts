@@ -31,6 +31,12 @@ function copyContentItem(item: ContentItem): ContentItem {
         options: [...item.options],
         followUpOptions: [...item.followUpOptions],
       };
+    case 'checklist':
+      return { ...item, items: [...item.items] };
+    case 'code':
+      return { ...item };
+    case 'self-evaluation':
+      return { ...item, options: [...item.options] };
   }
 }
 

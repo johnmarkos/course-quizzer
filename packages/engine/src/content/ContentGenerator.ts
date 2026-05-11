@@ -404,8 +404,7 @@ export class ContentGenerator {
     question: string
   ): Question {
     const language = this.#requireString(obj.language, 'language');
-    const initialCode =
-      typeof obj.initialCode === 'string' ? obj.initialCode : undefined;
+    const initialCode = typeof obj.initialCode === 'string' ? obj.initialCode : undefined;
     const expectedPattern =
       typeof obj.expectedPattern === 'string' ? obj.expectedPattern : undefined;
 

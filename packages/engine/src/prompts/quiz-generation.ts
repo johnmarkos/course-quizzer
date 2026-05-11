@@ -72,7 +72,8 @@ function buildQuizTool(count: number = 3) {
               items: {
                 type: 'array',
                 items: { type: 'string' },
-                description: 'Items to be ordered or checked off (for ordering, checklist)',
+                description:
+                  'Items to be ordered or checked off (for ordering, checklist)',
               },
               correctOrder: {
                 type: 'array',
@@ -111,7 +112,8 @@ function buildQuizTool(count: number = 3) {
               },
               expectedPattern: {
                 type: 'string',
-                description: 'Regex pattern to check student code for correctness (for code)',
+                description:
+                  'Regex pattern to check student code for correctness (for code)',
               },
             },
             required: ['type', 'question'],

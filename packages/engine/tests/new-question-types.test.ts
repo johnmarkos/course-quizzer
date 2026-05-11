@@ -29,7 +29,7 @@ describe('New Question Types', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
-    
+
     const checklistItem: ContentItem = {
       type: 'checklist',
       id: 'q-checklist',
@@ -37,16 +37,16 @@ describe('New Question Types', () => {
       question: 'Perform the following steps:',
       items: ['Plug in guitar', 'Turn on amp', 'Tune strings'],
     };
-    
+
     engine.setSectionContent([checklistItem]);
-    
+
     // Correct: all items checked
     const resultCorrect = engine.submitAnswer({
       type: 'checklist',
       checkedIndices: [0, 1, 2],
     });
     expect(resultCorrect.correct).toBe(true);
-    
+
     // Incorrect: not all items checked
     const engine2 = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine2.loadCurriculum(mockCurriculum());
@@ -64,7 +64,7 @@ describe('New Question Types', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
-    
+
     const codeItem: ContentItem = {
       type: 'code',
       id: 'q-code',
@@ -73,16 +73,16 @@ describe('New Question Types', () => {
       language: 'javascript',
       expectedPattern: 'return true',
     };
-    
+
     engine.setSectionContent([codeItem]);
-    
+
     // Correct: matches pattern
     const resultCorrect = engine.submitAnswer({
       type: 'code',
       code: 'function test() { return true; }',
     });
     expect(resultCorrect.correct).toBe(true);
-    
+
     // Incorrect: does not match pattern
     const engine2 = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine2.loadCurriculum(mockCurriculum());
@@ -100,7 +100,7 @@ describe('New Question Types', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
-    
+
     const codeItem: ContentItem = {
       type: 'code',
       id: 'q-code-no-pattern',
@@ -108,9 +108,9 @@ describe('New Question Types', () => {
       question: 'Write some code.',
       language: 'javascript',
     };
-    
+
     engine.setSectionContent([codeItem]);
-    
+
     const result = engine.submitAnswer({
       type: 'code',
       code: 'any code',
@@ -122,7 +122,7 @@ describe('New Question Types', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
-    
+
     const selfEvalItem: ContentItem = {
       type: 'self-evaluation',
       id: 'q-self-eval',
@@ -130,9 +130,9 @@ describe('New Question Types', () => {
       question: 'How do you feel about your progress?',
       options: ['Need more practice', 'Got it'],
     };
-    
+
     engine.setSectionContent([selfEvalItem]);
-    
+
     const result = engine.submitAnswer({
       type: 'self-evaluation',
       selectedIndex: 0,
@@ -144,7 +144,7 @@ describe('New Question Types', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
-    
+
     const items: ContentItem[] = [
       {
         type: 'checklist',
@@ -166,14 +166,14 @@ describe('New Question Types', () => {
         topicId: 'topic-1',
         question: 'Eval',
         options: ['1', '2'],
-      }
+      },
     ];
-    
+
     engine.setSectionContent(items);
-    
+
     const snapshot = engine.serialize();
     const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
-    
+
     expect(restored.currentItem?.type).toBe('checklist');
     restored.submitAnswer({ type: 'checklist', checkedIndices: [0, 1] });
     restored.nextItem();

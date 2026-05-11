@@ -207,7 +207,7 @@ function getCorrectIndices(question: Question): number[] | undefined {
     case 'ordering':
       return undefined; // Ordering is graded by sequence, not a single option index.
     case 'code':
-      return undefined; // Code is graded by pattern matching, not an option index.
+      return undefined; // Code is self-evaluated, not graded by an option index.
     default:
       return assertNever(question);
   }

@@ -106,10 +106,10 @@ The shape we're moving toward: the **planner role becomes interactive-only** (ch
 - [x] `scripts/audit.sh` — planner-triggered milestone audit runs on Codex (PR #77)
 - [x] Restore canonical merge policy: author owns merge, reviewer never merges (PR #81)
 - [x] Author script: stop fallback on non-credit agent failures (PR #78, closes #65)
+- [x] Running agents restarted on 2026-05-10 to pick up the new cascade and prompts
 
 **Backlog (ordered by intended next move):**
 
-- [ ] Restart running author/reviewer agents to pick up #76 + #81 in memory
 - [ ] First real run of `scripts/audit.sh 3` once Phase 3 cleanup queue drains
 - [ ] Migrate planner state from `PLANNER-HANDOFF.md` to a pinned GitHub issue (label `planner-state`) — the multi-machine unlock
 - [ ] Onboard the new Mac as a second factory node (clone, env vars, CLI installs)

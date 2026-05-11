@@ -110,28 +110,6 @@ run_agent() {
     local output
     local status
 
-    # Try Claude
-    if check_cooldown "claude"; then
-        echo "$(date): Skipping Claude (cooldown active)..." | tee -a "$logfile"
-    else
-        echo "$(date): Trying Claude..." | tee -a "$logfile"
-        if output=$(claude -p "$prompt" --dangerously-skip-permissions --verbose 2>&1); then
-            status=0
-        else
-            status=$?
-        fi
-        echo "$output" | tee -a "$logfile"
-        if [ "$status" -eq 0 ]; then
-            return 0
-        fi
-        if is_out_of_credits "$output"; then
-            set_cooldown "claude"
-            echo "$(date): Claude out of credits, set 1h cooldown." | tee -a "$logfile"
-        else
-            log_error "Claude failed with exit code $status. Proceeding to fallback..."
-        fi
-    fi
-
     # Try Codex
     if check_cooldown "codex"; then
         echo "$(date): Skipping Codex (cooldown active)..." | tee -a "$logfile"
@@ -151,6 +129,28 @@ run_agent() {
             echo "$(date): Codex out of credits, set 1h cooldown." | tee -a "$logfile"
         else
             log_error "Codex failed with exit code $status. Proceeding to fallback..."
+        fi
+    fi
+
+    # Try Claude
+    if check_cooldown "claude"; then
+        echo "$(date): Skipping Claude (cooldown active)..." | tee -a "$logfile"
+    else
+        echo "$(date): Trying Claude..." | tee -a "$logfile"
+        if output=$(claude -p "$prompt" --dangerously-skip-permissions --verbose 2>&1); then
+            status=0
+        else
+            status=$?
+        fi
+        echo "$output" | tee -a "$logfile"
+        if [ "$status" -eq 0 ]; then
+            return 0
+        fi
+        if is_out_of_credits "$output"; then
+            set_cooldown "claude"
+            echo "$(date): Claude out of credits, set 1h cooldown." | tee -a "$logfile"
+        else
+            log_error "Claude failed with exit code $status. Proceeding to fallback..."
         fi
     fi
 

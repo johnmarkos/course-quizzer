@@ -71,6 +71,15 @@ function isValidStudentAnswer(value: unknown): boolean {
         typeof value.selectedIndex === 'number' &&
         typeof value.followUpSelectedIndex === 'number'
       );
+    case 'checklist':
+      return (
+        Array.isArray(value.checkedIndices) &&
+        value.checkedIndices.every((entry) => typeof entry === 'number')
+      );
+    case 'code':
+      return typeof value.code === 'string';
+    case 'self-evaluation':
+      return typeof value.selectedIndex === 'number';
     default:
       return false;
   }
@@ -143,6 +152,29 @@ function isValidContentItem(value: unknown): boolean {
         typeof value.followUp === 'string' &&
         isStringArray(value.followUpOptions) &&
         typeof value.followUpCorrectIndex === 'number'
+      );
+    case 'checklist':
+      return (
+        typeof value.id === 'string' &&
+        typeof value.topicId === 'string' &&
+        typeof value.question === 'string' &&
+        isStringArray(value.items)
+      );
+    case 'code':
+      return (
+        typeof value.id === 'string' &&
+        typeof value.topicId === 'string' &&
+        typeof value.question === 'string' &&
+        typeof value.language === 'string' &&
+        (value.initialCode === undefined || typeof value.initialCode === 'string') &&
+        (value.expectedPattern === undefined || typeof value.expectedPattern === 'string')
+      );
+    case 'self-evaluation':
+      return (
+        typeof value.id === 'string' &&
+        typeof value.topicId === 'string' &&
+        typeof value.question === 'string' &&
+        isStringArray(value.options)
       );
     default:
       return false;

@@ -55,11 +55,11 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 **Goal:** Content adapts to student performance. Pre-fetch hides latency. Export/import works.
 
 - [x] #50 — [Engine] Refactor content generation lifecycle into the engine (**Prerequisite for #51, #52**)
-- [ ] #51 — [Engine] Implement `AdaptiveSelector` to bias content generation
-- [ ] #52 — [Engine] Implement `Prefetcher` for background generation
-- [ ] #53 — [Engine/App] Implement Export and Import functionality (**Parallel**)
-- [ ] #54 — [App] Section completion summary and mastery display (**Parallel**)
-- [ ] #55 — [Engine/App] Support additional question types (**Parallel**)
+- [x] #51 — [Engine] Implement `AdaptiveSelector` to bias content generation (PR #58)
+- [x] #52 — [Engine] Implement `Prefetcher` for background generation (PR #59)
+- [x] #53 — [Engine/App] Implement Export and Import functionality (**Parallel**, PR #60)
+- [x] #54 — [App] Section completion summary and mastery display (**Parallel**, PR #61)
+- [x] #55 — [Engine/App] Support additional question types (**Parallel**, PR #62)
 - [ ] Prompt refinement: explanation quality, question quality, adaptive follow-up
 - [ ] Mobile-responsive CSS
 - [ ] Loading states and transitions

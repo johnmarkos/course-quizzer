@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1 — 2026-05-11
+
+### Fixes
+
+- **Scripts:** Stop cascading author/reviewer runs to fallback models after non-credit Codex failures, and pipe Gemini prompts directly from the prompt file to preserve multi-line formatting
+
 ## 0.9.0 — 2026-05-10
 
 ### Phase 3: Adaptive Learning + Polish

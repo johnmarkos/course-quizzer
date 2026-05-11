@@ -125,3 +125,4 @@ The shape we're moving toward: the **planner role becomes interactive-only** (ch
 - Containerized agent fleet — many concurrent agents per machine via Docker, once multi-machine proves out
 - Background log-mining agent (see memory `project_log_reaper`) — mine `logs/` for insights before deletion
 - Reviewer skip-rule for script-only PRs (currently the reviewer wastes a Codex call reviewing diffs that AGENTS.md says don't need formal review)
+- Sandboxed code execution for real code-question grading (Web Worker with strict timeouts and resource limits, no DOM access). Per the 2026-05-11 decision, v1 code questions are graded by the AI tutor (#107) with self-evaluation fallback (#103). Running student-submitted code waits for the sandbox.

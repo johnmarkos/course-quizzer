@@ -1,8 +1,7 @@
 import type { Section } from '../curriculum/types.js';
 import { AdaptiveSelector } from '../student/AdaptiveSelector.js';
 import type { StudentModel } from '../student/StudentModel.js';
-import type { ContentItem } from './types.js';
-import type { ContentGenerator } from './ContentGenerator.js';
+import type { ContentGeneratorClient, ContentItem } from './types.js';
 
 export type ApiCallEventHandler = (payload: {
   id: string;
@@ -15,11 +14,11 @@ export type ApiCallEventHandler = (payload: {
  * Acts as the bridge between CourseEngine and the generator/provider.
  */
 export class ContentManager {
-  #generator: ContentGenerator;
+  #generator: ContentGeneratorClient;
   #onApiCall: ApiCallEventHandler;
   #apiCallSequence = 0;
 
-  constructor(generator: ContentGenerator, onApiCall: ApiCallEventHandler) {
+  constructor(generator: ContentGeneratorClient, onApiCall: ApiCallEventHandler) {
     this.#generator = generator;
     this.#onApiCall = onApiCall;
   }

@@ -54,6 +54,7 @@ export type { MasteryUpdate } from './student/StudentModel.js';
 
 export type {
   StudentAnswer,
+  ContentGeneratorClient,
   QuestionType,
   MultipleChoiceQuestion,
   NumericInputQuestion,
@@ -64,6 +65,7 @@ export type {
 
 export type {
   ProviderConfig,
+  ProviderClient,
   ProviderRequest,
   ProviderResponse,
   ProviderErrorType,

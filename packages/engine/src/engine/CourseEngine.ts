@@ -8,7 +8,7 @@ import { EventEmitter } from './events.js';
 import { InvalidTransitionError } from './errors.js';
 import { SNAPSHOT_VERSION } from './constants.js';
 import { StudentModel } from '../student/StudentModel.js';
-import { ClaudeProvider } from '../provider/ClaudeProvider.js';
+import { createDefaultProvider } from '../provider/factory.js';
 import { ContentGenerator } from '../content/ContentGenerator.js';
 import { ContentManager } from '../content/ContentManager.js';
 import { ContentCache } from '../content/ContentCache.js';
@@ -26,10 +26,9 @@ import type {
 } from './types.js';
 import type { StudentAnswer, Question } from '../content/types.js';
 import type { Section } from '../curriculum/types.js';
+import type { ProviderClient } from '../provider/types.js';
 
 function copySection(section: Section): Section {
-  // ... (omitting for brevity in this thought but I'll provide full in the call)
-
   return {
     ...section,
     topics: section.topics.map((topic) => ({ ...topic })),
@@ -91,9 +90,25 @@ function isValidGeneratedContentRecord(
   );
 }
 
+function createProviderFromConfig(config: CourseEngineConfig): ProviderClient {
+  if (config.provider) {
+    return config.provider;
+  }
+
+  if (!config.apiKey) {
+    throw new Error(
+      'CourseEngine requires an apiKey when no provider or generator is supplied'
+    );
+  }
+
+  return createDefaultProvider({
+    apiKey: config.apiKey,
+    model: config.model,
+  });
+}
+
 export class CourseEngine extends EventEmitter {
   #state: EngineState = 'idle';
-  #config: CourseEngineConfig;
   #curriculum: CurriculumPlan | null = null;
   #currentSectionIndex = -1;
   #currentItemIndex = -1;
@@ -107,16 +122,8 @@ export class CourseEngine extends EventEmitter {
 
   constructor(config: CourseEngineConfig) {
     super();
-    this.#config = { ...config };
-
-    const provider =
-      config.provider ||
-      new ClaudeProvider({
-        apiKey: config.apiKey,
-        model: config.model,
-      });
-
-    const generator = config.generator || new ContentGenerator(provider);
+    const generator =
+      config.generator || new ContentGenerator(createProviderFromConfig(config));
 
     this.#contentManager = new ContentManager(generator, (payload) => {
       if (payload.status === 'start') {

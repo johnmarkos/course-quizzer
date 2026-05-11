@@ -8,26 +8,30 @@
 // about engine state — it just produces content.
 //
 // Flow per topic:
-//   1. Generate explanation via Claude → Explanation item
-//   2. Generate quiz burst via Claude → Question items
+//   1. Generate explanation via configured provider → Explanation item
+//   2. Generate quiz burst via configured provider → Question items
 //   3. Validate and filter questions
 // Repeat for each topic in the section.
 
 import { buildExplanationPrompt } from '../prompts/explanation.js';
 import { buildQuizGenerationPrompt } from '../prompts/quiz-generation.js';
 import { checkQuestionQuality } from './quality-filters.js';
-import type { ClaudeProvider } from '../provider/ClaudeProvider.js';
-import type { ToolUseBlock } from '../provider/types.js';
+import type { ProviderClient, ToolUseBlock } from '../provider/types.js';
 import type { Topic } from '../curriculum/types.js';
-import type { Explanation, Question, QuestionType } from './types.js';
+import type {
+  ContentGeneratorClient,
+  Explanation,
+  Question,
+  QuestionType,
+} from './types.js';
 
 const EXPLANATION_MAX_TOKENS = 1024;
 const QUIZ_MAX_TOKENS = 4096;
 
-export class ContentGenerator {
-  #provider: ClaudeProvider;
+export class ContentGenerator implements ContentGeneratorClient {
+  #provider: ProviderClient;
 
-  constructor(provider: ClaudeProvider) {
+  constructor(provider: ProviderClient) {
     this.#provider = provider;
   }
 

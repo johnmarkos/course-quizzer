@@ -120,7 +120,7 @@ ${syllabusText}
 
 /**
  * Build the complete prompt for syllabus analysis.
- * Returns PromptMessages ready to be sent via ClaudeProvider
+ * Returns PromptMessages ready to be sent via the configured provider
  * (caller adds maxTokens).
  */
 export function buildSyllabusAnalysisPrompt(syllabusText: string): PromptMessages {

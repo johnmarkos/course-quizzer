@@ -2,6 +2,8 @@
 // Represents generated learning content: explanations and questions.
 // Question types match OpenQuizzer's proven set.
 
+import type { Topic } from '../curriculum/types.js';
+
 // --- Explanations ---
 
 export type Explanation = {
@@ -106,6 +108,21 @@ export type QuestionType = Question['type'];
 // The engine emits these in the content/quiz loop order.
 
 export type ContentItem = Explanation | Question;
+
+export type ContentGeneratorClient = {
+  generateTopicExplanation(
+    topic: Topic,
+    courseTitle: string,
+    sectionTitle: string
+  ): Promise<Explanation>;
+  generateTopicQuizBurst(
+    topic: Topic,
+    courseTitle: string,
+    sectionTitle: string,
+    explanationContent: string,
+    questionCount?: number
+  ): Promise<Question[]>;
+};
 
 // --- Answers ---
 

@@ -4,12 +4,12 @@ import type { CurriculumPlan, Section } from '../curriculum/types.js';
 import type {
   AnswerResult,
   ContentItem,
+  ContentGeneratorClient,
   Question,
   Explanation,
 } from '../content/types.js';
 import type { StudentState, SessionProgress, TopicMastery } from '../student/types.js';
-import type { ClaudeProvider } from '../provider/ClaudeProvider.js';
-import type { ContentGenerator } from '../content/ContentGenerator.js';
+import type { ProviderClient } from '../provider/types.js';
 
 export type EngineState =
   | 'idle' // no syllabus loaded
@@ -23,13 +23,13 @@ export type EngineState =
   | 'error'; // content generation failed
 
 export type CourseEngineConfig = {
-  apiKey: string;
+  apiKey?: string;
   model?: string;
-  provider?: ClaudeProvider;
-  generator?: ContentGenerator;
+  provider?: ProviderClient;
+  generator?: ContentGeneratorClient;
   prefetch?: {
     enabled: boolean;
-    generator?: ContentGenerator;
+    generator?: ContentGeneratorClient;
   };
 };
 

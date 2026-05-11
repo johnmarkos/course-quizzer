@@ -76,6 +76,10 @@ export type ProviderResponse = {
   };
 };
 
+export type ProviderClient = {
+  sendMessage(request: ProviderRequest): Promise<ProviderResponse>;
+};
+
 // --- Errors ---
 
 export type ProviderErrorType =

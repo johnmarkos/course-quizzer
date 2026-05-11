@@ -1,10 +1,12 @@
 // --- Prefetcher Tests ---
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CourseEngine } from '../src/engine/CourseEngine.js';
 import { ContentGenerator } from '../src/content/ContentGenerator.js';
 import { ContentCache } from '../src/content/ContentCache.js';
 import { Prefetcher } from '../src/content/Prefetcher.js';
+import { ContentManager } from '../src/content/ContentManager.js';
+import { StudentModel } from '../src/student/StudentModel.js';
 import type { ClaudeProvider } from '../src/provider/ClaudeProvider.js';
 import type { CurriculumPlan } from '../src/curriculum/types.js';
 import type { ContentItem } from '../src/content/types.js';
@@ -57,6 +59,16 @@ const MOCK_ITEMS_S2: ContentItem[] = [MOCK_EXPLANATION_T2, ...MOCK_QUESTIONS_T2]
 
 function mockProvider(): ClaudeProvider {
   return { sendMessage: vi.fn() } as unknown as ClaudeProvider;
+}
+
+function initializedStudentModel(): StudentModel {
+  const studentModel = new StudentModel();
+  for (const section of MOCK_PLAN.sections) {
+    for (const topic of section.topics) {
+      studentModel.initializeTopic(topic.id);
+    }
+  }
+  return studentModel;
 }
 
 function mockGenerator(generator: ContentGenerator) {
@@ -135,21 +147,46 @@ describe('ContentCache', () => {
 });
 
 describe('Prefetcher', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('prefetches the next section and stores it in the cache', async () => {
     const provider = mockProvider();
     const generator = new ContentGenerator(provider);
     const cache = new ContentCache();
     const prefetcher = new Prefetcher(generator, cache);
+    const studentModel = initializedStudentModel();
 
     prefetcher.setCurriculum(MOCK_PLAN);
 
     // Mock generator methods
     mockGenerator(generator);
 
-    await prefetcher.prefetch(0); // Prefetch section at index 1 (s2)
+    await prefetcher.prefetch(0, studentModel); // Prefetch section at index 1 (s2)
 
     expect(cache.has('s2')).toBe(true);
     expect(cache.get('s2')).toEqual(MOCK_ITEMS_S2);
+  });
+
+  it('passes the student model to section generation', async () => {
+    const provider = mockProvider();
+    const generator = new ContentGenerator(provider);
+    const cache = new ContentCache();
+    const prefetcher = new Prefetcher(generator, cache);
+    const studentModel = initializedStudentModel();
+    const generateSectionSpy = vi
+      .spyOn(ContentManager.prototype, 'generateSection')
+      .mockResolvedValue(MOCK_ITEMS_S2);
+
+    prefetcher.setCurriculum(MOCK_PLAN);
+    await prefetcher.prefetch(0, studentModel);
+
+    expect(generateSectionSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 's2' }),
+      'Test Course',
+      studentModel
+    );
   });
 
   it('does nothing if next section is already in cache', async () => {
@@ -162,7 +199,7 @@ describe('Prefetcher', () => {
     const prefetcher = new Prefetcher(generator, cache);
     prefetcher.setCurriculum(MOCK_PLAN);
 
-    await prefetcher.prefetch(0);
+    await prefetcher.prefetch(0, initializedStudentModel());
 
     expect(expSpy).not.toHaveBeenCalled();
   });
@@ -176,7 +213,7 @@ describe('Prefetcher', () => {
     const prefetcher = new Prefetcher(generator, cache);
     prefetcher.setCurriculum(MOCK_PLAN);
 
-    await prefetcher.prefetch(2); // Last index
+    await prefetcher.prefetch(2, initializedStudentModel()); // Last index
 
     expect(expSpy).not.toHaveBeenCalled();
   });
@@ -185,6 +222,10 @@ describe('Prefetcher', () => {
 describe('CourseEngine + Prefetcher integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('uses cached content if available in startSection', async () => {
@@ -274,6 +315,50 @@ describe('CourseEngine + Prefetcher integration', () => {
       expect.objectContaining({ id: 't2' }),
       'Test Course',
       'Section 2'
+    );
+  });
+
+  it('uses adaptive question counts for prefetched content', async () => {
+    const provider = mockProvider();
+    const generator = new ContentGenerator(provider);
+
+    vi.spyOn(generator, 'generateTopicExplanation').mockImplementation(async (topic) => ({
+      type: 'explanation',
+      topicId: topic.id,
+      title: `Explanation for ${topic.id}`,
+      content: `Content for ${topic.id}`,
+    }));
+    const quizSpy = vi
+      .spyOn(generator, 'generateTopicQuizBurst')
+      .mockImplementation(async (topic, _courseTitle, _sectionTitle, _content, count) =>
+        Array.from({ length: count }, (_, index) => ({
+          type: 'multiple-choice',
+          id: `q-${topic.id}-${index}`,
+          topicId: topic.id,
+          question: `Q ${topic.id} ${index}`,
+          options: ['A', 'B'],
+          correctIndex: 0,
+        }))
+      );
+
+    const engine = new CourseEngine({
+      apiKey: 'test',
+      generator,
+      prefetch: { enabled: true },
+    });
+
+    engine.loadCurriculum(MOCK_PLAN);
+    engine.startSection('s1');
+
+    // Wait for current section generation and fire-and-forget prefetch to settle.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    expect(quizSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 't2' }),
+      'Test Course',
+      'Section 2',
+      'Content for t2',
+      5
     );
   });
 

@@ -59,38 +59,33 @@ export class ContentGenerator implements TopicContentGenerator {
       sectionTitle,
     });
 
-    const response = await this.#provider.sendMessage({
-      ...prompt,
-      maxTokens: EXPLANATION_MAX_TOKENS,
-    });
-
-    const toolBlock = response.content.find(
-      (block): block is ToolUseBlock =>
-        block.type === 'tool_use' && block.name === 'create_explanation'
+    let lastError = new Error(
+      `Failed to generate explanation for topic "${topic.title}" after retry`
     );
 
-    if (!toolBlock) {
-      // Retry once
-      const retryResponse = await this.#provider.sendMessage({
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await this.#provider.sendMessage({
         ...prompt,
         maxTokens: EXPLANATION_MAX_TOKENS,
       });
 
-      const retryBlock = retryResponse.content.find(
+      const toolBlock = response.content.find(
         (block): block is ToolUseBlock =>
           block.type === 'tool_use' && block.name === 'create_explanation'
       );
 
-      if (!retryBlock) {
-        throw new Error(
-          `Failed to generate explanation for topic "${topic.title}" after retry`
-        );
+      if (!toolBlock) {
+        continue;
       }
 
-      return this.#parseExplanation(retryBlock, topic.id);
+      try {
+        return this.#parseExplanation(toolBlock, topic.id);
+      } catch (error) {
+        lastError = this.#toError(error);
+      }
     }
 
-    return this.#parseExplanation(toolBlock, topic.id);
+    throw lastError;
   }
 
   #parseExplanation(block: ToolUseBlock, topicId: string): Explanation {
@@ -129,36 +124,37 @@ export class ContentGenerator implements TopicContentGenerator {
       questionCount,
     });
 
-    const response = await this.#provider.sendMessage({
-      ...prompt,
-      maxTokens: QUIZ_MAX_TOKENS,
-    });
-
-    const toolBlock = response.content.find(
-      (block): block is ToolUseBlock =>
-        block.type === 'tool_use' && block.name === 'create_quiz_questions'
+    let lastError = new Error(
+      `Failed to generate quiz for topic "${topic.title}" after retry`
     );
 
-    if (!toolBlock) {
-      // Retry once
-      const retryResponse = await this.#provider.sendMessage({
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await this.#provider.sendMessage({
         ...prompt,
         maxTokens: QUIZ_MAX_TOKENS,
       });
 
-      const retryBlock = retryResponse.content.find(
+      const toolBlock = response.content.find(
         (block): block is ToolUseBlock =>
           block.type === 'tool_use' && block.name === 'create_quiz_questions'
       );
 
-      if (!retryBlock) {
-        throw new Error(`Failed to generate quiz for topic "${topic.title}" after retry`);
+      if (!toolBlock) {
+        continue;
       }
 
-      return this.#parseAndFilterQuestions(retryBlock, topic.id, questionCount);
+      try {
+        return this.#parseAndFilterQuestions(toolBlock, topic.id, questionCount);
+      } catch (error) {
+        lastError = this.#toError(error);
+      }
     }
 
-    return this.#parseAndFilterQuestions(toolBlock, topic.id, questionCount);
+    throw lastError;
+  }
+
+  #toError(error: unknown): Error {
+    return error instanceof Error ? error : new Error(String(error));
   }
 
   #parseAndFilterQuestions(

@@ -19,6 +19,7 @@
 - **Engine/App:** Strip unknown fields from imported engine snapshots before persistence or re-export so stale or malicious import metadata cannot carry secrets forward
 - **Engine:** Copy imported generated-content and mastery records with own data properties so `__proto__` keys cannot mutate returned snapshot prototypes
 - **Engine/App:** Move topic mastery display status, review flags, and snapshot progress summaries into the engine so the app only formats engine-provided progress values
+- **Engine:** Retry explanation and quiz generation once when tool payload parsing or content validation fails
 
 ## 0.9.0 — 2026-05-10
 

@@ -30,7 +30,55 @@ if [ ! -x "$REAL_GH" ]; then
 fi
 
 is_pr_merge_command() {
-    [ "${1:-}" = "pr" ] && [ "${2:-}" = "merge" ]
+    local arg
+    local previous_was_repo_flag=0
+    local saw_pr=0
+
+    for arg in "$@"; do
+        if [ "$previous_was_repo_flag" -eq 1 ]; then
+            previous_was_repo_flag=0
+            continue
+        fi
+
+        case "$arg" in
+            --repo | -R)
+                previous_was_repo_flag=1
+                continue
+                ;;
+            --repo=* | -R?*)
+                continue
+                ;;
+        esac
+
+        if [ "$saw_pr" -eq 0 ]; then
+            if [ "$arg" = "pr" ]; then
+                saw_pr=1
+                continue
+            fi
+
+            case "$arg" in
+                -*)
+                    continue
+                    ;;
+            esac
+
+            return 1
+        fi
+
+        if [ "$arg" = "merge" ]; then
+            return 0
+        fi
+
+        case "$arg" in
+            -*)
+                continue
+                ;;
+        esac
+
+        return 1
+    done
+
+    return 1
 }
 
 is_auto_merge_abort() {
@@ -47,22 +95,56 @@ is_auto_merge_abort() {
 
 resolve_pr_number() {
     local arg
+    local previous_was_repo_flag=0
+    local saw_merge=0
+    local repo_arg
+    local -a repo_args=()
 
-    for arg in "${@:3}"; do
+    for arg in "$@"; do
+        if [ "$previous_was_repo_flag" -eq 1 ]; then
+            previous_was_repo_flag=0
+            continue
+        fi
+
+        case "$arg" in
+            --repo | -R)
+                previous_was_repo_flag=1
+                continue
+                ;;
+            --repo=* | -R?*)
+                continue
+                ;;
+        esac
+
+        if [ "$saw_merge" -eq 0 ]; then
+            if [ "$arg" = "merge" ]; then
+                saw_merge=1
+            fi
+            continue
+        fi
+
         if [[ "$arg" =~ ^[0-9]+$ ]]; then
             printf '%s\n' "$arg"
             return 0
         fi
     done
 
-    "$REAL_GH" pr view --json number --jq '.number'
+    while IFS= read -r -d '' repo_arg; do
+        repo_args+=("$repo_arg")
+    done < <(collect_repo_args "$@")
+
+    if [ "${#repo_args[@]}" -gt 0 ]; then
+        "$REAL_GH" pr view "${repo_args[@]}" --json number --jq '.number'
+    else
+        "$REAL_GH" pr view --json number --jq '.number'
+    fi
 }
 
 collect_repo_args() {
     local arg
     local previous_was_repo_flag=0
 
-    for arg in "${@:3}"; do
+    for arg in "$@"; do
         if [ "$previous_was_repo_flag" -eq 1 ]; then
             printf '%s\0' "$arg"
             previous_was_repo_flag=0
@@ -75,6 +157,9 @@ collect_repo_args() {
                 previous_was_repo_flag=1
                 ;;
             --repo=*)
+                printf '%s\0' "$arg"
+                ;;
+            -R?*)
                 printf '%s\0' "$arg"
                 ;;
         esac

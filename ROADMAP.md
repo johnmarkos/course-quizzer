@@ -107,11 +107,11 @@ The shape we're moving toward: the **planner role becomes interactive-only** (ch
 - [x] Restore canonical merge policy: author owns merge, reviewer never merges (PR #81)
 - [x] Author script: stop fallback on non-credit agent failures (PR #78, closes #65)
 - [x] Running agents restarted on 2026-05-10 to pick up the new cascade and prompts
+- [x] Planner state migrated to pinned GitHub issue #85 (label `planner-state`); AGENTS.md updated; PLANNER-HANDOFF.md replaced with a redirect stub
 
 **Backlog (ordered by intended next move):**
 
 - [ ] First real run of `scripts/audit.sh 3` once Phase 3 cleanup queue drains
-- [ ] Migrate planner state from `PLANNER-HANDOFF.md` to a pinned GitHub issue (label `planner-state`) — the multi-machine unlock
 - [ ] Onboard the new Mac as a second factory node (clone, env vars, CLI installs)
 - [ ] `scripts/start-agents.sh` / `stop-agents.sh` / `status.sh` — quality-of-life supervisor for multi-machine ops
 - [ ] AGENTS.md catch-up: document the new cascade, `audit.sh`, and the planner-state issue
@@ -122,5 +122,6 @@ The shape we're moving toward: the **planner role becomes interactive-only** (ch
 **Future (not committed):**
 
 - Mac mini or other third node, if the two-machine setup proves out
+- Containerized agent fleet — many concurrent agents per machine via Docker, once multi-machine proves out
 - Background log-mining agent (see memory `project_log_reaper`) — mine `logs/` for insights before deletion
 - Reviewer skip-rule for script-only PRs (currently the reviewer wastes a Codex call reviewing diffs that AGENTS.md says don't need formal review)

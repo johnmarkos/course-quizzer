@@ -235,6 +235,7 @@ export class CourseEngine extends EventEmitter {
     this.#lastAnswerResult = null;
 
     const section = copySection(this.#curriculum.sections[sectionIndex]);
+    const courseTitle = this.#curriculum.title;
     this.#setState('loading');
     this.emit('sectionStart', {
       section,
@@ -249,9 +250,26 @@ export class CourseEngine extends EventEmitter {
       return;
     }
 
-    // Trigger async generation
+    const inProgressPrefetch = this.#prefetcher?.getInProgress(sectionId);
+    if (inProgressPrefetch) {
+      inProgressPrefetch
+        .then((items) => {
+          this.setSectionContent(items);
+        })
+        .catch(() => {
+          // The background attempt failed; retry as foreground generation so
+          // the existing prefetch failure fallback still applies.
+          this.#generateSectionContent(section, courseTitle);
+        });
+      return;
+    }
+
+    this.#generateSectionContent(section, courseTitle);
+  }
+
+  #generateSectionContent(section: Section, courseTitle: string): void {
     this.#contentManager
-      .generateSection(section, this.#curriculum.title, this.#studentModel)
+      .generateSection(section, courseTitle, this.#studentModel)
       .then((items) => {
         this.setSectionContent(items);
       })

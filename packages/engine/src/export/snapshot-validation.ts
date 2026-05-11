@@ -1,8 +1,20 @@
 import { validateCurriculumPlan } from '../curriculum/SyllabusParser.js';
 import { SNAPSHOT_VERSION } from '../engine/constants.js';
 import type { CurriculumPlan, EngineSnapshot } from '../engine/types.js';
-import type { AnswerResult, ContentItem, StudentAnswer } from '../content/types.js';
+import type {
+  AnswerEvaluation,
+  AnswerResult,
+  CodeEvaluationVerdict,
+  ContentItem,
+  StudentAnswer,
+} from '../content/types.js';
 import type { StudentState } from '../student/types.js';
+
+const VALID_CODE_EVALUATION_VERDICTS = new Set<CodeEvaluationVerdict>([
+  'correct',
+  'partial',
+  'incorrect',
+]);
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -124,7 +136,17 @@ function isValidAnswerResult(value: unknown): value is AnswerResult {
     typeof value.topicId === 'string' &&
     typeof value.correctAnswer === 'string' &&
     (value.explanation === undefined || typeof value.explanation === 'string') &&
+    (value.evaluation === undefined || isValidAnswerEvaluation(value.evaluation)) &&
     isValidStudentAnswer(value.userAnswer)
+  );
+}
+
+function isValidAnswerEvaluation(value: unknown): value is AnswerEvaluation {
+  return (
+    isPlainObject(value) &&
+    typeof value.verdict === 'string' &&
+    VALID_CODE_EVALUATION_VERDICTS.has(value.verdict as CodeEvaluationVerdict) &&
+    typeof value.feedback === 'string'
   );
 }
 
@@ -330,6 +352,13 @@ function copyAnswerResult(result: AnswerResult): AnswerResult {
 
   if (result.explanation !== undefined) {
     copy.explanation = result.explanation;
+  }
+
+  if (result.evaluation !== undefined) {
+    copy.evaluation = {
+      verdict: result.evaluation.verdict,
+      feedback: result.evaluation.feedback,
+    };
   }
 
   return copy;

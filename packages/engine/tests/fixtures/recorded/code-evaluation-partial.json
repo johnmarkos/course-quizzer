@@ -1,0 +1,33 @@
+{
+  "label": "python normalize score partial",
+  "question": {
+    "type": "code",
+    "id": "q-code-partial",
+    "topicId": "normalization",
+    "question": "Write a Python function that converts a raw score and maximum score into a percentage from 0 to 100.",
+    "language": "python",
+    "initialCode": "def percent_score(raw, maximum):\n    pass"
+  },
+  "studentAnswer": "def percent_score(raw, maximum):\n    return raw / maximum",
+  "expectedVerdict": "partial",
+  "response": {
+    "id": "msg_code_eval_partial_01",
+    "content": [
+      {
+        "type": "tool_use",
+        "id": "toolu_code_eval_partial_01",
+        "name": "evaluate_code_submission",
+        "input": {
+          "verdict": "partial",
+          "feedback": "The division is the right core idea, but the result is a 0-1 ratio. Multiply by 100 to return the requested percentage scale."
+        }
+      }
+    ],
+    "model": "claude-sonnet-4-20250514",
+    "stopReason": "tool_use",
+    "usage": {
+      "inputTokens": 590,
+      "outputTokens": 78
+    }
+  }
+}

@@ -89,9 +89,9 @@
     session.submitAnswer({ type: 'checklist', checkedIndices: indices });
   }
 
-  function handleCode(code: string) {
+  async function handleCode(code: string) {
     if (!session) return;
-    session.submitAnswer({ type: 'code', code });
+    await session.submitAnswerAsync({ type: 'code', code });
   }
 
   function handleSelfEvaluation(selectedIndex: number) {
@@ -231,6 +231,14 @@
   // --- Derived helpers ---
 
   const hasApiKey = $derived(getApiKey(localStorage) !== null);
+
+  function resultTitle(result: NonNullable<EngineSession['lastResult']>['result']) {
+    if (result.evaluation?.verdict === 'partial') {
+      return 'Partially correct';
+    }
+
+    return result.correct ? 'Correct!' : 'Incorrect';
+  }
 </script>
 
 <svelte:head>
@@ -280,8 +288,16 @@
       {#if session.currentSection}
         <h2>{session.currentSection.section.title}</h2>
       {/if}
-      <p class="loading">Generating learning content...</p>
-      <p>This may take a minute as content is generated for each topic.</p>
+      <p class="loading">
+        {session.engineState === 'loading'
+          ? 'Generating learning content...'
+          : 'Checking your answer...'}
+      </p>
+      <p>
+        {session.engineState === 'loading'
+          ? 'This may take a minute as content is generated for each topic.'
+          : 'The tutor is reviewing your code.'}
+      </p>
       {#if session.error}
         <p role="alert" class="error">{session.error.message}</p>
         <button type="button" onclick={handleBackToOverview}>Back to Course</button>
@@ -525,8 +541,12 @@
             spellcheck="false"
           ></textarea>
           <div class="actions">
-            <button type="button" onclick={() => handleCode(codeValue)}>
-              Submit Code
+            <button
+              type="button"
+              onclick={() => handleCode(codeValue)}
+              disabled={session.apiLoading}
+            >
+              {session.apiLoading ? 'Checking Code' : 'Submit Code'}
             </button>
             <button type="button" class="secondary" onclick={handleSkip}>Skip</button>
             <button type="button" class="text-button" onclick={handleReportIssue}>
@@ -573,11 +593,13 @@
       {/if}
 
       <article class="result" class:correct={session.lastResult.result.correct} class:incorrect={!session.lastResult.result.correct}>
-        <h2>{session.lastResult.result.correct ? 'Correct!' : 'Incorrect'}</h2>
-        {#if !session.lastResult.result.correct}
+        <h2>{resultTitle(session.lastResult.result)}</h2>
+        {#if !session.lastResult.result.correct && !session.lastResult.result.evaluation}
           <p><strong>Correct answer:</strong> {session.lastResult.result.correctAnswer}</p>
         {/if}
-        {#if session.lastResult.result.explanation}
+        {#if session.lastResult.result.evaluation}
+          <p class="tutor-feedback">{session.lastResult.result.evaluation.feedback}</p>
+        {:else if session.lastResult.result.explanation}
           <p>{session.lastResult.result.explanation}</p>
         {/if}
         <div class="actions">

@@ -1,0 +1,33 @@
+{
+  "label": "javascript filter incorrect",
+  "question": {
+    "type": "code",
+    "id": "q-code-incorrect",
+    "topicId": "array-filtering",
+    "question": "Write a JavaScript function that returns only scores greater than or equal to 70.",
+    "language": "javascript",
+    "initialCode": "function passingScores(scores) {\n  // return a filtered array\n}"
+  },
+  "studentAnswer": "function passingScores(scores) {\n  return scores.map(score => score >= 70);\n}",
+  "expectedVerdict": "incorrect",
+  "response": {
+    "id": "msg_code_eval_incorrect_01",
+    "content": [
+      {
+        "type": "tool_use",
+        "id": "toolu_code_eval_incorrect_01",
+        "name": "evaluate_code_submission",
+        "input": {
+          "verdict": "incorrect",
+          "feedback": "This returns booleans for every score instead of the passing score values. Use filter with a predicate so the output array contains only scores at least 70."
+        }
+      }
+    ],
+    "model": "claude-sonnet-4-20250514",
+    "stopReason": "tool_use",
+    "usage": {
+      "inputTokens": 620,
+      "outputTokens": 86
+    }
+  }
+}

@@ -288,6 +288,11 @@ export function createEngineSession(config: EngineSessionConfig) {
       return engine.submitAnswer(answer);
     },
 
+    async submitAnswerAsync(answer: StudentAnswer): Promise<AnswerResult> {
+      if (!engine) throw new Error('Session is disposed');
+      return engine.submitAnswerAsync(answer);
+    },
+
     nextItem(): void {
       if (!engine) throw new Error('Session is disposed');
       engine.nextItem();

@@ -80,6 +80,23 @@ export type CodeQuestion = {
   initialCode?: string;
 };
 
+export type CodeEvaluationVerdict = 'correct' | 'partial' | 'incorrect';
+
+export type CodeEvaluation = {
+  verdict: CodeEvaluationVerdict;
+  correct: boolean;
+  feedback: string;
+};
+
+export type CodeEvaluationClient = {
+  evaluateCode(question: CodeQuestion, studentAnswer: string): Promise<CodeEvaluation>;
+};
+
+export type AnswerEvaluation = {
+  verdict: CodeEvaluationVerdict;
+  feedback: string;
+};
+
 export type SelfEvaluationQuestion = {
   type: 'self-evaluation';
   id: string;
@@ -130,4 +147,5 @@ export type AnswerResult = {
   // Additional context the UI needs to render the result
   correctAnswer: string; // human-readable description of the correct answer
   explanation?: string; // optional explanation of why
+  evaluation?: AnswerEvaluation; // AI tutor feedback for open-ended answers
 };

@@ -1,0 +1,33 @@
+{
+  "label": "typescript array first helper correct",
+  "question": {
+    "type": "code",
+    "id": "q-code-correct",
+    "topicId": "typescript-arrays",
+    "question": "Write a TypeScript helper that returns the first item in an array, or undefined for an empty array.",
+    "language": "typescript",
+    "initialCode": "function first<T>(items: T[]): T | undefined {\n  return undefined;\n}"
+  },
+  "studentAnswer": "function first<T>(items: T[]): T | undefined {\n  return items[0];\n}",
+  "expectedVerdict": "correct",
+  "response": {
+    "id": "msg_code_eval_correct_01",
+    "content": [
+      {
+        "type": "tool_use",
+        "id": "toolu_code_eval_correct_01",
+        "name": "evaluate_code_submission",
+        "input": {
+          "verdict": "correct",
+          "feedback": "This satisfies the prompt: indexing returns the first element and naturally returns undefined when the array is empty."
+        }
+      }
+    ],
+    "model": "claude-sonnet-4-20250514",
+    "stopReason": "tool_use",
+    "usage": {
+      "inputTokens": 610,
+      "outputTokens": 72
+    }
+  }
+}

@@ -13,6 +13,7 @@ import { ContentGenerator } from '../content/ContentGenerator.js';
 import { ContentManager } from '../content/ContentManager.js';
 import { ContentCache } from '../content/ContentCache.js';
 import { copyContentItem } from '../content/copy-utils.js';
+import { CodeEvaluator } from '../content/CodeEvaluator.js';
 import { Prefetcher } from '../content/Prefetcher.js';
 import type {
   CourseEngineConfig,
@@ -24,7 +25,13 @@ import type {
   StudentState,
   SessionProgress,
 } from './types.js';
-import type { StudentAnswer, Question } from '../content/types.js';
+import type {
+  CodeEvaluation,
+  CodeEvaluationClient,
+  CodeQuestion,
+  StudentAnswer,
+  Question,
+} from '../content/types.js';
 import type { Section } from '../curriculum/types.js';
 
 function copySection(section: Section): Section {
@@ -63,10 +70,16 @@ function copyStudentAnswer(answer: StudentAnswer): StudentAnswer {
 }
 
 function copyAnswerResult(result: AnswerResult): AnswerResult {
-  return {
+  const copy: AnswerResult = {
     ...result,
     userAnswer: copyStudentAnswer(result.userAnswer),
   };
+
+  if (result.evaluation) {
+    copy.evaluation = { ...result.evaluation };
+  }
+
+  return copy;
 }
 
 function isValidGeneratedContentRecord(
@@ -102,6 +115,8 @@ export class CourseEngine extends EventEmitter {
   #contentManager: ContentManager;
   #contentCache: ContentCache | null = null;
   #prefetcher: Prefetcher | null = null;
+  #codeEvaluator: CodeEvaluationClient;
+  #apiCallSequence = 0;
 
   constructor(config: CourseEngineConfig) {
     super();
@@ -115,6 +130,7 @@ export class CourseEngine extends EventEmitter {
       });
 
     const generator = config.generator || new ContentGenerator(provider);
+    this.#codeEvaluator = config.codeEvaluator || new CodeEvaluator(provider);
 
     this.#contentManager = new ContentManager(generator, (payload) => {
       if (payload.status === 'start') {
@@ -326,6 +342,26 @@ export class CourseEngine extends EventEmitter {
     }
 
     const result = this.#gradeAnswer(item, answer);
+    return this.#completeAnswerSubmission(result);
+  }
+
+  async submitAnswerAsync(answer: StudentAnswer): Promise<AnswerResult> {
+    this.#requireState('submitAnswer', 'practicing');
+
+    const item = this.currentItem;
+    if (!item || item.type === 'explanation') {
+      throw new InvalidTransitionError('submitAnswer', 'current item is not a question');
+    }
+
+    if (item.type !== 'code' || answer.type !== 'code') {
+      return this.#completeAnswerSubmission(this.#gradeAnswer(item, answer));
+    }
+
+    const result = await this.#gradeCodeAnswer(item, answer);
+    return this.#completeAnswerSubmission(result);
+  }
+
+  #completeAnswerSubmission(result: AnswerResult): AnswerResult {
     this.#lastAnswerResult = copyAnswerResult(result);
 
     // Update mastery
@@ -463,6 +499,70 @@ export class CourseEngine extends EventEmitter {
       userAnswer: copyStudentAnswer(answer),
       correctAnswer: this.#describeCorrectAnswer(question),
     };
+  }
+
+  async #gradeCodeAnswer(
+    question: CodeQuestion,
+    answer: { type: 'code'; code: string }
+  ): Promise<AnswerResult> {
+    try {
+      const evaluation = await this.#withApiCall(
+        `Code evaluation for ${question.id}`,
+        () => this.#codeEvaluator.evaluateCode(question, answer.code)
+      );
+      return this.#resultFromCodeEvaluation(question, answer, evaluation);
+    } catch {
+      return {
+        ...this.#gradeAnswer(question, answer),
+        explanation:
+          'Tutor feedback is unavailable, so this code answer was marked complete for self-assessment.',
+      };
+    }
+  }
+
+  #resultFromCodeEvaluation(
+    question: CodeQuestion,
+    answer: { type: 'code'; code: string },
+    evaluation: CodeEvaluation
+  ): AnswerResult {
+    return {
+      correct: evaluation.correct,
+      questionId: question.id,
+      topicId: question.topicId,
+      userAnswer: copyStudentAnswer(answer),
+      correctAnswer: this.#describeCodeEvaluation(evaluation),
+      explanation: evaluation.feedback,
+      evaluation: {
+        verdict: evaluation.verdict,
+        feedback: evaluation.feedback,
+      },
+    };
+  }
+
+  #describeCodeEvaluation(evaluation: CodeEvaluation): string {
+    switch (evaluation.verdict) {
+      case 'correct':
+        return 'Tutor marked this submission correct';
+      case 'partial':
+        return 'Tutor marked this submission partially correct';
+      case 'incorrect':
+        return 'Tutor marked this submission incorrect';
+    }
+  }
+
+  async #withApiCall<T>(purpose: string, call: () => Promise<T>): Promise<T> {
+    const id = this.#nextApiCallId();
+    this.emit('apiCallStart', { id, purpose });
+    try {
+      return await call();
+    } finally {
+      this.emit('apiCallComplete', { id, purpose });
+    }
+  }
+
+  #nextApiCallId(): string {
+    this.#apiCallSequence += 1;
+    return `engine-api-call-${this.#apiCallSequence}`;
   }
 
   #checkCorrectness(question: Question, answer: StudentAnswer): boolean {

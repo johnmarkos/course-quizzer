@@ -23,6 +23,7 @@
 - **Engine:** Reuse in-flight prefetch generation when starting a prefetched section so the engine does not make duplicate foreground and background API calls for the same section
 - **Engine:** Reject duplicate, fractional, and out-of-range practical-question answer indices during checklist and self-evaluation grading
 - **Engine/App:** Convert code questions to v1 self-evaluation grading, remove regex-based expected-pattern grading, and bump `QUIZ_GENERATION_VERSION` to `1.4`
+- **Engine/App:** Add AI tutor evaluation for code questions, with provider-backed verdicts, escaped tutor feedback in the learn flow, and self-evaluation fallback when grading is unavailable
 - **App:** Add route-level DOM coverage for checklist, code, and self-evaluation question rendering and submitted answer payloads
 - **Engine:** Add recorded quiz-generation v1.4 fixtures for diverse topics, including checklist, code, and self-evaluation schema coverage
 - **Engine:** Clean up stale Phase 3 question-type comments so source comments match the current eight-format v1 set

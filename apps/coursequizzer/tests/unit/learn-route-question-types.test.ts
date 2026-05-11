@@ -79,6 +79,9 @@ function answerResult(answer: StudentAnswer, item: ContentItem): AnswerResult {
 function createPracticingSession(item: ContentItem) {
   const curriculum = mockCurriculumPlan();
   const submitAnswer = vi.fn((answer: StudentAnswer) => answerResult(answer, item));
+  const submitAnswerAsync = vi.fn(async (answer: StudentAnswer) =>
+    answerResult(answer, item)
+  );
   const session: EngineSession = {
     engineState: 'practicing',
     curriculum,
@@ -102,6 +105,7 @@ function createPracticingSession(item: ContentItem) {
     startSection: vi.fn(),
     setSectionContent: vi.fn(),
     submitAnswer,
+    submitAnswerAsync,
     nextItem: vi.fn(),
     skipQuestion: vi.fn(),
     nextSection: vi.fn(),
@@ -109,14 +113,14 @@ function createPracticingSession(item: ContentItem) {
     dispose: vi.fn(),
   };
 
-  return { session, submitAnswer };
+  return { session, submitAnswer, submitAnswerAsync };
 }
 
 async function renderLearnPageWithItem(item: ContentItem) {
   const curriculum = mockCurriculumPlan();
   storeCourse(curriculum);
 
-  const { session, submitAnswer } = createPracticingSession(item);
+  const { session, submitAnswer, submitAnswerAsync } = createPracticingSession(item);
   createEngineSessionMock.mockReturnValue(session);
 
   render(LearnPage);
@@ -124,7 +128,7 @@ async function renderLearnPageWithItem(item: ContentItem) {
     name: item.type === 'explanation' ? item.title : item.question,
   });
 
-  return { session, submitAnswer };
+  return { session, submitAnswer, submitAnswerAsync };
 }
 
 // --- Tests ---
@@ -171,7 +175,7 @@ describe('learn route new question types', () => {
   });
 
   it('renders a code prompt with starter code and submits edited code', async () => {
-    const { submitAnswer } = await renderLearnPageWithItem({
+    const { submitAnswerAsync } = await renderLearnPageWithItem({
       type: 'code',
       id: 'code-1',
       topicId: 't1',
@@ -195,10 +199,63 @@ describe('learn route new question types', () => {
     });
     await fireEvent.click(screen.getByRole('button', { name: 'Submit Code' }));
 
-    expect(submitAnswer).toHaveBeenCalledWith({
+    expect(submitAnswerAsync).toHaveBeenCalledWith({
       type: 'code',
       code: 'function first<T>(items: T[]): T | undefined {\n  return items[0];\n}',
     });
+  });
+
+  it('renders AI tutor feedback as escaped text in the answer result', async () => {
+    const curriculum = mockCurriculumPlan();
+    storeCourse(curriculum);
+    const session: EngineSession = {
+      engineState: 'answered',
+      curriculum,
+      currentSection: {
+        section: curriculum.sections[0],
+        sectionIndex: 0,
+        totalSections: curriculum.sections.length,
+      },
+      currentItem: null,
+      lastResult: {
+        result: {
+          correct: false,
+          questionId: 'code-1',
+          topicId: 't1',
+          userAnswer: { type: 'code', code: 'alert(1)' },
+          correctAnswer: 'Tutor marked this submission incorrect',
+          evaluation: {
+            verdict: 'incorrect',
+            feedback: '<img src=x onerror=alert(1)> Use filter instead of map.',
+          },
+        },
+        studentState: null as never,
+        progress: null as never,
+      },
+      studentState: null,
+      progress: null,
+      apiLoading: false,
+      error: null,
+      restoreFailed: false,
+      loadCurriculum: vi.fn(),
+      startSection: vi.fn(),
+      setSectionContent: vi.fn(),
+      submitAnswer: vi.fn(),
+      submitAnswerAsync: vi.fn(),
+      nextItem: vi.fn(),
+      skipQuestion: vi.fn(),
+      nextSection: vi.fn(),
+      serialize: vi.fn((): EngineSnapshot | null => null),
+      dispose: vi.fn(),
+    };
+    createEngineSessionMock.mockReturnValue(session);
+
+    render(LearnPage);
+
+    expect(
+      await screen.findByText('<img src=x onerror=alert(1)> Use filter instead of map.')
+    ).toBeTruthy();
+    expect(document.querySelector('img')).toBeNull();
   });
 
   it('renders self-evaluation options and submits the selected index', async () => {

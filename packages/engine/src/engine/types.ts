@@ -3,6 +3,7 @@
 import type { CurriculumPlan, Section } from '../curriculum/types.js';
 import type {
   AnswerResult,
+  CodeEvaluationClient,
   ContentItem,
   Question,
   Explanation,
@@ -35,6 +36,7 @@ export type CourseEngineConfig = {
   model?: string;
   provider?: ProviderClient;
   generator?: TopicContentGenerator;
+  codeEvaluator?: CodeEvaluationClient;
   prefetch?: {
     enabled: boolean;
     generator?: TopicContentGenerator;

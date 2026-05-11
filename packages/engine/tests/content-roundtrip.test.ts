@@ -497,6 +497,45 @@ describe('validateEngineSnapshot — student answers', () => {
     }
   );
 
+  it('round-trips AI tutor evaluation feedback in lastAnswerResult', () => {
+    const snapshot = baseSnapshot([EXPLANATION]);
+    snapshot.lastAnswerResult = {
+      correct: false,
+      questionId: 'q-test',
+      topicId: 'topic-1',
+      userAnswer: ANSWER_FIXTURES.code,
+      correctAnswer: 'Tutor marked this submission partially correct',
+      evaluation: {
+        verdict: 'partial',
+        feedback: 'The approach is close, but the return value needs work.',
+      },
+    };
+
+    const restored = validateEngineSnapshot(snapshot);
+
+    expect(restored?.lastAnswerResult?.evaluation).toEqual({
+      verdict: 'partial',
+      feedback: 'The approach is close, but the return value needs work.',
+    });
+  });
+
+  it('rejects a snapshot with malformed AI tutor evaluation feedback', () => {
+    const snapshot = baseSnapshot([EXPLANATION]);
+    snapshot.lastAnswerResult = {
+      correct: false,
+      questionId: 'q-test',
+      topicId: 'topic-1',
+      userAnswer: ANSWER_FIXTURES.code,
+      correctAnswer: 'Tutor marked this submission partially correct',
+      evaluation: {
+        verdict: 'almost' as never,
+        feedback: 'Close.',
+      },
+    };
+
+    expect(validateEngineSnapshot(snapshot)).toBeNull();
+  });
+
   it('rejects a snapshot with a malformed checklist answer (checkedIndices not numbers)', () => {
     const snapshot = baseSnapshot([EXPLANATION]);
     snapshot.lastAnswerResult = {

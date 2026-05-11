@@ -98,43 +98,31 @@ describe('New Question Types', () => {
     expect(outOfRangeResult.correct).toBe(false);
   });
 
-  it('grades code correctly with expectedPattern', () => {
+  it('grades code as self-evaluation and ignores legacy expectedPattern', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
 
-    const codeItem: ContentItem = {
+    const codeItem = {
       type: 'code',
       id: 'q-code',
       topicId: 'topic-1',
       question: 'Write a function that returns true.',
       language: 'javascript',
       expectedPattern: 'return true',
-    };
+    } as unknown as ContentItem;
 
     engine.setSectionContent([codeItem]);
 
-    // Correct: matches pattern
-    const resultCorrect = engine.submitAnswer({
-      type: 'code',
-      code: 'function test() { return true; }',
-    });
-    expect(resultCorrect.correct).toBe(true);
-
-    // Incorrect: does not match pattern
-    const engine2 = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
-    engine2.loadCurriculum(mockCurriculum());
-    engine2.startSection('section-1');
-    engine2.setSectionContent([codeItem]);
-
-    const resultIncorrect = engine2.submitAnswer({
+    const result = engine.submitAnswer({
       type: 'code',
       code: 'function test() { return false; }',
     });
-    expect(resultIncorrect.correct).toBe(false);
+    expect(result.correct).toBe(true);
+    expect(result.correctAnswer).toBe('Self-assessment submitted');
   });
 
-  it('grades code correctly without expectedPattern (always true)', () => {
+  it('grades code submissions as complete', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');

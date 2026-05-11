@@ -78,7 +78,6 @@ export type CodeQuestion = {
   question: string;
   language: string;
   initialCode?: string;
-  expectedPattern?: string; // Optional regex to check for correctness
 };
 
 export type SelfEvaluationQuestion = {

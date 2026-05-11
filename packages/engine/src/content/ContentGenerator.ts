@@ -415,8 +415,6 @@ export class ContentGenerator implements TopicContentGenerator {
   ): Question {
     const language = this.#requireString(obj.language, 'language');
     const initialCode = typeof obj.initialCode === 'string' ? obj.initialCode : undefined;
-    const expectedPattern =
-      typeof obj.expectedPattern === 'string' ? obj.expectedPattern : undefined;
 
     return {
       type: 'code',
@@ -425,7 +423,6 @@ export class ContentGenerator implements TopicContentGenerator {
       question,
       language,
       initialCode,
-      expectedPattern,
     };
   }
 

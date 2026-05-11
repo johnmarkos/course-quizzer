@@ -518,19 +518,7 @@ export class CourseEngine extends EventEmitter {
           question.items.every((_, index) => checked.has(index))
         );
       }
-      case 'code': {
-        const a = answer as { type: 'code'; code: string };
-        if (question.expectedPattern) {
-          try {
-            const regex = new RegExp(question.expectedPattern, 's');
-            return regex.test(a.code);
-          } catch {
-            // If regex is invalid, we fallback to true (trust the student)
-            return true;
-          }
-        }
-        return true; // Trust the student if no pattern provided
-      }
+      case 'code':
       case 'self-evaluation': {
         const a = answer as { type: 'self-evaluation'; selectedIndex: number };
         return (
@@ -559,9 +547,6 @@ export class CourseEngine extends EventEmitter {
       case 'checklist':
         return 'Completion of all steps';
       case 'code':
-        return question.expectedPattern
-          ? `Code matching pattern: ${question.expectedPattern}`
-          : 'Correct implementation of the requested logic';
       case 'self-evaluation':
         return 'Self-assessment submitted';
     }

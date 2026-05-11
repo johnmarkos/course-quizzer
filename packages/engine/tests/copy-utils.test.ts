@@ -70,7 +70,6 @@ const CONTENT_ITEMS: ContentItem[] = [
     question: 'Write a function.',
     language: 'javascript',
     initialCode: 'function answer() {}',
-    expectedPattern: 'return',
   },
   {
     type: 'self-evaluation',

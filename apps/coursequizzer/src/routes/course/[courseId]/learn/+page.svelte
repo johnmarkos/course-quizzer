@@ -588,32 +588,30 @@
         {#if session.currentSection}
           <p>You've finished <strong>{session.currentSection.section.title}</strong>.</p>
 
-          <div class="mastery-summary">
-            <h3>Topic Mastery</h3>
-            <ul class="topic-mastery-list">
-              {#each session.currentSection.section.topics as topic (topic.id)}
-                {@const mastery = session.studentState?.masteryByTopic?.[topic.id]}
-                {@const score = mastery?.score ?? 0}
-                {@const level =
-                  score < 0.5 ? 'struggling' : score < 0.8 ? 'gaining' : 'mastered'}
-                <li class="topic-mastery-item">
-                  <div class="topic-info">
-                    <span class="topic-title">{topic.title}</span>
-                    {#if score < 0.5}
-                      <span class="gap-badge">Review suggested</span>
-                    {/if}
-                  </div>
-                  <div class="mastery-bar-container">
-                    <div
-                      class="mastery-bar {level}"
-                      style="width: {Math.round(score * 100)}%"
-                    ></div>
-                  </div>
-                  <span class="mastery-score">{Math.round(score * 100)}%</span>
-                </li>
-              {/each}
-            </ul>
-          </div>
+          {#if session.progress?.currentSection}
+            <div class="mastery-summary">
+              <h3>Topic Mastery</h3>
+              <ul class="topic-mastery-list">
+                {#each session.progress.currentSection.topics as topic (topic.topicId)}
+                  <li class="topic-mastery-item">
+                    <div class="topic-info">
+                      <span class="topic-title">{topic.title}</span>
+                      {#if topic.needsReview}
+                        <span class="gap-badge">Review suggested</span>
+                      {/if}
+                    </div>
+                    <div class="mastery-bar-container">
+                      <div
+                        class="mastery-bar {topic.status}"
+                        style="width: {Math.round(topic.score * 100)}%"
+                      ></div>
+                    </div>
+                    <span class="mastery-score">{Math.round(topic.score * 100)}%</span>
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
         {/if}
 
         {#if session.progress}

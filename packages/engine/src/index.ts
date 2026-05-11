@@ -7,6 +7,11 @@ export { RateLimiter } from './provider/rate-limiter.js';
 export { ProviderError } from './provider/types.js';
 export { StudentModel } from './student/StudentModel.js';
 export { AdaptiveSelector } from './student/AdaptiveSelector.js';
+export {
+  summarizeCourseProgress,
+  summarizeSectionProgress,
+  summarizeTopicProgress,
+} from './student/progress.js';
 export { SyllabusParser, validateCurriculumPlan } from './curriculum/SyllabusParser.js';
 export { CurriculumManager } from './curriculum/CurriculumManager.js';
 export { ContentGenerator } from './content/ContentGenerator.js';
@@ -30,7 +35,13 @@ export type {
   StudentState,
   SessionProgress,
   TopicMastery,
+  MasteryStatus,
+  TopicProgress,
+  SectionProgressSummary,
+  CourseProgressSummary,
 } from './engine/types.js';
+
+export type { CourseProgressInput } from './student/progress.js';
 
 export type {
   ApiCallEvent,

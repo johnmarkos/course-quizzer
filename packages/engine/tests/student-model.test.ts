@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { StudentModel } from '../src/index.js';
-import type { StudentState } from '../src/index.js';
+import type { Section, StudentState } from '../src/index.js';
 
 // --- Helpers ---
 
@@ -196,6 +196,64 @@ describe('session progress', () => {
     expect(progress.currentItemIndex).toBe(3);
     expect(progress.totalItemsInSection).toBe(10);
     expect(progress.overallMastery).toBe(0.15);
+  });
+
+  it('includes current section topic progress for UI display', () => {
+    const state: StudentState = {
+      masteryByTopic: {
+        'topic-1': {
+          topicId: 'topic-1',
+          score: 0.4,
+          questionsAnswered: 3,
+          questionsCorrect: 1,
+        },
+        'topic-2': {
+          topicId: 'topic-2',
+          score: 0.85,
+          questionsAnswered: 6,
+          questionsCorrect: 5,
+        },
+      },
+      gaps: ['topic-1'],
+    };
+    const model = new StudentModel(state);
+    const section: Section = {
+      id: 'section-1',
+      title: 'Unit Testing',
+      order: 0,
+      topics: [
+        { id: 'topic-1', title: 'Assertions', description: 'How to assert' },
+        { id: 'topic-2', title: 'Mocks', description: 'How to mock' },
+      ],
+    };
+
+    const progress = model.computeProgress({
+      currentSectionIndex: 0,
+      totalSections: 2,
+      currentItemIndex: 4,
+      totalItemsInSection: 8,
+      currentSection: section,
+    });
+
+    expect(progress.currentSection).toMatchObject({
+      sectionId: 'section-1',
+      title: 'Unit Testing',
+      topicsAttempted: 2,
+      topicsTotal: 2,
+      mastery: 0.625,
+    });
+    expect(progress.currentSection!.topics[0]).toMatchObject({
+      topicId: 'topic-1',
+      title: 'Assertions',
+      status: 'struggling',
+      needsReview: true,
+    });
+    expect(progress.currentSection!.topics[1]).toMatchObject({
+      topicId: 'topic-2',
+      title: 'Mocks',
+      status: 'mastered',
+      needsReview: false,
+    });
   });
 });
 

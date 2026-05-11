@@ -23,6 +23,7 @@
 - **Engine:** Reuse in-flight prefetch generation when starting a prefetched section so the engine does not make duplicate foreground and background API calls for the same section
 - **Engine:** Reject duplicate, fractional, and out-of-range practical-question answer indices during checklist and self-evaluation grading
 - **Engine/App:** Convert code questions to v1 self-evaluation grading, remove regex-based expected-pattern grading, and bump `QUIZ_GENERATION_VERSION` to `1.4`
+- **App:** Add route-level DOM coverage for checklist, code, and self-evaluation question rendering and submitted answer payloads
 
 ## 0.9.0 — 2026-05-10
 

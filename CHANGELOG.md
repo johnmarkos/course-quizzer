@@ -11,6 +11,7 @@
 - **Engine:** Bump `QUIZ_GENERATION_VERSION` to `1.3` to track the prompt expansion for checklist, code, and self-evaluation questions
 - **Engine/App:** Add correlation ids to `apiCallStart` and `apiCallComplete` events, and keep app loading state tied to active API call ids
 - **Engine:** Add `AdaptiveSelector` boundary and integration tests covering gap, default, and proficient quiz burst counts
+- **Scripts:** Guard author-agent `gh pr merge` calls so approved PRs cannot merge while GitHub status checks are failing, pending, cancelled, or absent
 
 ## 0.9.0 — 2026-05-10
 

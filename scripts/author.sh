@@ -26,8 +26,16 @@ MAX_RETRIES=3
 RETRY_DELAY=60      # 1 minute between retries
 MAX_BACKOFF=3600    # Cap at 1 hour
 CONSECUTIVE_FAILURES=0
+AUTHOR_GH_BIN=""
 
 # --- Prevent overlapping runs ---
+cleanup() {
+    rm -f "$LOCKFILE"
+    if [ -n "$AUTHOR_GH_BIN" ] && [ -d "$AUTHOR_GH_BIN" ]; then
+        rm -rf "$AUTHOR_GH_BIN"
+    fi
+}
+
 if [ -f "$LOCKFILE" ]; then
     pid=$(cat "$LOCKFILE")
     if kill -0 "$pid" 2>/dev/null; then
@@ -37,7 +45,7 @@ if [ -f "$LOCKFILE" ]; then
     rm -f "$LOCKFILE"
 fi
 echo $$ > "$LOCKFILE"
-trap 'rm -f "$LOCKFILE"' EXIT
+trap cleanup EXIT
 
 # --- Ensure worktree exists ---
 if [ ! -d "$WORKTREE" ]; then
@@ -51,6 +59,38 @@ log_error() {
     mkdir -p "$(dirname "$ERRORLOG")"
     echo "$(date): [author] $msg" | tee -a "$ERRORLOG"
 }
+
+# --- GitHub merge guard ---
+# Author agents run with --yolo, so the shell script installs a guarded gh
+# wrapper that blocks PR merges unless GitHub status checks are green.
+setup_gh_guard() {
+    local real_gh
+
+    real_gh="$(command -v gh || true)"
+    if [ -z "$real_gh" ]; then
+        log_error "gh command not found; refusing to run author agent without merge guard."
+        return 1
+    fi
+    if [ ! -x "$SCRIPT_DIR/guarded-gh.sh" ]; then
+        log_error "Guarded gh wrapper is missing or not executable: $SCRIPT_DIR/guarded-gh.sh"
+        return 1
+    fi
+    if ! AUTHOR_GH_BIN="$(mktemp -d "${TMPDIR:-/tmp}/cq-author-gh.XXXXXX")"; then
+        log_error "Could not create temporary directory for guarded gh wrapper."
+        return 1
+    fi
+    if ! ln -s "$SCRIPT_DIR/guarded-gh.sh" "$AUTHOR_GH_BIN/gh"; then
+        log_error "Could not install guarded gh wrapper at $AUTHOR_GH_BIN/gh"
+        return 1
+    fi
+
+    export CQ_AUTHOR_REAL_GH="$real_gh"
+    export PATH="$AUTHOR_GH_BIN:$PATH"
+}
+
+if ! setup_gh_guard; then
+    exit 1
+fi
 
 # --- Retry a command up to MAX_RETRIES times ---
 retry() {
@@ -180,7 +220,7 @@ while true; do
     mkdir -p "$LOGDIR"
     LOGFILE="$LOGDIR/$(date +%Y%m%d-%H%M%S).log"
 
-    cd "$WORKTREE"
+    cd "$WORKTREE" || exit 1
 
     # Fetch and reset — retry on network failures
     if ! retry "git fetch origin 2>&1"; then

@@ -4,7 +4,12 @@ import {
   type EngineSession,
 } from '../../src/lib/stores/engine-session.svelte.js';
 import { createCourse, getCourse } from '../../src/lib/storage/course-storage.js';
-import type { CurriculumPlan, ContentItem, StudentAnswer } from 'quizzer-engine';
+import type {
+  CodeAnswerEvaluator,
+  CurriculumPlan,
+  ContentItem,
+  StudentAnswer,
+} from 'quizzer-engine';
 
 // --- Test fixtures ---
 
@@ -196,8 +201,14 @@ describe('learn page flow', () => {
     expect(session.lastResult!.result.correct).toBe(false);
   });
 
-  it('handles code questions through the self-evaluation grading path', () => {
-    const session = createEngineSession({ apiKey: 'test-key' });
+  it('handles code questions through AI tutor grading', async () => {
+    const codeEvaluator: CodeAnswerEvaluator = {
+      evaluateCodeAnswer: vi.fn(async () => ({
+        verdict: 'partial',
+        feedback: 'The function returns false, but the prompt asks for true.',
+      })),
+    };
+    const session = createEngineSession({ apiKey: 'test-key', codeEvaluator });
     session.loadCurriculum(mockCurriculumPlan());
     session.startSection('s1');
     session.setSectionContent([
@@ -214,14 +225,18 @@ describe('learn page flow', () => {
 
     expect(session.currentItem!.item.type).toBe('code');
 
-    const result = session.submitAnswer({
+    const result = await session.submitCodeAnswer({
       type: 'code',
       code: 'function answer() { return false; }',
     });
 
-    expect(result.correct).toBe(true);
-    expect(result.correctAnswer).toBe('Self-assessment submitted');
-    expect(session.lastResult!.result.correct).toBe(true);
+    expect(codeEvaluator.evaluateCodeAnswer).toHaveBeenCalled();
+    expect(result.correct).toBe(false);
+    expect(result.codeEvaluation).toEqual({
+      verdict: 'partial',
+      feedback: 'The function returns false, but the prompt asks for true.',
+    });
+    expect(session.lastResult!.result.correct).toBe(false);
   });
 
   it('can skip a question and continue', () => {

@@ -80,7 +80,7 @@ describe('explanation prompt', () => {
 
 describe('quiz generation prompt', () => {
   it('exports version constant', () => {
-    expect(QUIZ_GENERATION_VERSION).toBe('1.4');
+    expect(QUIZ_GENERATION_VERSION).toBe('1.5');
   });
 
   it('builds prompt with topic and explanation context', () => {
@@ -127,6 +127,7 @@ describe('quiz generation prompt', () => {
     expect(questionProperties).not.toHaveProperty('expectedPattern');
     expect(prompt.system).not.toContain('expectedPattern');
     expect(prompt.system).not.toContain('regex');
+    expect(prompt.system).toContain('AI tutor');
   });
 });
 

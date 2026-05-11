@@ -12,6 +12,7 @@ export { SyllabusParser, validateCurriculumPlan } from './curriculum/SyllabusPar
 export { CurriculumManager } from './curriculum/CurriculumManager.js';
 export { ContentGenerator } from './content/ContentGenerator.js';
 export { ContentManager } from './content/ContentManager.js';
+export { CodeEvaluator } from './content/CodeEvaluator.js';
 export { checkQuestionQuality } from './content/quality-filters.js';
 export { Exporter } from './export/Exporter.js';
 export { Importer } from './export/Importer.js';
@@ -55,11 +56,20 @@ export {
   buildQuizGenerationPrompt,
   QUIZ_GENERATION_VERSION,
 } from './prompts/quiz-generation.js';
+export {
+  buildCodeEvaluationPrompt,
+  CODE_EVALUATION_VERSION,
+} from './prompts/code-evaluation.js';
 export type { PromptMessages } from './prompts/types.js';
 export type { MasteryUpdate } from './student/StudentModel.js';
 
 export type {
+  CodeEvaluation,
+  CodeEvaluationVerdict,
+  CodeQuestion,
+  CodeStudentAnswer,
   StudentAnswer,
+  NonCodeStudentAnswer,
   QuestionType,
   MultipleChoiceQuestion,
   NumericInputQuestion,
@@ -67,6 +77,8 @@ export type {
   MultiSelectQuestion,
   TwoStageQuestion,
 } from './content/types.js';
+
+export type { CodeAnswerEvaluator } from './content/CodeEvaluator.js';
 
 export type {
   ProviderConfig,

@@ -4,7 +4,7 @@
 
 import type { PromptMessages } from './types.js';
 
-export const QUIZ_GENERATION_VERSION = '1.4';
+export const QUIZ_GENERATION_VERSION = '1.5';
 
 // --- Tool Schema ---
 
@@ -133,7 +133,7 @@ Question type guidelines:
 - **multi-select**: 4-6 options, 2-3 correct. Clearly ask "select ALL that apply."
 - **two-stage**: First question + follow-up. Both are multiple-choice. The follow-up probes deeper understanding.
 - **checklist**: Used for practical tasks or procedures. List 3-5 specific steps the student should perform or verify.
-- **code**: Ask the student to write a short code snippet. Provide the programming language and optionally some initial code. Do not provide automatic grading fields; code questions are self-evaluated in this version.
+- **code**: Ask the student to write a short code snippet. Provide the programming language and optionally some initial code. Do not provide automatic grading fields; code answers are evaluated later by an AI tutor.
 - **self-evaluation**: Used for open-ended or subjective practical mastery. Provide 2-4 levels of mastery as options (e.g., "I can do this reliably", "I need more practice").
 
 Quality rules:

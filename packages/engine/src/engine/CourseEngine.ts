@@ -11,9 +11,11 @@ import { StudentModel } from '../student/StudentModel.js';
 import { createDefaultProvider } from '../provider/factory.js';
 import { ContentGenerator } from '../content/ContentGenerator.js';
 import { ContentManager } from '../content/ContentManager.js';
+import { CodeEvaluator } from '../content/CodeEvaluator.js';
 import { ContentCache } from '../content/ContentCache.js';
 import { copyContentItem } from '../content/copy-utils.js';
 import { Prefetcher } from '../content/Prefetcher.js';
+import type { CodeAnswerEvaluator } from '../content/CodeEvaluator.js';
 import type {
   CourseEngineConfig,
   EngineSnapshot,
@@ -24,7 +26,13 @@ import type {
   StudentState,
   SessionProgress,
 } from './types.js';
-import type { StudentAnswer, Question } from '../content/types.js';
+import type {
+  CodeQuestion,
+  CodeStudentAnswer,
+  NonCodeStudentAnswer,
+  Question,
+  StudentAnswer,
+} from '../content/types.js';
 import type { Section } from '../curriculum/types.js';
 
 function copySection(section: Section): Section {
@@ -63,10 +71,16 @@ function copyStudentAnswer(answer: StudentAnswer): StudentAnswer {
 }
 
 function copyAnswerResult(result: AnswerResult): AnswerResult {
-  return {
+  const copy: AnswerResult = {
     ...result,
     userAnswer: copyStudentAnswer(result.userAnswer),
   };
+
+  if (result.codeEvaluation) {
+    copy.codeEvaluation = { ...result.codeEvaluation };
+  }
+
+  return copy;
 }
 
 function isValidGeneratedContentRecord(
@@ -100,8 +114,10 @@ export class CourseEngine extends EventEmitter {
   #studentModel: StudentModel = new StudentModel();
   #lastAnswerResult: AnswerResult | null = null;
   #contentManager: ContentManager;
+  #codeEvaluator: CodeAnswerEvaluator;
   #contentCache: ContentCache | null = null;
   #prefetcher: Prefetcher | null = null;
+  #codeEvaluationCallSequence = 0;
 
   constructor(config: CourseEngineConfig) {
     super();
@@ -115,6 +131,7 @@ export class CourseEngine extends EventEmitter {
       });
 
     const generator = config.generator || new ContentGenerator(provider);
+    this.#codeEvaluator = config.codeEvaluator || new CodeEvaluator(provider);
 
     this.#contentManager = new ContentManager(generator, (payload) => {
       if (payload.status === 'start') {
@@ -317,7 +334,7 @@ export class CourseEngine extends EventEmitter {
 
   // --- Student Interaction ---
 
-  submitAnswer(answer: StudentAnswer): AnswerResult {
+  submitAnswer(answer: NonCodeStudentAnswer): AnswerResult {
     this.#requireState('submitAnswer', 'practicing');
 
     const item = this.currentItem;
@@ -326,19 +343,35 @@ export class CourseEngine extends EventEmitter {
     }
 
     const result = this.#gradeAnswer(item, answer);
-    this.#lastAnswerResult = copyAnswerResult(result);
+    return this.#applyAnswerResult(result);
+  }
 
-    // Update mastery
-    this.#updateMastery(result);
+  async submitCodeAnswer(answer: CodeStudentAnswer): Promise<AnswerResult> {
+    this.#requireState('submitCodeAnswer', 'practicing');
 
-    this.#setState('answered');
-    this.emit('answerResult', {
-      result: copyAnswerResult(result),
-      studentState: this.studentState,
-      progress: this.sessionProgress,
-    });
+    const item = this.currentItem;
+    if (!item || item.type === 'explanation') {
+      throw new InvalidTransitionError(
+        'submitCodeAnswer',
+        'current item is not a question'
+      );
+    }
 
-    return copyAnswerResult(result);
+    if (item.type !== 'code') {
+      const result: AnswerResult = {
+        correct: false,
+        questionId: item.id,
+        topicId: item.topicId,
+        userAnswer: copyStudentAnswer(answer),
+        correctAnswer: this.#describeCorrectAnswer(item),
+        explanation: 'Answer type does not match question type.',
+      };
+      return this.#applyAnswerResult(result);
+    }
+
+    this.#setState('grading');
+    const result = await this.#gradeCodeAnswer(item, answer);
+    return this.#applyAnswerResult(result);
   }
 
   nextItem(): void {
@@ -442,7 +475,22 @@ export class CourseEngine extends EventEmitter {
 
   // --- Grading ---
 
-  #gradeAnswer(question: Question, answer: StudentAnswer): AnswerResult {
+  #applyAnswerResult(result: AnswerResult): AnswerResult {
+    this.#lastAnswerResult = copyAnswerResult(result);
+
+    this.#updateMastery(result);
+
+    this.#setState('answered');
+    this.emit('answerResult', {
+      result: copyAnswerResult(result),
+      studentState: this.studentState,
+      progress: this.sessionProgress,
+    });
+
+    return copyAnswerResult(result);
+  }
+
+  #gradeAnswer(question: Question, answer: NonCodeStudentAnswer): AnswerResult {
     if (question.type !== answer.type) {
       return {
         correct: false,
@@ -462,6 +510,66 @@ export class CourseEngine extends EventEmitter {
       topicId: question.topicId,
       userAnswer: copyStudentAnswer(answer),
       correctAnswer: this.#describeCorrectAnswer(question),
+    };
+  }
+
+  async #gradeCodeAnswer(
+    question: CodeQuestion,
+    answer: CodeStudentAnswer
+  ): Promise<AnswerResult> {
+    try {
+      const evaluation = await this.#withCodeEvaluationApiCall(question.id, () =>
+        this.#codeEvaluator.evaluateCodeAnswer(question, answer.code)
+      );
+
+      return {
+        correct: evaluation.verdict === 'correct',
+        questionId: question.id,
+        topicId: question.topicId,
+        userAnswer: copyStudentAnswer(answer),
+        correctAnswer: 'Review the AI tutor feedback',
+        explanation: evaluation.feedback,
+        codeEvaluation: { ...evaluation },
+      };
+    } catch {
+      return this.#fallbackCodeAnswerResult(question, answer);
+    }
+  }
+
+  async #withCodeEvaluationApiCall<T>(
+    questionId: string,
+    evaluate: () => Promise<T>
+  ): Promise<T> {
+    this.#codeEvaluationCallSequence += 1;
+    const id = `code-evaluation-${this.#codeEvaluationCallSequence}`;
+    const purpose = `Code evaluation: ${questionId}`;
+
+    this.emit('apiCallStart', { id, purpose });
+    try {
+      return await evaluate();
+    } finally {
+      this.emit('apiCallComplete', { id, purpose });
+    }
+  }
+
+  #fallbackCodeAnswerResult(
+    question: CodeQuestion,
+    answer: CodeStudentAnswer
+  ): AnswerResult {
+    const feedback =
+      'The AI tutor could not evaluate this code, so CourseQuizzer recorded the submission as completed without executing it.';
+
+    return {
+      correct: true,
+      questionId: question.id,
+      topicId: question.topicId,
+      userAnswer: copyStudentAnswer(answer),
+      correctAnswer: 'Self-assessment submitted',
+      explanation: feedback,
+      codeEvaluation: {
+        verdict: 'correct',
+        feedback,
+      },
     };
   }
 
@@ -517,7 +625,7 @@ export class CourseEngine extends EventEmitter {
         );
       }
       case 'code':
-        return true;
+        throw new Error('Code questions require AI tutor grading');
       case 'self-evaluation': {
         const a = answer as { type: 'self-evaluation'; selectedIndex: number };
         return (
@@ -546,6 +654,7 @@ export class CourseEngine extends EventEmitter {
       case 'checklist':
         return 'Completion of all steps';
       case 'code':
+        return 'Review the AI tutor feedback';
       case 'self-evaluation':
         return 'Self-assessment submitted';
     }
@@ -602,6 +711,9 @@ export class CourseEngine extends EventEmitter {
     // (or without an error message for 'error'). Revert to 'ready'.
     if (engine.#state === 'loading' || engine.#state === 'error') {
       engine.#state = 'ready';
+    }
+    if (engine.#state === 'grading') {
+      engine.#state = 'practicing';
     }
 
     engine.#curriculum = snapshot.curriculum

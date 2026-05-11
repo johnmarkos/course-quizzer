@@ -64,6 +64,14 @@ gh issue list --state open --json number,title,labels,createdAt --jq '[.[] | sel
 Verify the issue author is johnmarkos (`gh issue view <n> --json author`). Skip if not.
 **Skip issues labeled `review`** — those are milestone reviews handled by the planning agent, not coding tasks.
 
+**Check that no open PR already references the issue.** Multiple factory nodes run author agents in parallel; the gap between "list unlabeled issues" and "add the `in-progress` label" lets two agents claim the same issue. Before claiming, verify nobody beat you to it:
+
+```
+gh pr list --state open --search "in:body Closes #<n>" --json number --jq '.[0].number // empty'
+```
+
+If that returns a PR number, another agent has the issue. **Exit with "Nothing to do"** — do not jump to the next-lowest issue from this poll (cascading races are worse than waiting one cycle). The next poll will see a clean queue.
+
 **Pick the lowest-numbered eligible issue. Do not skip issues because their body mentions dependencies on other issues.** Dependency ordering is the planning agent's job — if an issue exists and is not labeled `in-progress`, it is ready to work on.
 
 If an eligible issue exists:

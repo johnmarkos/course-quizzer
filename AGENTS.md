@@ -346,12 +346,15 @@ Their job is to do the one scripted task, emit a short status summary, and exit.
 
 ### Issue Claiming
 
-Multiple coding agents may be running simultaneously. To prevent two agents from working on the same issue:
+Multiple coding agents may be running simultaneously across factory nodes. To prevent two agents from working on the same issue:
 
-1. **Before starting work**, add the `in-progress` label to the issue: `gh issue edit <n> --add-label in-progress`
-2. **Skip issues labeled `in-progress`** — another agent is working on them.
-3. **On completion**, the label is removed when the PR merges and closes the issue.
-4. **Stale claims**: If an issue is labeled `in-progress` but has no corresponding branch or PR, the claim is stale and the issue can be reclaimed. Remove the label and take the issue.
+1. **Before adding the `in-progress` label**, verify no open PR already references the issue: `gh pr list --state open --search "in:body Closes #<n>" --json number --jq '.[0].number // empty'`. If a PR exists, another agent claimed first — back off without picking a different issue (exit "Nothing to do"; the next poll will see a clean queue).
+2. **Add the `in-progress` label**: `gh issue edit <n> --add-label in-progress`.
+3. **Skip issues labeled `in-progress`** — another agent is working on them.
+4. **On completion**, the label is removed when the PR merges and closes the issue.
+5. **Stale claims**: If an issue is labeled `in-progress` but has no corresponding branch or PR, the claim is stale and the issue can be reclaimed. Remove the label and take the issue.
+
+The existing-PR check (step 1) closes the race window between two agents listing the unlabeled-issues set before either has added the label. A small window between two simultaneous label edits remains — both agents will see the label on the next poll and back off, having spent only the label edit. The previously-expensive failure mode (both agents do the full implementation before discovering the collision) is what step 1 prevents.
 
 ### Safety Gate
 

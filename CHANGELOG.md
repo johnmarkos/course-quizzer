@@ -14,6 +14,7 @@
 - **Scripts:** Guard author-agent `gh pr merge` calls so approved PRs cannot merge while GitHub status checks are failing, pending, cancelled, or absent
 - **Engine:** Type content generation orchestration against provider-agnostic interfaces, with default Claude construction isolated inside the provider layer
 - **Engine/App:** Move topic status, review flags, and course progress summary calculations behind engine-owned progress helpers so the app only formats and renders emitted progress data
+- **Engine:** Tighten imported snapshot validation for mastery ranges, question counts, answer-key bounds, and state-aware section/item indices
 - **Engine/App:** Strip unknown fields from imported engine snapshots before persistence or re-export so stale or malicious import metadata cannot carry secrets forward
 - **Engine:** Copy imported generated-content and mastery records with own data properties so `__proto__` keys cannot mutate returned snapshot prototypes
 - **Engine/App:** Move topic mastery display status, review flags, and snapshot progress summaries into the engine so the app only formats engine-provided progress values

@@ -5,11 +5,55 @@ import type { AnswerResult, ContentItem, StudentAnswer } from '../content/types.
 import type { StudentState } from '../student/types.js';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
+function isNonEmptyStringArray(value: unknown): value is string[] {
+  return isStringArray(value) && value.length > 0;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
+function isValidIndex(value: unknown, itemCount: number): value is number {
+  return isNonNegativeInteger(value) && value < itemCount;
+}
+
+function isUniqueIntegerArray(value: unknown): value is number[] {
+  return (
+    Array.isArray(value) &&
+    value.every(isNonNegativeInteger) &&
+    new Set(value).size === value.length
+  );
+}
+
+function isValidIndexArray(
+  value: unknown,
+  itemCount: number,
+  options: { requireNonEmpty?: boolean } = {}
+): value is number[] {
+  return (
+    isUniqueIntegerArray(value) &&
+    (!options.requireNonEmpty || value.length > 0) &&
+    value.every((entry) => entry < itemCount)
+  );
+}
+
+function isValidPermutation(value: unknown, itemCount: number): value is number[] {
+  return (
+    isValidIndexArray(value, itemCount) &&
+    value.length === itemCount &&
+    value.every((entry) => entry < itemCount)
+  );
 }
 
 function isValidEngineState(value: unknown): boolean {
@@ -21,7 +65,8 @@ function isValidEngineState(value: unknown): boolean {
     value === 'practicing' ||
     value === 'answered' ||
     value === 'sectionComplete' ||
-    value === 'complete'
+    value === 'complete' ||
+    value === 'error'
   );
 }
 
@@ -33,9 +78,12 @@ function isValidStudentState(value: unknown): value is StudentState {
     if (!isPlainObject(mastery)) return false;
     return (
       mastery.topicId === topicId &&
-      typeof mastery.score === 'number' &&
-      typeof mastery.questionsAnswered === 'number' &&
-      typeof mastery.questionsCorrect === 'number'
+      isFiniteNumber(mastery.score) &&
+      mastery.score >= 0 &&
+      mastery.score <= 1 &&
+      isNonNegativeInteger(mastery.questionsAnswered) &&
+      isNonNegativeInteger(mastery.questionsCorrect) &&
+      mastery.questionsCorrect <= mastery.questionsAnswered
     );
   });
 }
@@ -45,33 +93,24 @@ function isValidStudentAnswer(value: unknown): value is StudentAnswer {
 
   switch (value.type) {
     case 'multiple-choice':
-      return typeof value.selectedIndex === 'number';
+      return isNonNegativeInteger(value.selectedIndex);
     case 'numeric-input':
-      return typeof value.value === 'number';
+      return isFiniteNumber(value.value);
     case 'ordering':
-      return (
-        Array.isArray(value.order) &&
-        value.order.every((entry) => typeof entry === 'number')
-      );
+      return isUniqueIntegerArray(value.order);
     case 'multi-select':
-      return (
-        Array.isArray(value.selectedIndices) &&
-        value.selectedIndices.every((entry) => typeof entry === 'number')
-      );
+      return isUniqueIntegerArray(value.selectedIndices);
     case 'two-stage':
       return (
-        typeof value.selectedIndex === 'number' &&
-        typeof value.followUpSelectedIndex === 'number'
+        isNonNegativeInteger(value.selectedIndex) &&
+        isNonNegativeInteger(value.followUpSelectedIndex)
       );
     case 'checklist':
-      return (
-        Array.isArray(value.checkedIndices) &&
-        value.checkedIndices.every((entry) => typeof entry === 'number')
-      );
+      return isUniqueIntegerArray(value.checkedIndices);
     case 'code':
       return typeof value.code === 'string';
     case 'self-evaluation':
-      return typeof value.selectedIndex === 'number';
+      return isNonNegativeInteger(value.selectedIndex);
     default:
       return false;
   }
@@ -104,16 +143,17 @@ function isValidContentItem(value: unknown): value is ContentItem {
         typeof value.id === 'string' &&
         typeof value.topicId === 'string' &&
         typeof value.question === 'string' &&
-        isStringArray(value.options) &&
-        typeof value.correctIndex === 'number'
+        isNonEmptyStringArray(value.options) &&
+        isValidIndex(value.correctIndex, value.options.length)
       );
     case 'numeric-input':
       return (
         typeof value.id === 'string' &&
         typeof value.topicId === 'string' &&
         typeof value.question === 'string' &&
-        typeof value.correctValue === 'number' &&
-        (value.tolerance === undefined || typeof value.tolerance === 'number') &&
+        isFiniteNumber(value.correctValue) &&
+        (value.tolerance === undefined ||
+          (isFiniteNumber(value.tolerance) && value.tolerance >= 0)) &&
         (value.unit === undefined || typeof value.unit === 'string')
       );
     case 'ordering':
@@ -121,36 +161,36 @@ function isValidContentItem(value: unknown): value is ContentItem {
         typeof value.id === 'string' &&
         typeof value.topicId === 'string' &&
         typeof value.question === 'string' &&
-        isStringArray(value.items) &&
-        Array.isArray(value.correctOrder) &&
-        value.correctOrder.every((entry) => typeof entry === 'number')
+        isNonEmptyStringArray(value.items) &&
+        isValidPermutation(value.correctOrder, value.items.length)
       );
     case 'multi-select':
       return (
         typeof value.id === 'string' &&
         typeof value.topicId === 'string' &&
         typeof value.question === 'string' &&
-        isStringArray(value.options) &&
-        Array.isArray(value.correctIndices) &&
-        value.correctIndices.every((entry) => typeof entry === 'number')
+        isNonEmptyStringArray(value.options) &&
+        isValidIndexArray(value.correctIndices, value.options.length, {
+          requireNonEmpty: true,
+        })
       );
     case 'two-stage':
       return (
         typeof value.id === 'string' &&
         typeof value.topicId === 'string' &&
         typeof value.question === 'string' &&
-        isStringArray(value.options) &&
-        typeof value.correctIndex === 'number' &&
+        isNonEmptyStringArray(value.options) &&
+        isValidIndex(value.correctIndex, value.options.length) &&
         typeof value.followUp === 'string' &&
-        isStringArray(value.followUpOptions) &&
-        typeof value.followUpCorrectIndex === 'number'
+        isNonEmptyStringArray(value.followUpOptions) &&
+        isValidIndex(value.followUpCorrectIndex, value.followUpOptions.length)
       );
     case 'checklist':
       return (
         typeof value.id === 'string' &&
         typeof value.topicId === 'string' &&
         typeof value.question === 'string' &&
-        isStringArray(value.items)
+        isNonEmptyStringArray(value.items)
       );
     case 'code':
       return (
@@ -166,7 +206,7 @@ function isValidContentItem(value: unknown): value is ContentItem {
         typeof value.id === 'string' &&
         typeof value.topicId === 'string' &&
         typeof value.question === 'string' &&
-        isStringArray(value.options)
+        isNonEmptyStringArray(value.options)
       );
     default:
       return false;
@@ -189,6 +229,59 @@ function isValidGeneratedContentRecord(value: unknown): boolean {
       (items) => Array.isArray(items) && items.every(isValidContentItem)
     )
   );
+}
+
+function isValidSnapshotPosition(snapshot: EngineSnapshot): boolean {
+  const hasNoActivePosition =
+    snapshot.currentSectionIndex === -1 &&
+    snapshot.currentItemIndex === -1 &&
+    snapshot.sectionItems.length === 0;
+
+  if (snapshot.state === 'idle' || snapshot.state === 'planning') {
+    return snapshot.curriculum === null && hasNoActivePosition;
+  }
+
+  if (snapshot.state === 'ready') {
+    return snapshot.curriculum !== null && hasNoActivePosition;
+  }
+
+  if (snapshot.curriculum === null) {
+    return false;
+  }
+
+  const hasValidSectionIndex =
+    snapshot.currentSectionIndex >= 0 &&
+    snapshot.currentSectionIndex < snapshot.curriculum.sections.length;
+
+  if (!hasValidSectionIndex) {
+    return false;
+  }
+
+  switch (snapshot.state) {
+    case 'loading':
+    case 'error':
+      return snapshot.currentItemIndex === -1 && snapshot.sectionItems.length === 0;
+    case 'practicing':
+    case 'answered':
+      return (
+        snapshot.sectionItems.length > 0 &&
+        snapshot.currentItemIndex >= 0 &&
+        snapshot.currentItemIndex < snapshot.sectionItems.length
+      );
+    case 'sectionComplete':
+      return (
+        snapshot.sectionItems.length > 0 &&
+        snapshot.currentItemIndex === snapshot.sectionItems.length
+      );
+    case 'complete':
+      return (
+        snapshot.currentSectionIndex === snapshot.curriculum.sections.length - 1 &&
+        snapshot.sectionItems.length > 0 &&
+        snapshot.currentItemIndex === snapshot.sectionItems.length
+      );
+    default:
+      return false;
+  }
 }
 
 // --- Canonical copies ---
@@ -410,6 +503,10 @@ export function validateEngineSnapshot(value: unknown): EngineSnapshot | null {
     (snapshot.lastAnswerResult !== null &&
       !isValidAnswerResult(snapshot.lastAnswerResult))
   ) {
+    return null;
+  }
+
+  if (!isValidSnapshotPosition(snapshot)) {
     return null;
   }
 

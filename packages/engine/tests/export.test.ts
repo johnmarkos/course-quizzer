@@ -109,6 +109,14 @@ describe('Exporter & Importer', () => {
   it('rejects bundles with malformed snapshot indices and content collections', () => {
     const importer = new Importer();
     const validSnapshot = createValidSnapshot();
+    const invalidMultipleChoice: ContentItem = {
+      type: 'multiple-choice',
+      id: 'q-invalid',
+      topicId: 'topic-1',
+      question: 'Pick one.',
+      options: ['Only option'],
+      correctIndex: 1,
+    };
 
     const invalidBundles = [
       {
@@ -121,11 +129,52 @@ describe('Exporter & Importer', () => {
       },
       {
         ...validSnapshot,
+        currentSectionIndex: 1,
+      },
+      {
+        ...validSnapshot,
+        currentItemIndex: validSnapshot.sectionItems.length,
+      },
+      {
+        ...validSnapshot,
         sectionItems: { bad: true },
       },
       {
         ...validSnapshot,
         allGeneratedContent: { 'section-1': 1 },
+      },
+      {
+        ...validSnapshot,
+        sectionItems: [invalidMultipleChoice],
+        allGeneratedContent: { 'section-1': [invalidMultipleChoice] },
+      },
+      {
+        ...validSnapshot,
+        studentState: {
+          masteryByTopic: {
+            'topic-1': {
+              topicId: 'topic-1',
+              score: 1.1,
+              questionsAnswered: 1,
+              questionsCorrect: 1,
+            },
+          },
+          gaps: [],
+        },
+      },
+      {
+        ...validSnapshot,
+        studentState: {
+          masteryByTopic: {
+            'topic-1': {
+              topicId: 'topic-1',
+              score: 0.5,
+              questionsAnswered: 1,
+              questionsCorrect: 2,
+            },
+          },
+          gaps: [],
+        },
       },
     ];
 

@@ -260,6 +260,208 @@ describe('validateEngineSnapshot — content items', () => {
     const snapshot = baseSnapshot([broken]);
     expect(validateEngineSnapshot(snapshot)).toBeNull();
   });
+
+  it.each([
+    [
+      'multiple-choice correctIndex outside options',
+      {
+        ...QUESTION_FIXTURES['multiple-choice'],
+        correctIndex: 3,
+      } as ContentItem,
+    ],
+    [
+      'multiple-choice correctIndex is not an integer',
+      {
+        ...QUESTION_FIXTURES['multiple-choice'],
+        correctIndex: 1.5,
+      } as ContentItem,
+    ],
+    [
+      'numeric-input correctValue is not finite',
+      {
+        ...QUESTION_FIXTURES['numeric-input'],
+        correctValue: Number.POSITIVE_INFINITY,
+      } as ContentItem,
+    ],
+    [
+      'numeric-input tolerance is negative',
+      {
+        ...QUESTION_FIXTURES['numeric-input'],
+        tolerance: -0.1,
+      } as ContentItem,
+    ],
+    [
+      'ordering correctOrder is not a full permutation',
+      {
+        ...QUESTION_FIXTURES.ordering,
+        correctOrder: [0, 0, 2],
+      } as ContentItem,
+    ],
+    [
+      'ordering correctOrder omits an item',
+      {
+        ...QUESTION_FIXTURES.ordering,
+        correctOrder: [0, 1],
+      } as ContentItem,
+    ],
+    [
+      'multi-select correctIndices contain duplicates',
+      {
+        ...QUESTION_FIXTURES['multi-select'],
+        correctIndices: [0, 0],
+      } as ContentItem,
+    ],
+    [
+      'multi-select correctIndices are outside options',
+      {
+        ...QUESTION_FIXTURES['multi-select'],
+        correctIndices: [0, 3],
+      } as ContentItem,
+    ],
+    [
+      'two-stage followUpCorrectIndex is outside follow-up options',
+      {
+        ...QUESTION_FIXTURES['two-stage'],
+        followUpCorrectIndex: 2,
+      } as ContentItem,
+    ],
+  ])('rejects a snapshot containing a question where %s', (_name, item) => {
+    const snapshot = baseSnapshot([item]);
+    expect(validateEngineSnapshot(snapshot)).toBeNull();
+  });
+});
+
+describe('validateEngineSnapshot — student state and positions', () => {
+  it.each([
+    [
+      'mastery score below 0',
+      (snapshot: EngineSnapshot) => {
+        snapshot.studentState.masteryByTopic['topic-1'] = {
+          topicId: 'topic-1',
+          score: -0.01,
+          questionsAnswered: 1,
+          questionsCorrect: 0,
+        };
+      },
+    ],
+    [
+      'mastery score above 1',
+      (snapshot: EngineSnapshot) => {
+        snapshot.studentState.masteryByTopic['topic-1'] = {
+          topicId: 'topic-1',
+          score: 1.01,
+          questionsAnswered: 1,
+          questionsCorrect: 1,
+        };
+      },
+    ],
+    [
+      'questionsAnswered is negative',
+      (snapshot: EngineSnapshot) => {
+        snapshot.studentState.masteryByTopic['topic-1'] = {
+          topicId: 'topic-1',
+          score: 0,
+          questionsAnswered: -1,
+          questionsCorrect: 0,
+        };
+      },
+    ],
+    [
+      'questionsCorrect exceeds questionsAnswered',
+      (snapshot: EngineSnapshot) => {
+        snapshot.studentState.masteryByTopic['topic-1'] = {
+          topicId: 'topic-1',
+          score: 0.5,
+          questionsAnswered: 1,
+          questionsCorrect: 2,
+        };
+      },
+    ],
+  ])('rejects a snapshot where %s', (_name, mutate) => {
+    const snapshot = baseSnapshot([EXPLANATION]);
+    mutate(snapshot);
+    expect(validateEngineSnapshot(snapshot)).toBeNull();
+  });
+
+  it.each([
+    [
+      'currentSectionIndex is outside the curriculum',
+      (snapshot: EngineSnapshot) => {
+        snapshot.currentSectionIndex = 1;
+      },
+    ],
+    [
+      'currentItemIndex is outside sectionItems',
+      (snapshot: EngineSnapshot) => {
+        snapshot.currentItemIndex = snapshot.sectionItems.length;
+      },
+    ],
+    [
+      'ready state has an active section and item',
+      (snapshot: EngineSnapshot) => {
+        snapshot.state = 'ready';
+      },
+    ],
+    [
+      'loading state has an active item',
+      (snapshot: EngineSnapshot) => {
+        snapshot.state = 'loading';
+      },
+    ],
+    [
+      'sectionComplete state has not exhausted sectionItems',
+      (snapshot: EngineSnapshot) => {
+        snapshot.state = 'sectionComplete';
+      },
+    ],
+  ])('rejects a snapshot where %s', (_name, mutate) => {
+    const snapshot = baseSnapshot([EXPLANATION]);
+    mutate(snapshot);
+    expect(validateEngineSnapshot(snapshot)).toBeNull();
+  });
+
+  it('accepts valid idle, ready, loading, sectionComplete, and complete positions', () => {
+    const idleSnapshot: EngineSnapshot = {
+      ...baseSnapshot([]),
+      state: 'idle',
+      curriculum: null,
+      currentSectionIndex: -1,
+      currentItemIndex: -1,
+      allGeneratedContent: {},
+    };
+
+    const readySnapshot: EngineSnapshot = {
+      ...baseSnapshot([]),
+      state: 'ready',
+      currentSectionIndex: -1,
+      currentItemIndex: -1,
+    };
+
+    const loadingSnapshot: EngineSnapshot = {
+      ...baseSnapshot([]),
+      state: 'loading',
+      currentSectionIndex: 0,
+      currentItemIndex: -1,
+    };
+
+    const sectionCompleteSnapshot: EngineSnapshot = {
+      ...baseSnapshot([EXPLANATION]),
+      state: 'sectionComplete',
+      currentItemIndex: 1,
+    };
+
+    const completeSnapshot: EngineSnapshot = {
+      ...baseSnapshot([EXPLANATION]),
+      state: 'complete',
+      currentItemIndex: 1,
+    };
+
+    expect(validateEngineSnapshot(idleSnapshot)).not.toBeNull();
+    expect(validateEngineSnapshot(readySnapshot)).not.toBeNull();
+    expect(validateEngineSnapshot(loadingSnapshot)).not.toBeNull();
+    expect(validateEngineSnapshot(sectionCompleteSnapshot)).not.toBeNull();
+    expect(validateEngineSnapshot(completeSnapshot)).not.toBeNull();
+  });
 });
 
 // --- Snapshot validation — student answers via lastAnswerResult ---
@@ -314,6 +516,35 @@ describe('validateEngineSnapshot — student answers', () => {
       questionId: 'q-test',
       topicId: 'topic-1',
       userAnswer: { type: 'self-evaluation' } as unknown as StudentAnswer,
+      correctAnswer: 'desc',
+    };
+    expect(validateEngineSnapshot(snapshot)).toBeNull();
+  });
+
+  it.each([
+    [
+      'multiple-choice selectedIndex is negative',
+      { type: 'multiple-choice', selectedIndex: -1 } as StudentAnswer,
+    ],
+    [
+      'ordering order contains duplicate indices',
+      { type: 'ordering', order: [0, 0] } as StudentAnswer,
+    ],
+    [
+      'multi-select selectedIndices are not integers',
+      { type: 'multi-select', selectedIndices: [0.5] } as StudentAnswer,
+    ],
+    [
+      'numeric-input value is not finite',
+      { type: 'numeric-input', value: Number.NaN } as StudentAnswer,
+    ],
+  ])('rejects a snapshot with a malformed answer where %s', (_name, userAnswer) => {
+    const snapshot = baseSnapshot([EXPLANATION]);
+    snapshot.lastAnswerResult = {
+      correct: true,
+      questionId: 'q-test',
+      topicId: 'topic-1',
+      userAnswer,
       correctAnswer: 'desc',
     };
     expect(validateEngineSnapshot(snapshot)).toBeNull();

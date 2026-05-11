@@ -519,6 +519,7 @@ export class CourseEngine extends EventEmitter {
         );
       }
       case 'code':
+        return true;
       case 'self-evaluation': {
         const a = answer as { type: 'self-evaluation'; selectedIndex: number };
         return (

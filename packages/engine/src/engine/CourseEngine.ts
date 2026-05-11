@@ -170,10 +170,7 @@ export class CourseEngine extends EventEmitter {
       totalSections: this.#curriculum?.sections.length ?? 0,
       currentItemIndex: this.#currentItemIndex,
       totalItemsInSection: this.#sectionItems.length,
-      currentSection:
-        this.#curriculum && this.#currentSectionIndex >= 0
-          ? this.#curriculum.sections[this.#currentSectionIndex]
-          : null,
+      sections: this.#curriculum?.sections ?? [],
     });
   }
 

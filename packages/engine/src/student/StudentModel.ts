@@ -11,10 +11,25 @@
 // The model is serializable: getState() returns a snapshot,
 // and the constructor can restore from a prior StudentState.
 
-import { summarizeSectionProgress } from './progress.js';
-import { BASE_GAIN, BASE_LOSS, GAP_THRESHOLD } from './mastery-policy.js';
-import type { Section } from '../curriculum/types.js';
-import type { StudentState, TopicMastery, SessionProgress } from './types.js';
+import {
+  BASE_GAIN,
+  BASE_LOSS,
+  GAP_THRESHOLD,
+  getMasteryLevel,
+} from './mastery-policy.js';
+import type {
+  CourseProgressSummary,
+  ProgressSectionInput,
+  SectionProgressSummary,
+  SessionProgress,
+  StudentState,
+  TopicMastery,
+  TopicProgressSummary,
+} from './types.js';
+
+function toPercent(score: number): number {
+  return Math.round(score * 100);
+}
 
 export type MasteryUpdate = {
   topicId: string;
@@ -95,6 +110,22 @@ export class StudentModel {
     return mastery ? { ...mastery } : undefined;
   }
 
+  /** Display-ready progress for a topic, including engine-owned status labels. */
+  getTopicProgress(topicId: string): TopicProgressSummary {
+    const mastery = this.#masteryByTopic.get(topicId);
+    const score = mastery?.score ?? 0;
+
+    return {
+      topicId,
+      score,
+      scorePercent: toPercent(score),
+      questionsAnswered: mastery?.questionsAnswered ?? 0,
+      questionsCorrect: mastery?.questionsCorrect ?? 0,
+      level: getMasteryLevel(score),
+      needsReview: score < GAP_THRESHOLD,
+    };
+  }
+
   /** Topic IDs where mastery is below the gap threshold. */
   get gaps(): string[] {
     return [...this.#gaps];
@@ -118,6 +149,56 @@ export class StudentModel {
 
   // --- Session Progress ---
 
+  computeCourseProgress(input: {
+    currentSectionIndex: number;
+    sections: ProgressSectionInput[];
+  }): CourseProgressSummary {
+    const sections = input.sections;
+    const sectionSummaries: SectionProgressSummary[] = sections.map((section, index) => {
+      const topicProgress = section.topics.map((topic) =>
+        this.getTopicProgress(topic.id)
+      );
+      const attempted = topicProgress.filter((topic) => topic.questionsAnswered > 0);
+      const mastery =
+        attempted.length > 0
+          ? attempted.reduce((sum, topic) => sum + topic.score, 0) / attempted.length
+          : 0;
+
+      return {
+        sectionId: section.id,
+        started: index < input.currentSectionIndex || attempted.length > 0,
+        topicsAttempted: attempted.length,
+        topicsTotal: section.topics.length,
+        mastery,
+        masteryPercent: toPercent(mastery),
+      };
+    });
+
+    const allMasteries = [...this.#masteryByTopic.values()];
+    const attemptedMasteries = allMasteries.filter(
+      (mastery) => mastery.questionsAnswered > 0
+    );
+    const totalQuestionsAnswered = allMasteries.reduce(
+      (sum, mastery) => sum + mastery.questionsAnswered,
+      0
+    );
+    const overallMastery =
+      attemptedMasteries.length > 0
+        ? attemptedMasteries.reduce((sum, mastery) => sum + mastery.score, 0) /
+          attemptedMasteries.length
+        : 0;
+
+    return {
+      currentSectionIndex: input.currentSectionIndex,
+      totalSections: sections.length,
+      overallMastery,
+      overallMasteryPercent: toPercent(overallMastery),
+      totalQuestionsAnswered,
+      sections: sectionSummaries,
+      hasProgress: totalQuestionsAnswered > 0,
+    };
+  }
+
   /**
    * Compute session progress given the current section/item position.
    * The StudentModel owns the mastery calculation; the engine provides
@@ -128,16 +209,14 @@ export class StudentModel {
     totalSections: number;
     currentItemIndex: number;
     totalItemsInSection: number;
-    currentSection?: Section | null;
+    sections?: ProgressSectionInput[];
   }): SessionProgress {
-    const currentSection = position.currentSection
-      ? summarizeSectionProgress(
-          position.currentSection,
-          position.currentSectionIndex,
-          position.currentSectionIndex,
-          this.getState()
-        )
-      : null;
+    const sections = position.sections ?? [];
+    const courseProgress = this.computeCourseProgress({
+      currentSectionIndex: position.currentSectionIndex,
+      sections,
+    });
+    const currentSection = sections[position.currentSectionIndex];
 
     return {
       currentSectionIndex: position.currentSectionIndex,
@@ -145,7 +224,13 @@ export class StudentModel {
       currentItemIndex: position.currentItemIndex,
       totalItemsInSection: position.totalItemsInSection,
       overallMastery: this.overallMastery,
-      currentSection,
+      overallMasteryPercent: toPercent(this.overallMastery),
+      totalQuestionsAnswered: courseProgress.totalQuestionsAnswered,
+      sections: courseProgress.sections,
+      currentSectionTopicProgress: currentSection
+        ? currentSection.topics.map((topic) => this.getTopicProgress(topic.id))
+        : [],
+      hasProgress: courseProgress.hasProgress,
     };
   }
 

@@ -28,8 +28,6 @@ import type { StudentAnswer, Question } from '../content/types.js';
 import type { Section } from '../curriculum/types.js';
 
 function copySection(section: Section): Section {
-  // ... (omitting for brevity in this thought but I'll provide full in the call)
-
   return {
     ...section,
     topics: section.topics.map((topic) => ({ ...topic })),

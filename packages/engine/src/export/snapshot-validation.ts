@@ -198,8 +198,7 @@ function isValidContentItem(value: unknown): value is ContentItem {
         typeof value.topicId === 'string' &&
         typeof value.question === 'string' &&
         typeof value.language === 'string' &&
-        (value.initialCode === undefined || typeof value.initialCode === 'string') &&
-        (value.expectedPattern === undefined || typeof value.expectedPattern === 'string')
+        (value.initialCode === undefined || typeof value.initialCode === 'string')
       );
     case 'self-evaluation':
       return (
@@ -413,7 +412,6 @@ function copyContentItem(item: ContentItem): ContentItem {
         language: item.language,
       };
       if (item.initialCode !== undefined) copy.initialCode = item.initialCode;
-      if (item.expectedPattern !== undefined) copy.expectedPattern = item.expectedPattern;
       return copy;
     }
     case 'self-evaluation':

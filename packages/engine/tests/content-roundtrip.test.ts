@@ -89,7 +89,6 @@ const QUESTION_FIXTURES: Record<QuestionType, Question> = {
     question: 'Write a function.',
     language: 'javascript',
     initialCode: 'function noop() {}',
-    expectedPattern: 'return',
   },
   'self-evaluation': {
     type: 'self-evaluation',
@@ -236,6 +235,22 @@ describe('validateEngineSnapshot — content items', () => {
   it.each(ALL_QUESTION_TYPES)('accepts a snapshot containing a %s question', (type) => {
     const snapshot = baseSnapshot([QUESTION_FIXTURES[type]]);
     expect(validateEngineSnapshot(snapshot)).not.toBeNull();
+  });
+
+  it('accepts and strips legacy expectedPattern data from imported code items', () => {
+    const legacyCode = {
+      ...QUESTION_FIXTURES.code,
+      expectedPattern: 'return\\s+true',
+    } as unknown as ContentItem;
+    const snapshot = baseSnapshot([legacyCode]);
+
+    const restored = validateEngineSnapshot(snapshot);
+
+    expect(restored).not.toBeNull();
+    expect(restored!.sectionItems[0]).not.toHaveProperty('expectedPattern');
+    expect(restored!.allGeneratedContent['section-1'][0]).not.toHaveProperty(
+      'expectedPattern'
+    );
   });
 
   it('rejects a snapshot containing a malformed checklist (missing items array)', () => {

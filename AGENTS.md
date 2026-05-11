@@ -257,6 +257,7 @@ This app handles API keys in the browser and renders LLM-generated content. The 
 - [ ] **API key transmission** — Only to `api.anthropic.com`, only in the `x-api-key` header. Verify every `fetch()` call in the codebase.
 - [ ] **XSS in rendered content** — LLM-generated text must be escaped. In Svelte, `{expression}` auto-escapes. Every use of `{@html}` must be justified and wrapped in a sanitizer. Search for `{@html` during review.
 - [ ] **No `eval()`** — No `eval()`, `new Function()`, or dynamic script injection. No exceptions.
+- [ ] **No untrusted regex execution** — Never pass generated, imported, or user-controlled strings to `new RegExp()`. Code-question regex grading is forbidden in v1; use self-evaluation or the AI tutor path instead.
 - [ ] **CORS / browser access** — Direct browser-to-Anthropic API requires the `anthropic-dangerous-direct-browser-access` header. This is documented and intentional. No other unexpected CORS usage.
 - [ ] **Export security** — Export bundles must never include the API key. Verify with a test.
 - [ ] **Import validation** — Imported JSON is untrusted input. Validate shape and types before restoring state. Never `JSON.parse()` and cast without validation.

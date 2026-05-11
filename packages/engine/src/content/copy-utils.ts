@@ -34,8 +34,17 @@ export function copyContentItem(item: ContentItem): ContentItem {
         ...item,
         items: [...item.items],
       };
-    case 'code':
-      return { ...item };
+    case 'code': {
+      const copy: ContentItem = {
+        type: item.type,
+        id: item.id,
+        topicId: item.topicId,
+        question: item.question,
+        language: item.language,
+      };
+      if (item.initialCode !== undefined) copy.initialCode = item.initialCode;
+      return copy;
+    }
     case 'self-evaluation':
       return {
         ...item,

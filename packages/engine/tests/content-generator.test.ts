@@ -80,7 +80,7 @@ describe('explanation prompt', () => {
 
 describe('quiz generation prompt', () => {
   it('exports version constant', () => {
-    expect(QUIZ_GENERATION_VERSION).toBe('1.3');
+    expect(QUIZ_GENERATION_VERSION).toBe('1.4');
   });
 
   it('builds prompt with topic and explanation context', () => {
@@ -110,6 +110,23 @@ describe('quiz generation prompt', () => {
     expect(prompt.system).toContain('self-contained');
     expect(prompt.system).toContain('similar in length');
     expect(prompt.system).toContain('metadata');
+  });
+
+  it('does not ask Claude for regex-based code grading patterns', () => {
+    const prompt = buildQuizGenerationPrompt({
+      topicTitle: 'T',
+      topicDescription: 'D',
+      courseTitle: 'C',
+      sectionTitle: 'S',
+      explanationContent: 'E',
+    });
+
+    const questionProperties =
+      prompt.tools![0].inputSchema.properties.questions.items.properties;
+
+    expect(questionProperties).not.toHaveProperty('expectedPattern');
+    expect(prompt.system).not.toContain('expectedPattern');
+    expect(prompt.system).not.toContain('regex');
   });
 });
 
@@ -217,7 +234,6 @@ describe('quality filters', () => {
       question: 'Write a guard clause.',
       language: 'typescript',
       initialCode: 'function isReady(value: unknown) {}',
-      expectedPattern: 'return\\s+false',
     };
     const original = structuredClone(q);
 
@@ -291,6 +307,33 @@ describe('ContentGenerator', () => {
     expect(questions[0].type).toBe('multiple-choice');
     expect(questions[1].type).toBe('numeric-input');
     expect(questions[0].topicId).toBe('binary-search');
+  });
+
+  it('strips legacy expectedPattern fields from generated code questions', async () => {
+    const provider = mockProvider(
+      quizResponse([
+        {
+          type: 'code',
+          question: 'Write a guard clause.',
+          language: 'typescript',
+          initialCode: 'function isReady(value: unknown) {}',
+          expectedPattern: 'return\\s+false',
+        },
+      ])
+    );
+    const gen = new ContentGenerator(provider);
+
+    const [question] = await gen.generateTopicQuizBurst(TOPIC, 'C', 'S', 'E', 1);
+
+    expect(question).toEqual({
+      type: 'code',
+      id: 'binary-search-q0',
+      topicId: 'binary-search',
+      question: 'Write a guard clause.',
+      language: 'typescript',
+      initialCode: 'function isReady(value: unknown) {}',
+    });
+    expect(question).not.toHaveProperty('expectedPattern');
   });
 
   it('parses all 5 question types', async () => {

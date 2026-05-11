@@ -196,6 +196,34 @@ describe('learn page flow', () => {
     expect(session.lastResult!.result.correct).toBe(false);
   });
 
+  it('handles code questions through the self-evaluation grading path', () => {
+    const session = createEngineSession({ apiKey: 'test-key' });
+    session.loadCurriculum(mockCurriculumPlan());
+    session.startSection('s1');
+    session.setSectionContent([
+      {
+        type: 'code',
+        id: 'q-code',
+        topicId: 't1',
+        question: 'Write a function that returns true.',
+        language: 'typescript',
+        initialCode: 'function answer() {}',
+        expectedPattern: 'return true',
+      } as unknown as ContentItem,
+    ]);
+
+    expect(session.currentItem!.item.type).toBe('code');
+
+    const result = session.submitAnswer({
+      type: 'code',
+      code: 'function answer() { return false; }',
+    });
+
+    expect(result.correct).toBe(true);
+    expect(result.correctAnswer).toBe('Self-assessment submitted');
+    expect(session.lastResult!.result.correct).toBe(true);
+  });
+
   it('can skip a question and continue', () => {
     const session = createEngineSession({ apiKey: 'test-key' });
     session.loadCurriculum(mockCurriculumPlan());

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { CourseEngine } from '../src/engine/CourseEngine.js';
 import { Exporter } from '../src/export/Exporter.js';
 import { Importer } from '../src/export/Importer.js';
@@ -69,6 +69,31 @@ describe('Exporter & Importer', () => {
     expect(restoredEngine.state).toBe('practicing');
     expect(restoredEngine.curriculum?.title).toBe('Intro to Testing');
     expect(restoredEngine.currentItem?.title).toBe('Understanding Assertions');
+  });
+
+  it('imports error-state snapshots and restores them as ready', async () => {
+    const exporter = new Exporter();
+    const importer = new Importer();
+    const generator = {
+      generateTopicExplanation: vi.fn(() => Promise.reject(new Error('API Failure'))),
+      generateTopicQuizBurst: vi.fn(),
+    };
+    const engine = new CourseEngine({ apiKey: 'sk-test-key', generator });
+
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const snapshot = engine.serialize();
+    expect(snapshot.state).toBe('error');
+
+    const importedSnapshot = importer.import(exporter.exportToString(snapshot));
+    const restoredEngine = CourseEngine.restore(importedSnapshot, {
+      apiKey: 'sk-new-key',
+    });
+
+    expect(importedSnapshot.state).toBe('error');
+    expect(restoredEngine.state).toBe('ready');
   });
 
   it('maintains allGeneratedContent across sections', () => {

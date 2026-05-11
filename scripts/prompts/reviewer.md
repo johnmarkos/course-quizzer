@@ -27,6 +27,7 @@ And check if there are commits newer than the last review comment. If the PR nee
    - Architecture Rules compliance (see AGENTS.md)
    - Security: no `{@html}` without sanitization, no `eval()`, no API key leaks, no XSS vectors
    - Test coverage — are the right things tested?
+   - CI status — inspect `gh pr checks <n>` and do not post `**Status: APPROVED**` while any required check is failing or still running
    - CHANGELOG.md updated?
    - Readability — could a junior engineer follow this?
 

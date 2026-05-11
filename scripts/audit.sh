@@ -59,7 +59,7 @@ if [ ! -d "$WORKTREE" ]; then
         exit 4
     fi
 fi
-cd "$WORKTREE"
+cd "$WORKTREE" || exit 4
 if ! git fetch origin 2>&1; then
     echo "Could not fetch origin. Check network." >&2
     exit 5

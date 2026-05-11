@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# Author-agent guard for GitHub CLI usage.
+# Blocks `gh pr merge` unless all reported PR checks are successful or skipped.
+# All other gh commands pass through unchanged.
+
+set -uo pipefail
+
+REAL_GH="${CQ_REAL_GH:-}"
+
+log_guard_error() {
+    local msg="$1"
+
+    if [ -n "${CQ_AUTHOR_ERRORLOG:-}" ]; then
+        mkdir -p "$(dirname "$CQ_AUTHOR_ERRORLOG")"
+        echo "$(date): [author-gh-guard] $msg" >> "$CQ_AUTHOR_ERRORLOG"
+    fi
+
+    echo "$msg" >&2
+}
+
+if [ -z "$REAL_GH" ]; then
+    log_guard_error "CQ_REAL_GH is not set; refusing to run gh."
+    exit 1
+fi
+
+if [ ! -x "$REAL_GH" ]; then
+    log_guard_error "CQ_REAL_GH does not point to an executable: $REAL_GH"
+    exit 1
+fi
+
+is_pr_merge_command() {
+    [ "${1:-}" = "pr" ] && [ "${2:-}" = "merge" ]
+}
+
+is_auto_merge_abort() {
+    local arg
+
+    for arg in "$@"; do
+        if [ "$arg" = "--abort" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+resolve_pr_number() {
+    local arg
+
+    for arg in "${@:3}"; do
+        if [[ "$arg" =~ ^[0-9]+$ ]]; then
+            printf '%s\n' "$arg"
+            return 0
+        fi
+    done
+
+    "$REAL_GH" pr view --json number --jq '.number'
+}
+
+collect_repo_args() {
+    local arg
+    local previous_was_repo_flag=0
+
+    for arg in "${@:3}"; do
+        if [ "$previous_was_repo_flag" -eq 1 ]; then
+            printf '%s\0' "$arg"
+            previous_was_repo_flag=0
+            continue
+        fi
+
+        case "$arg" in
+            --repo | -R)
+                printf '%s\0' "$arg"
+                previous_was_repo_flag=1
+                ;;
+            --repo=*)
+                printf '%s\0' "$arg"
+                ;;
+        esac
+    done
+}
+
+assert_checks_green() {
+    local pr_number="$1"
+    shift
+
+    local failures
+    # shellcheck disable=SC2016
+    if ! failures="$("$REAL_GH" pr view "$pr_number" "$@" --json statusCheckRollup --jq '
+        .statusCheckRollup[]?
+        | {
+            name: (.name // .context // .workflowName // "unknown"),
+            status: (.status // ""),
+            conclusion: (.conclusion // .state // "")
+        }
+        | (.status | ascii_upcase) as $status
+        | (.conclusion | ascii_upcase) as $conclusion
+        | select(
+            ($conclusion != "SUCCESS" and $conclusion != "SKIPPED")
+            or ($status != "" and $status != "COMPLETED")
+        )
+        | "- \(.name): status=\(.status) conclusion=\(.conclusion)"
+    ')"; then
+        log_guard_error "Could not read status checks for PR #$pr_number; refusing to merge."
+        return 1
+    fi
+
+    if [ -n "$failures" ]; then
+        log_guard_error "Refusing to merge PR #$pr_number because CI is not green:"
+        log_guard_error "$failures"
+        return 1
+    fi
+
+    return 0
+}
+
+if is_pr_merge_command "$@" && ! is_auto_merge_abort "$@"; then
+    pr_number="$(resolve_pr_number "$@")" || {
+        log_guard_error "Could not resolve PR number; refusing to merge."
+        exit 1
+    }
+
+    repo_args=()
+    while IFS= read -r -d '' repo_arg; do
+        repo_args+=("$repo_arg")
+    done < <(collect_repo_args "$@")
+
+    assert_checks_green "$pr_number" "${repo_args[@]}" || exit 1
+fi
+
+exec "$REAL_GH" "$@"

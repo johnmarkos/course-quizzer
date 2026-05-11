@@ -28,11 +28,11 @@ If a PR needs action:
 
 1. Check out the PR branch
 2. Read the review comment — the entire comment, not just the status line
-3. If verdict is `Clean approve`: verify CI is green (`gh pr checks <n>`), then merge with `gh pr merge <n> --squash --delete-branch --admin`. Exit.
+3. If verdict is `Clean approve`: verify CI is green (`gh pr checks <n>`), then merge with `gh pr merge <n> --squash --delete-branch --admin`. The author script also guards this command and will refuse the merge if any status check is failing or still running. Exit.
 4. Otherwise, address **every finding**. No exceptions. If the reviewer mentioned it, fix it.
 5. Run `pnpm -r test`, `pnpm -r build`, `pnpm format`
 6. Commit and push
-7. If verdict was `Approved with required fixes`: merge with `gh pr merge <n> --squash --delete-branch --admin`
+7. If verdict was `Approved with required fixes`: verify CI is green, then merge with `gh pr merge <n> --squash --delete-branch --admin`. The author script will refuse the merge if any status check is failing or still running.
 8. Exit
 
 ## Priority 2: Finish an in-progress issue that has no PR

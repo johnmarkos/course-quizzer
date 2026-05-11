@@ -18,6 +18,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # layout on a second factory node, etc.).
 WORKTREE="${CQ_WORKTREE_AUTHOR:-$REPO_ROOT/../cq-author}"
 PROMPT_FILE="$SCRIPT_DIR/prompts/author.md"
+GH_GUARD_DIR="$SCRIPT_DIR/author-bin"
 LOGDIR="$REPO_ROOT/logs/author"
 ERRORLOG="$REPO_ROOT/logs/author-errors.log"
 LOCKFILE="/tmp/cq-author.lock"
@@ -50,6 +51,22 @@ log_error() {
     local msg="$1"
     mkdir -p "$(dirname "$ERRORLOG")"
     echo "$(date): [author] $msg" | tee -a "$ERRORLOG"
+}
+
+# --- Guard author-initiated PR merges ---
+# Agent subprocesses inherit this PATH entry, so even direct `gh pr merge`
+# calls must pass the CI status gate before the real GitHub CLI runs.
+configure_gh_merge_guard() {
+    local real_gh
+
+    if ! real_gh="$(command -v gh)"; then
+        log_error "GitHub CLI not found; author agent cannot run safely."
+        return 1
+    fi
+
+    export CQ_REAL_GH="$real_gh"
+    export CQ_AUTHOR_ERRORLOG="$ERRORLOG"
+    export PATH="$GH_GUARD_DIR:$PATH"
 }
 
 # --- Retry a command up to MAX_RETRIES times ---
@@ -175,12 +192,16 @@ backoff_sleep() {
     sleep "$delay"
 }
 
+if ! configure_gh_merge_guard; then
+    exit 1
+fi
+
 # --- Main loop ---
 while true; do
     mkdir -p "$LOGDIR"
     LOGFILE="$LOGDIR/$(date +%Y%m%d-%H%M%S).log"
 
-    cd "$WORKTREE"
+    cd "$WORKTREE" || exit 1
 
     # Fetch and reset — retry on network failures
     if ! retry "git fetch origin 2>&1"; then

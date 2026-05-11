@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- **Scripts:** Guard author-agent `gh pr merge` calls so approved PRs cannot be merged while any status check is failing or still running
 - **Scripts:** Stop cascading author/reviewer runs to fallback models after non-credit Codex failures, and pipe Gemini prompts directly from the prompt file to preserve multi-line formatting
 - **Engine:** Pass the engine-owned `StudentModel` into background prefetch generation so cached next-section content uses adaptive quiz burst sizing instead of the default question count
 - **Engine:** Extend quality-filter length-outlier coverage to `checklist` and `self-evaluation` questions, and make all question-type switch branches explicit

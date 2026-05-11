@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { CodeEvaluator } from '../src/content/CodeEvaluator.js';
-import { CourseEngine } from '../src/index.js';
+import { CourseEngine, EngineError } from '../src/index.js';
 import {
   buildCodeEvaluationPrompt,
   CODE_EVALUATION_VERSION,
@@ -160,6 +160,26 @@ describe('CodeEvaluator', () => {
 });
 
 describe('CourseEngine code answer evaluation', () => {
+  it('rejects sync code submissions so callers cannot bypass tutor grading', () => {
+    const codeEvaluator: CodeEvaluationClient = {
+      evaluateCode: vi.fn().mockResolvedValue({
+        verdict: 'correct',
+        correct: true,
+        feedback: 'The solution is correct.',
+      }),
+    };
+    const engine = engineWithCodeQuestion(codeEvaluator);
+
+    expect(() =>
+      engine.submitAnswer({
+        type: 'code',
+        code: 'function passingScores(scores) { return scores; }',
+      })
+    ).toThrow(EngineError);
+    expect(codeEvaluator.evaluateCode).not.toHaveBeenCalled();
+    expect(engine.state).toBe('practicing');
+  });
+
   it('routes code submissions through the async evaluator and emits tutor feedback', async () => {
     const codeEvaluator: CodeEvaluationClient = {
       evaluateCode: vi.fn().mockResolvedValue({
@@ -204,10 +224,28 @@ describe('CourseEngine code answer evaluation', () => {
   });
 
   it('falls back to the self-evaluation path when AI grading fails', async () => {
-    const codeEvaluator: CodeEvaluationClient = {
-      evaluateCode: vi.fn().mockRejectedValue(new Error('provider unavailable')),
+    const nextCodeQuestion: CodeQuestion = {
+      ...codeQuestion,
+      id: 'q-code-next',
     };
-    const engine = engineWithCodeQuestion(codeEvaluator);
+    const codeEvaluator: CodeEvaluationClient = {
+      evaluateCode: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('provider unavailable'))
+        .mockResolvedValueOnce({
+          verdict: 'correct',
+          correct: true,
+          feedback: 'The next submission is correct.',
+        }),
+    };
+    const engine = new CourseEngine({
+      apiKey: 'test-key',
+      generator: mockGenerator,
+      codeEvaluator,
+    });
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    engine.setSectionContent([codeQuestion, nextCodeQuestion]);
 
     const result = await engine.submitAnswerAsync({
       type: 'code',
@@ -220,5 +258,50 @@ describe('CourseEngine code answer evaluation', () => {
       'Tutor feedback is unavailable, so this code answer was marked complete for self-assessment.'
     );
     expect(engine.state).toBe('answered');
+
+    engine.nextItem();
+    const nextResult = await engine.submitAnswerAsync({
+      type: 'code',
+      code: 'function passingScores(scores) { return scores.filter(s => s > 70); }',
+    });
+
+    expect(nextResult.correct).toBe(true);
+    expect(nextResult.evaluation?.feedback).toBe('The next submission is correct.');
+    expect(codeEvaluator.evaluateCode).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects concurrent code submissions while tutor grading is in flight', async () => {
+    let resolveEvaluation!: (evaluation: CodeEvaluation) => void;
+    const pendingEvaluation = new Promise<CodeEvaluation>((resolve) => {
+      resolveEvaluation = resolve;
+    });
+    const codeEvaluator: CodeEvaluationClient = {
+      evaluateCode: vi.fn().mockReturnValue(pendingEvaluation),
+    };
+    const engine = engineWithCodeQuestion(codeEvaluator);
+
+    const firstSubmission = engine.submitAnswerAsync({
+      type: 'code',
+      code: 'function passingScores(scores) { return scores; }',
+    });
+    const secondSubmission = engine.submitAnswerAsync({
+      type: 'code',
+      code: 'function passingScores(scores) { return scores.filter(Boolean); }',
+    });
+
+    await expect(secondSubmission).rejects.toThrow(EngineError);
+    expect(codeEvaluator.evaluateCode).toHaveBeenCalledTimes(1);
+    expect(engine.state).toBe('practicing');
+
+    resolveEvaluation({
+      verdict: 'correct',
+      correct: true,
+      feedback: 'The submission filters the scores correctly.',
+    });
+
+    const result = await firstSubmission;
+    expect(result.correct).toBe(true);
+    expect(engine.state).toBe('answered');
+    expect(codeEvaluator.evaluateCode).toHaveBeenCalledTimes(1);
   });
 });

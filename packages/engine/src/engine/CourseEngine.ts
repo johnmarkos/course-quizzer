@@ -5,7 +5,7 @@
 // the UI consumes these events and never reaches back into the engine.
 
 import { EventEmitter } from './events.js';
-import { InvalidTransitionError } from './errors.js';
+import { EngineError, InvalidTransitionError } from './errors.js';
 import { SNAPSHOT_VERSION } from './constants.js';
 import { StudentModel } from '../student/StudentModel.js';
 import { createDefaultProvider } from '../provider/factory.js';
@@ -116,6 +116,7 @@ export class CourseEngine extends EventEmitter {
   #contentCache: ContentCache | null = null;
   #prefetcher: Prefetcher | null = null;
   #codeEvaluator: CodeEvaluationClient;
+  #codeSubmissionInFlight = false;
   #apiCallSequence = 0;
 
   constructor(config: CourseEngineConfig) {
@@ -341,6 +342,12 @@ export class CourseEngine extends EventEmitter {
       throw new InvalidTransitionError('submitAnswer', 'current item is not a question');
     }
 
+    if (item.type === 'code') {
+      throw new EngineError(
+        'Code questions require submitAnswerAsync() so AI tutor grading can run.'
+      );
+    }
+
     const result = this.#gradeAnswer(item, answer);
     return this.#completeAnswerSubmission(result);
   }
@@ -357,8 +364,17 @@ export class CourseEngine extends EventEmitter {
       return this.#completeAnswerSubmission(this.#gradeAnswer(item, answer));
     }
 
-    const result = await this.#gradeCodeAnswer(item, answer);
-    return this.#completeAnswerSubmission(result);
+    if (this.#codeSubmissionInFlight) {
+      throw new EngineError('Code answer evaluation is already in progress.');
+    }
+
+    this.#codeSubmissionInFlight = true;
+    try {
+      const result = await this.#gradeCodeAnswer(item, answer);
+      return this.#completeAnswerSubmission(result);
+    } finally {
+      this.#codeSubmissionInFlight = false;
+    }
   }
 
   #completeAnswerSubmission(result: AnswerResult): AnswerResult {

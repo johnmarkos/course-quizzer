@@ -51,6 +51,7 @@ export type EngineSessionConfig = {
   snapshot?: EngineSnapshot;
   courseId?: string;
   storage?: Storage;
+  codeEvaluator?: CourseEngineConfig['codeEvaluator'];
 };
 
 export type EngineSession = ReturnType<typeof createEngineSession>;
@@ -60,6 +61,7 @@ export type EngineSession = ReturnType<typeof createEngineSession>;
 export function createEngineSession(config: EngineSessionConfig) {
   const engineConfig: CourseEngineConfig = {
     apiKey: config.apiKey,
+    codeEvaluator: config.codeEvaluator,
     prefetch: {
       enabled: true,
     },

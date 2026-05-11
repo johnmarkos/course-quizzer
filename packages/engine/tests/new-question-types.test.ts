@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { CourseEngine } from '../src/index.js';
-import type { CurriculumPlan, ContentItem } from '../src/index.js';
+import { CourseEngine, EngineError } from '../src/index.js';
+import type { CodeEvaluationClient, CurriculumPlan, ContentItem } from '../src/index.js';
 
 function mockCurriculum(): CurriculumPlan {
   return {
@@ -22,6 +22,14 @@ function mockCurriculum(): CurriculumPlan {
 const mockGenerator = {
   generateTopicExplanation: () => new Promise(() => {}),
   generateTopicQuizBurst: () => new Promise(() => {}),
+};
+
+const mockCodeEvaluator: CodeEvaluationClient = {
+  evaluateCode: async () => ({
+    verdict: 'correct',
+    correct: true,
+    feedback: 'This submission satisfies the prompt.',
+  }),
 };
 
 describe('New Question Types', () => {
@@ -98,7 +106,7 @@ describe('New Question Types', () => {
     expect(outOfRangeResult.correct).toBe(false);
   });
 
-  it('grades code as self-evaluation and ignores legacy expectedPattern', () => {
+  it('requires async tutor grading for code answers and ignores legacy expectedPattern', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
@@ -114,15 +122,15 @@ describe('New Question Types', () => {
 
     engine.setSectionContent([codeItem]);
 
-    const result = engine.submitAnswer({
-      type: 'code',
-      code: 'function test() { return false; }',
-    });
-    expect(result.correct).toBe(true);
-    expect(result.correctAnswer).toBe('Self-assessment submitted');
+    expect(() =>
+      engine.submitAnswer({
+        type: 'code',
+        code: 'function test() { return false; }',
+      })
+    ).toThrow(EngineError);
   });
 
-  it('grades code submissions as complete', () => {
+  it('rejects sync code submissions so the AI tutor cannot be bypassed', () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
@@ -137,11 +145,12 @@ describe('New Question Types', () => {
 
     engine.setSectionContent([codeItem]);
 
-    const result = engine.submitAnswer({
-      type: 'code',
-      code: 'any code',
-    });
-    expect(result.correct).toBe(true);
+    expect(() =>
+      engine.submitAnswer({
+        type: 'code',
+        code: 'any code',
+      })
+    ).toThrow(/submitAnswerAsync/);
   });
 
   it('grades self-evaluation correctly when a valid option is selected', () => {
@@ -204,7 +213,7 @@ describe('New Question Types', () => {
     expect(fractionalResult.correct).toBe(false);
   });
 
-  it('round-trips new question types via serialization', () => {
+  it('round-trips new question types via serialization', async () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
@@ -236,13 +245,16 @@ describe('New Question Types', () => {
     engine.setSectionContent(items);
 
     const snapshot = engine.serialize();
-    const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
+    const restored = CourseEngine.restore(snapshot, {
+      apiKey: 'test-key',
+      codeEvaluator: mockCodeEvaluator,
+    });
 
     expect(restored.currentItem?.type).toBe('checklist');
     restored.submitAnswer({ type: 'checklist', checkedIndices: [0, 1] });
     restored.nextItem();
     expect(restored.currentItem?.type).toBe('code');
-    restored.submitAnswer({ type: 'code', code: 'test' });
+    await restored.submitAnswerAsync({ type: 'code', code: 'test' });
     restored.nextItem();
     expect(restored.currentItem?.type).toBe('self-evaluation');
   });

@@ -3,21 +3,21 @@
 // Pure logic — no Svelte, no browser APIs.
 
 import type { CourseRecord } from '../storage/course-storage.js';
-import { summarizeCourseProgress, type CourseProgressSummary } from 'quizzer-engine';
+import {
+  summarizeCourseProgress,
+  type CourseProgressSummary as EngineCourseProgressSummary,
+  type SectionProgressSummary,
+} from 'quizzer-engine';
 
-export type { CourseProgressSummary, SectionProgressSummary } from 'quizzer-engine';
+export type SectionProgress = SectionProgressSummary;
+export type CourseProgressSummary = EngineCourseProgressSummary;
 
 /**
  * Extract a progress summary from a CourseRecord. Returns null if the course
  * has no snapshot (never started).
  */
 export function getCourseProgress(record: CourseRecord): CourseProgressSummary | null {
-  if (!record.snapshot) return null;
-
-  return summarizeCourseProgress(record.curriculum, {
-    currentSectionIndex: record.snapshot.currentSectionIndex,
-    studentState: record.snapshot.studentState,
-  });
+  return summarizeCourseProgress(record.curriculum, record.snapshot);
 }
 
 /**

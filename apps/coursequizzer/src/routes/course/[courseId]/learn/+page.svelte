@@ -14,6 +14,10 @@
   const course = $derived(courseId ? getCourse(courseId, localStorage) : null);
 
   let session: EngineSession | null = $state(null);
+  const currentTopicProgress = $derived.by(() => {
+    const summaries = session?.progress?.currentSectionTopicProgress ?? [];
+    return new Map(summaries.map((summary) => [summary.topicId, summary]));
+  });
 
   // Initialize session when course loads
   $effect(() => {
@@ -588,38 +592,35 @@
         {#if session.currentSection}
           <p>You've finished <strong>{session.currentSection.section.title}</strong>.</p>
 
-          {#if session.progress?.currentSection}
-            <div class="mastery-summary">
-              <h3>Topic Mastery</h3>
-              <ul class="topic-mastery-list">
-                {#each session.progress.currentSection.topics as topic (topic.topicId)}
-                  <li class="topic-mastery-item">
-                    <div class="topic-info">
-                      <span class="topic-title">{topic.title}</span>
-                      {#if topic.needsReview}
-                        <span class="gap-badge">Review suggested</span>
-                      {/if}
-                    </div>
-                    <div class="mastery-bar-container">
-                      <div
-                        class="mastery-bar {topic.status}"
-                        style="width: {Math.round(topic.score * 100)}%"
-                      ></div>
-                    </div>
-                    <span class="mastery-score">{Math.round(topic.score * 100)}%</span>
-                  </li>
-                {/each}
-              </ul>
-            </div>
-          {/if}
+          <div class="mastery-summary">
+            <h3>Topic Mastery</h3>
+            <ul class="topic-mastery-list">
+              {#each session.currentSection.section.topics as topic (topic.id)}
+                {@const topicProgress = currentTopicProgress.get(topic.id)}
+                <li class="topic-mastery-item">
+                  <div class="topic-info">
+                    <span class="topic-title">{topic.title}</span>
+                    {#if topicProgress?.needsReview}
+                      <span class="gap-badge">Review suggested</span>
+                    {/if}
+                  </div>
+                  <div class="mastery-bar-container">
+                    <div
+                      class="mastery-bar {topicProgress?.level ?? 'struggling'}"
+                      style="width: {topicProgress?.scorePercent ?? 0}%"
+                    ></div>
+                  </div>
+                  <span class="mastery-score">{topicProgress?.scorePercent ?? 0}%</span>
+                </li>
+              {/each}
+            </ul>
+          </div>
         {/if}
 
         {#if session.progress}
           <p class="overall-progress">
             Section {session.progress.currentSectionIndex + 1}
-            of {session.progress.totalSections} | Overall course mastery: {Math.round(
-              session.progress.overallMastery * 100
-            )}%
+            of {session.progress.totalSections} | Overall course mastery: {session.progress.overallMasteryPercent}%
           </p>
         {/if}
 
@@ -640,7 +641,7 @@
         <p>Congratulations — you've completed all sections of <strong>{course.title}</strong>.</p>
         {#if session.progress}
           <p>
-            Overall mastery: {Math.round(session.progress.overallMastery * 100)}%
+            Overall mastery: {session.progress.overallMasteryPercent}%
           </p>
         {/if}
         <div class="actions">

@@ -215,6 +215,48 @@ describe('state machine transitions', () => {
     expect(sectionCompleteEvents[0].section.id).toBe('section-1');
   });
 
+  it('includes engine-computed topic progress in sectionComplete events', () => {
+    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    engine.setSectionContent([
+      {
+        type: 'multiple-choice',
+        id: 'q1',
+        topicId: 'topic-1',
+        question: 'What does assertEquals do?',
+        options: ['Compares values', 'Logs output'],
+        correctIndex: 0,
+      },
+    ]);
+    const sectionCompleteEvents = collectEvents(engine, 'sectionComplete');
+
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem();
+
+    expect(sectionCompleteEvents).toHaveLength(1);
+    expect(sectionCompleteEvents[0].progress.currentSectionTopicProgress).toEqual([
+      {
+        topicId: 'topic-1',
+        score: 0.15,
+        scorePercent: 15,
+        questionsAnswered: 1,
+        questionsCorrect: 1,
+        level: 'struggling',
+        needsReview: true,
+      },
+      {
+        topicId: 'topic-2',
+        score: 0,
+        scorePercent: 0,
+        questionsAnswered: 0,
+        questionsCorrect: 0,
+        level: 'struggling',
+        needsReview: true,
+      },
+    ]);
+  });
+
   it('sectionComplete → loading on nextSection', () => {
     const { engine } = engineAtPracticing();
     // Complete section 1

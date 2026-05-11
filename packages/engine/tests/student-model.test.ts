@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { StudentModel } from '../src/index.js';
-import type { Section, StudentState } from '../src/index.js';
+import type { StudentState } from '../src/index.js';
 
 // --- Helpers ---
 
@@ -158,6 +158,68 @@ describe('gap detection', () => {
   });
 });
 
+// --- Topic Progress Summaries ---
+
+describe('topic progress summaries', () => {
+  it('classifies topic display levels and review status from engine thresholds', () => {
+    const model = new StudentModel({
+      masteryByTopic: {
+        struggling: {
+          topicId: 'struggling',
+          score: 0.49,
+          questionsAnswered: 2,
+          questionsCorrect: 1,
+        },
+        gaining: {
+          topicId: 'gaining',
+          score: 0.5,
+          questionsAnswered: 4,
+          questionsCorrect: 2,
+        },
+        mastered: {
+          topicId: 'mastered',
+          score: 0.8,
+          questionsAnswered: 6,
+          questionsCorrect: 5,
+        },
+      },
+      gaps: ['struggling'],
+    });
+
+    expect(model.getTopicProgress('struggling')).toMatchObject({
+      topicId: 'struggling',
+      score: 0.49,
+      scorePercent: 49,
+      level: 'struggling',
+      needsReview: true,
+    });
+    expect(model.getTopicProgress('gaining')).toMatchObject({
+      scorePercent: 50,
+      level: 'gaining',
+      needsReview: false,
+    });
+    expect(model.getTopicProgress('mastered')).toMatchObject({
+      scorePercent: 80,
+      level: 'mastered',
+      needsReview: false,
+    });
+  });
+
+  it('returns a struggling review summary for missing topic mastery', () => {
+    const model = new StudentModel();
+
+    expect(model.getTopicProgress('missing-topic')).toEqual({
+      topicId: 'missing-topic',
+      score: 0,
+      scorePercent: 0,
+      questionsAnswered: 0,
+      questionsCorrect: 0,
+      level: 'struggling',
+      needsReview: true,
+    });
+  });
+});
+
 // --- Overall Mastery ---
 
 describe('overall mastery', () => {
@@ -196,6 +258,56 @@ describe('session progress', () => {
     expect(progress.currentItemIndex).toBe(3);
     expect(progress.totalItemsInSection).toBe(10);
     expect(progress.overallMastery).toBe(0.15);
+    expect(progress.currentSectionTopicProgress).toEqual([]);
+    expect(progress.sections).toEqual([]);
+  });
+});
+
+// --- Course Progress Summaries ---
+
+describe('course progress summaries', () => {
+  it('summarizes sections and overall attempted-topic progress', () => {
+    const model = new StudentModel({
+      masteryByTopic: {
+        t1: { topicId: 't1', score: 0.8, questionsAnswered: 5, questionsCorrect: 4 },
+        t2: { topicId: 't2', score: 0, questionsAnswered: 0, questionsCorrect: 0 },
+        t3: { topicId: 't3', score: 0.6, questionsAnswered: 3, questionsCorrect: 2 },
+      },
+      gaps: ['t2'],
+    });
+
+    const progress = model.computeCourseProgress({
+      currentSectionIndex: 1,
+      sections: [
+        { id: 's1', topics: [{ id: 't1' }, { id: 't2' }] },
+        { id: 's2', topics: [{ id: 't3' }] },
+      ],
+    });
+
+    expect(progress.currentSectionIndex).toBe(1);
+    expect(progress.totalSections).toBe(2);
+    expect(progress.totalQuestionsAnswered).toBe(8);
+    expect(progress.hasProgress).toBe(true);
+    expect(progress.overallMastery).toBeCloseTo(0.7);
+    expect(progress.overallMasteryPercent).toBe(70);
+    expect(progress.sections).toEqual([
+      {
+        sectionId: 's1',
+        started: true,
+        topicsAttempted: 1,
+        topicsTotal: 2,
+        mastery: 0.8,
+        masteryPercent: 80,
+      },
+      {
+        sectionId: 's2',
+        started: true,
+        topicsAttempted: 1,
+        topicsTotal: 1,
+        mastery: 0.6,
+        masteryPercent: 60,
+      },
+    ]);
   });
 
   it('includes current section topic progress for UI display', () => {
@@ -217,41 +329,36 @@ describe('session progress', () => {
       gaps: ['topic-1'],
     };
     const model = new StudentModel(state);
-    const section: Section = {
-      id: 'section-1',
-      title: 'Unit Testing',
-      order: 0,
-      topics: [
-        { id: 'topic-1', title: 'Assertions', description: 'How to assert' },
-        { id: 'topic-2', title: 'Mocks', description: 'How to mock' },
-      ],
-    };
-
     const progress = model.computeProgress({
       currentSectionIndex: 0,
       totalSections: 2,
       currentItemIndex: 4,
       totalItemsInSection: 8,
-      currentSection: section,
+      sections: [
+        {
+          id: 'section-1',
+          topics: [{ id: 'topic-1' }, { id: 'topic-2' }],
+        },
+      ],
     });
 
-    expect(progress.currentSection).toMatchObject({
+    expect(progress.sections[0]).toMatchObject({
       sectionId: 'section-1',
-      title: 'Unit Testing',
       topicsAttempted: 2,
       topicsTotal: 2,
       mastery: 0.625,
+      masteryPercent: 63,
     });
-    expect(progress.currentSection!.topics[0]).toMatchObject({
+    expect(progress.currentSectionTopicProgress[0]).toMatchObject({
       topicId: 'topic-1',
-      title: 'Assertions',
-      status: 'struggling',
+      scorePercent: 40,
+      level: 'struggling',
       needsReview: true,
     });
-    expect(progress.currentSection!.topics[1]).toMatchObject({
+    expect(progress.currentSectionTopicProgress[1]).toMatchObject({
       topicId: 'topic-2',
-      title: 'Mocks',
-      status: 'mastered',
+      scorePercent: 85,
+      level: 'mastered',
       needsReview: false,
     });
   });

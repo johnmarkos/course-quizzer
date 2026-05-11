@@ -9,12 +9,12 @@ import type {
 } from '../content/types.js';
 import type {
   CourseProgressSummary,
-  MasteryStatus,
   SectionProgressSummary,
-  StudentState,
   SessionProgress,
+  StudentState,
   TopicMastery,
-  TopicProgress,
+  TopicMasteryLevel,
+  TopicProgressSummary,
 } from '../student/types.js';
 import type { ProviderClient } from '../provider/types.js';
 import type { TopicContentGenerator } from '../content/ContentGenerator.js';
@@ -64,8 +64,8 @@ export type {
   StudentState,
   SessionProgress,
   TopicMastery,
-  MasteryStatus,
-  TopicProgress,
+  TopicMasteryLevel,
+  TopicProgressSummary,
   SectionProgressSummary,
   CourseProgressSummary,
 };

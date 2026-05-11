@@ -177,7 +177,7 @@ while true; do
     mkdir -p "$LOGDIR"
     LOGFILE="$LOGDIR/$(date +%Y%m%d-%H%M%S).log"
 
-    cd "$WORKTREE"
+    cd "$WORKTREE" || exit 1
 
     # Fetch and reset — retry on network failures
     if ! retry "git fetch origin 2>&1"; then

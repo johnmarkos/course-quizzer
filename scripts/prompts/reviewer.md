@@ -78,12 +78,11 @@ gh pr comment <n> --body "## Review — Reviewer Agent
 ### Important
 
 - There is no such thing as a "non-blocking" finding. If you mention it, the author must fix it. If it's truly not worth fixing, don't mention it.
-- Do NOT merge a PR that has findings. Only merge clean approves (no findings).
+- Never merge. The author owns the merge after seeing your approval comment.
 - Never edit code. Post findings; the author fixes.
 - Be specific: file, line number, what's wrong, what to do instead.
 
-5. If clean approve (no findings) AND CI is green, merge: `gh pr merge <n> --squash --delete-branch --admin`
-6. Exit
+5. Exit after posting the review comment.
 
 ## Priority 2: Nothing to review
 
@@ -93,4 +92,5 @@ If no PRs need review, say "Nothing to review" and exit.
 
 - One PR per invocation. Do not review a second PR.
 - Never edit code. Post findings; the author fixes.
-- Trivial PRs (version bumps, typos, config) can be approved and merged without deep review, but still verify CI.
+- Never merge — the author drives the PR to merged after seeing your approval.
+- Trivial PRs (version bumps, typos, config) still need an approval comment, but the review can be one line ("Trivial — approved"). The author still does the merge.

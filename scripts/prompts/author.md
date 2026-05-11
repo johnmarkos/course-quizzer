@@ -16,21 +16,24 @@ For each PR (oldest first), check comments for review feedback:
 gh pr view <n> --json comments --jq '.comments[] | select(.body | contains("## Review"))'
 ```
 
-A PR needs action if it has a review comment with findings and no commits pushed after that comment. Check the **Verdict** line:
+A PR needs action if its latest review comment has not been acted on. Check the **Verdict** line:
 
-- `Clean approve — no action needed` → skip, nothing to do (reviewer already merged it)
-- `Approved with required fixes` → fix everything, then merge after pushing
+- `Clean approve — no action needed` → merge immediately (no code changes needed)
+- `Approved with required fixes` → fix everything, push, then merge
 - `Changes requested` → fix everything, push, wait for re-review (do NOT merge)
+
+The author owns the merge in every approved case. The reviewer's job is to review; the author's job is to drive the PR to merged.
 
 If a PR needs action:
 
 1. Check out the PR branch
 2. Read the review comment — the entire comment, not just the status line
-3. Address **every finding**. No exceptions. If the reviewer mentioned it, fix it.
-4. Run `pnpm -r test`, `pnpm -r build`, `pnpm format`
-5. Commit and push
-6. If verdict was `Approved with required fixes`: merge with `gh pr merge <n> --squash --delete-branch --admin`
-7. Exit
+3. If verdict is `Clean approve`: verify CI is green (`gh pr checks <n>`), then merge with `gh pr merge <n> --squash --delete-branch --admin`. Exit.
+4. Otherwise, address **every finding**. No exceptions. If the reviewer mentioned it, fix it.
+5. Run `pnpm -r test`, `pnpm -r build`, `pnpm format`
+6. Commit and push
+7. If verdict was `Approved with required fixes`: merge with `gh pr merge <n> --squash --delete-branch --admin`
+8. Exit
 
 ## Priority 2: Finish an in-progress issue that has no PR
 
@@ -82,5 +85,5 @@ If none of the above apply, say "Nothing to do" and exit.
 
 - One thing per invocation. Do not start a second task.
 - Follow all Architecture Rules and Conventions in AGENTS.md.
-- Commit attribution: `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>`
-- Never auto-merge. The reviewer handles approval; you handle code.
+- Commit attribution matches the model running: `Co-Authored-By: Codex <noreply@openai.com>`, `Co-Authored-By: Gemini <noreply@google.com>`, etc.
+- The author owns the merge after the reviewer approves. Do not wait for a human to merge. Merging without `**Status: APPROVED**` (or, for trivial PRs, without green CI) is forbidden.

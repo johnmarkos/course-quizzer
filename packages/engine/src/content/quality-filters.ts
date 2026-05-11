@@ -102,7 +102,7 @@ function hasKeyedLengthOutlierInSet(
  * is much more detailed than its peers.
  */
 function hasAnyLengthOutlierInSet(options: string[] | undefined): boolean {
-  if (!options || options.length < 3) return false;
+  if (!options || options.length < 2) return false;
 
   return options.some((_, optionIndex) => isLengthOutlierAtIndex(options, optionIndex));
 }

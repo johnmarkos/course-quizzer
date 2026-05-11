@@ -241,6 +241,22 @@ describe('quality filters', () => {
     expect(issues.length).toBeGreaterThan(0);
     expect(issues[0].reason).toContain('longer');
   });
+
+  it('flags two-option self-evaluation questions with a length outlier', () => {
+    const q: Question = {
+      type: 'self-evaluation',
+      id: 'q1',
+      topicId: 't1',
+      question: 'How confidently can you perform the skill?',
+      options: [
+        'Not yet',
+        'I can perform the skill reliably, explain each decision I make, and adapt the approach when the scenario changes',
+      ],
+    };
+    const issues = checkQuestionQuality(q);
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues[0].reason).toContain('longer');
+  });
 });
 
 // --- ContentGenerator ---

@@ -155,4 +155,34 @@ describe('Exporter & Importer', () => {
 
     expect(() => importer.import(bundle)).toThrow('Invalid engine snapshot');
   });
+
+  it('strips unknown snapshot fields before re-exporting imported data', () => {
+    const exporter = new Exporter();
+    const importer = new Importer();
+    const snapshotWithUnknownFields = {
+      ...createValidSnapshot(),
+      provider: { apiKey: 'sk-ant-provider-secret' },
+      headers: { 'x-api-key': 'sk-ant-header-secret' },
+      debug: { rawApiKey: 'sk-ant-debug-secret' },
+    };
+
+    const importedSnapshot = importer.import(
+      JSON.stringify({
+        type: 'coursequizzer-export',
+        version: 1,
+        data: snapshotWithUnknownFields,
+      })
+    );
+    const importedRecord = importedSnapshot as typeof importedSnapshot &
+      Record<string, unknown>;
+
+    expect(importedRecord.provider).toBeUndefined();
+    expect(importedRecord.headers).toBeUndefined();
+    expect(importedRecord.debug).toBeUndefined();
+
+    const exported = exporter.exportToString(importedSnapshot);
+    expect(exported).not.toContain('sk-ant-provider-secret');
+    expect(exported).not.toContain('sk-ant-header-secret');
+    expect(exported).not.toContain('sk-ant-debug-secret');
+  });
 });

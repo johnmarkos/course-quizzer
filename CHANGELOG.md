@@ -14,6 +14,7 @@
 - **Scripts:** Guard author-agent `gh pr merge` calls so approved PRs cannot merge while GitHub status checks are failing, pending, cancelled, or absent
 - **Engine:** Type content generation orchestration against provider-agnostic interfaces, with default Claude construction isolated inside the provider layer
 - **Engine/App:** Move topic status, review flags, and course progress summary calculations behind engine-owned progress helpers so the app only formats and renders emitted progress data
+- **Engine/App:** Strip unknown fields from imported engine snapshots before persistence or re-export so stale or malicious import metadata cannot carry secrets forward
 
 ## 0.9.0 — 2026-05-10
 

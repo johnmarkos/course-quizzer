@@ -18,6 +18,7 @@ import type {
 } from '../student/types.js';
 import type { ProviderClient } from '../provider/types.js';
 import type { TopicContentGenerator } from '../content/ContentGenerator.js';
+import type { CodeAnswerEvaluator } from '../content/CodeEvaluator.js';
 
 export type EngineState =
   | 'idle' // no syllabus loaded
@@ -25,6 +26,7 @@ export type EngineState =
   | 'ready' // curriculum plan available, no section started
   | 'loading' // generating content for a section
   | 'practicing' // student is viewing content or answering a question
+  | 'grading' // evaluating an async answer submission
   | 'answered' // student submitted an answer, viewing result
   | 'sectionComplete' // all items in the current section are done
   | 'complete' // all sections done
@@ -35,6 +37,7 @@ export type CourseEngineConfig = {
   model?: string;
   provider?: ProviderClient;
   generator?: TopicContentGenerator;
+  codeEvaluator?: CodeAnswerEvaluator;
   prefetch?: {
     enabled: boolean;
     generator?: TopicContentGenerator;

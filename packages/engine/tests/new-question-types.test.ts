@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CourseEngine } from '../src/index.js';
+import type { CodeAnswerEvaluator } from '../src/content/CodeEvaluator.js';
 import type { CurriculumPlan, ContentItem } from '../src/index.js';
 
 function mockCurriculum(): CurriculumPlan {
@@ -22,6 +23,13 @@ function mockCurriculum(): CurriculumPlan {
 const mockGenerator = {
   generateTopicExplanation: () => new Promise(() => {}),
   generateTopicQuizBurst: () => new Promise(() => {}),
+};
+
+const correctCodeEvaluator: CodeAnswerEvaluator = {
+  evaluateCodeAnswer: async () => ({
+    verdict: 'correct',
+    feedback: 'The submission satisfies the prompt.',
+  }),
 };
 
 describe('New Question Types', () => {
@@ -98,8 +106,17 @@ describe('New Question Types', () => {
     expect(outOfRangeResult.correct).toBe(false);
   });
 
-  it('grades code as self-evaluation and ignores legacy expectedPattern', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+  it('grades code with the tutor evaluator and ignores legacy expectedPattern', async () => {
+    const engine = new CourseEngine({
+      apiKey: 'test-key',
+      generator: mockGenerator,
+      codeEvaluator: {
+        evaluateCodeAnswer: async () => ({
+          verdict: 'incorrect',
+          feedback: 'The function returns false, but the prompt asks for true.',
+        }),
+      },
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
 
@@ -114,16 +131,27 @@ describe('New Question Types', () => {
 
     engine.setSectionContent([codeItem]);
 
-    const result = engine.submitAnswer({
+    const result = await engine.submitCodeAnswer({
       type: 'code',
       code: 'function test() { return false; }',
     });
-    expect(result.correct).toBe(true);
-    expect(result.correctAnswer).toBe('Self-assessment submitted');
+    expect(result.correct).toBe(false);
+    expect(result.correctAnswer).toBe('Review the AI tutor feedback');
+    expect(result.explanation).toBe(
+      'The function returns false, but the prompt asks for true.'
+    );
   });
 
-  it('grades code submissions as complete', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+  it('falls back to self-evaluation when tutor code grading fails', async () => {
+    const engine = new CourseEngine({
+      apiKey: 'test-key',
+      generator: mockGenerator,
+      codeEvaluator: {
+        evaluateCodeAnswer: async () => {
+          throw new Error('provider failed');
+        },
+      },
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
 
@@ -137,11 +165,12 @@ describe('New Question Types', () => {
 
     engine.setSectionContent([codeItem]);
 
-    const result = engine.submitAnswer({
+    const result = await engine.submitCodeAnswer({
       type: 'code',
       code: 'any code',
     });
     expect(result.correct).toBe(true);
+    expect(result.correctAnswer).toBe('Self-assessment submitted');
   });
 
   it('grades self-evaluation correctly when a valid option is selected', () => {
@@ -204,7 +233,7 @@ describe('New Question Types', () => {
     expect(fractionalResult.correct).toBe(false);
   });
 
-  it('round-trips new question types via serialization', () => {
+  it('round-trips new question types via serialization', async () => {
     const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
@@ -236,13 +265,16 @@ describe('New Question Types', () => {
     engine.setSectionContent(items);
 
     const snapshot = engine.serialize();
-    const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
+    const restored = CourseEngine.restore(snapshot, {
+      apiKey: 'test-key',
+      codeEvaluator: correctCodeEvaluator,
+    });
 
     expect(restored.currentItem?.type).toBe('checklist');
     restored.submitAnswer({ type: 'checklist', checkedIndices: [0, 1] });
     restored.nextItem();
     expect(restored.currentItem?.type).toBe('code');
-    restored.submitAnswer({ type: 'code', code: 'test' });
+    await restored.submitCodeAnswer({ type: 'code', code: 'test' });
     restored.nextItem();
     expect(restored.currentItem?.type).toBe('self-evaluation');
   });

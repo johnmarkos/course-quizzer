@@ -63,6 +63,7 @@ function isValidEngineState(value: unknown): boolean {
     value === 'ready' ||
     value === 'loading' ||
     value === 'practicing' ||
+    value === 'grading' ||
     value === 'answered' ||
     value === 'sectionComplete' ||
     value === 'complete' ||
@@ -118,12 +119,22 @@ function isValidStudentAnswer(value: unknown): value is StudentAnswer {
 
 function isValidAnswerResult(value: unknown): value is AnswerResult {
   if (!isPlainObject(value)) return false;
+
+  const hasValidCodeEvaluation =
+    value.codeEvaluation === undefined ||
+    (isPlainObject(value.codeEvaluation) &&
+      (value.codeEvaluation.verdict === 'correct' ||
+        value.codeEvaluation.verdict === 'partial' ||
+        value.codeEvaluation.verdict === 'incorrect') &&
+      typeof value.codeEvaluation.feedback === 'string');
+
   return (
     typeof value.correct === 'boolean' &&
     typeof value.questionId === 'string' &&
     typeof value.topicId === 'string' &&
     typeof value.correctAnswer === 'string' &&
     (value.explanation === undefined || typeof value.explanation === 'string') &&
+    hasValidCodeEvaluation &&
     isValidStudentAnswer(value.userAnswer)
   );
 }
@@ -261,6 +272,7 @@ function isValidSnapshotPosition(snapshot: EngineSnapshot): boolean {
     case 'error':
       return snapshot.currentItemIndex === -1 && snapshot.sectionItems.length === 0;
     case 'practicing':
+    case 'grading':
     case 'answered':
       return (
         snapshot.sectionItems.length > 0 &&
@@ -330,6 +342,13 @@ function copyAnswerResult(result: AnswerResult): AnswerResult {
 
   if (result.explanation !== undefined) {
     copy.explanation = result.explanation;
+  }
+
+  if (result.codeEvaluation !== undefined) {
+    copy.codeEvaluation = {
+      verdict: result.codeEvaluation.verdict,
+      feedback: result.codeEvaluation.feedback,
+    };
   }
 
   return copy;

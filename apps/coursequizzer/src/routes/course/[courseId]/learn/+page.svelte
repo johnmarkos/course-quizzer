@@ -89,9 +89,9 @@
     session.submitAnswer({ type: 'checklist', checkedIndices: indices });
   }
 
-  function handleCode(code: string) {
+  async function handleCode(code: string) {
     if (!session) return;
-    session.submitAnswer({ type: 'code', code });
+    await session.submitCodeAnswer({ type: 'code', code });
   }
 
   function handleSelfEvaluation(selectedIndex: number) {
@@ -231,6 +231,22 @@
   // --- Derived helpers ---
 
   const hasApiKey = $derived(getApiKey(localStorage) !== null);
+
+  function resultHeading(result: NonNullable<EngineSession['lastResult']>['result']) {
+    if (result.codeEvaluation?.verdict === 'partial') {
+      return 'Partially correct';
+    }
+    if (result.codeEvaluation?.verdict === 'incorrect') {
+      return 'Needs work';
+    }
+    return result.correct ? 'Correct!' : 'Incorrect';
+  }
+
+  function shouldShowCorrectAnswer(
+    result: NonNullable<EngineSession['lastResult']>['result']
+  ) {
+    return !result.correct && !result.codeEvaluation;
+  }
 </script>
 
 <svelte:head>
@@ -274,14 +290,20 @@
       </ol>
       <p><a href={`/course/${courseId}`}>← Back to course</a></p>
 
-    {:else if session.engineState === 'loading' || session.apiLoading}
+    {:else if session.engineState === 'loading' || session.engineState === 'grading' || session.apiLoading}
       <!-- Generating content -->
       <h1>{course.title}</h1>
       {#if session.currentSection}
         <h2>{session.currentSection.section.title}</h2>
       {/if}
-      <p class="loading">Generating learning content...</p>
-      <p>This may take a minute as content is generated for each topic.</p>
+      <p class="loading">
+        {session.engineState === 'loading'
+          ? 'Generating learning content...'
+          : 'Evaluating answer...'}
+      </p>
+      {#if session.engineState === 'loading'}
+        <p>This may take a minute as content is generated for each topic.</p>
+      {/if}
       {#if session.error}
         <p role="alert" class="error">{session.error.message}</p>
         <button type="button" onclick={handleBackToOverview}>Back to Course</button>
@@ -573,8 +595,8 @@
       {/if}
 
       <article class="result" class:correct={session.lastResult.result.correct} class:incorrect={!session.lastResult.result.correct}>
-        <h2>{session.lastResult.result.correct ? 'Correct!' : 'Incorrect'}</h2>
-        {#if !session.lastResult.result.correct}
+        <h2>{resultHeading(session.lastResult.result)}</h2>
+        {#if shouldShowCorrectAnswer(session.lastResult.result)}
           <p><strong>Correct answer:</strong> {session.lastResult.result.correctAnswer}</p>
         {/if}
         {#if session.lastResult.result.explanation}

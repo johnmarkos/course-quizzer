@@ -7,7 +7,9 @@ import type {
   ContentItem,
   CurriculumPlan,
   EngineSnapshot,
+  SessionProgress,
   StudentAnswer,
+  StudentState,
 } from 'quizzer-engine';
 import LearnPage from '../../src/routes/course/[courseId]/learn/+page.svelte';
 import { COURSES_STORAGE_KEY } from '../../src/lib/storage/course-storage.js';
@@ -79,6 +81,9 @@ function answerResult(answer: StudentAnswer, item: ContentItem): AnswerResult {
 function createPracticingSession(item: ContentItem) {
   const curriculum = mockCurriculumPlan();
   const submitAnswer = vi.fn((answer: StudentAnswer) => answerResult(answer, item));
+  const submitCodeAnswer = vi.fn(async (answer: { type: 'code'; code: string }) =>
+    answerResult(answer, item)
+  );
   const session: EngineSession = {
     engineState: 'practicing',
     curriculum,
@@ -102,6 +107,7 @@ function createPracticingSession(item: ContentItem) {
     startSection: vi.fn(),
     setSectionContent: vi.fn(),
     submitAnswer,
+    submitCodeAnswer,
     nextItem: vi.fn(),
     skipQuestion: vi.fn(),
     nextSection: vi.fn(),
@@ -109,14 +115,14 @@ function createPracticingSession(item: ContentItem) {
     dispose: vi.fn(),
   };
 
-  return { session, submitAnswer };
+  return { session, submitAnswer, submitCodeAnswer };
 }
 
 async function renderLearnPageWithItem(item: ContentItem) {
   const curriculum = mockCurriculumPlan();
   storeCourse(curriculum);
 
-  const { session, submitAnswer } = createPracticingSession(item);
+  const { session, submitAnswer, submitCodeAnswer } = createPracticingSession(item);
   createEngineSessionMock.mockReturnValue(session);
 
   render(LearnPage);
@@ -124,7 +130,68 @@ async function renderLearnPageWithItem(item: ContentItem) {
     name: item.type === 'explanation' ? item.title : item.question,
   });
 
-  return { session, submitAnswer };
+  return { session, submitAnswer, submitCodeAnswer };
+}
+
+function mockStudentState(): StudentState {
+  return { masteryByTopic: {}, gaps: [] };
+}
+
+function mockSessionProgress(): SessionProgress {
+  return {
+    currentSectionIndex: 0,
+    totalSections: 1,
+    currentItemIndex: 0,
+    totalItemsInSection: 1,
+    overallMastery: 0,
+    overallMasteryPercent: 0,
+    totalQuestionsAnswered: 1,
+    sections: [],
+    currentSectionTopicProgress: [],
+    hasProgress: true,
+  };
+}
+
+async function renderLearnPageWithResult(result: AnswerResult) {
+  const curriculum = mockCurriculumPlan();
+  storeCourse(curriculum);
+
+  const session: EngineSession = {
+    engineState: 'answered',
+    curriculum,
+    currentSection: {
+      section: curriculum.sections[0],
+      sectionIndex: 0,
+      totalSections: curriculum.sections.length,
+    },
+    currentItem: null,
+    lastResult: {
+      result,
+      studentState: mockStudentState(),
+      progress: mockSessionProgress(),
+    },
+    studentState: mockStudentState(),
+    progress: mockSessionProgress(),
+    apiLoading: false,
+    error: null,
+    restoreFailed: false,
+    loadCurriculum: vi.fn(),
+    startSection: vi.fn(),
+    setSectionContent: vi.fn(),
+    submitAnswer: vi.fn(),
+    submitCodeAnswer: vi.fn(),
+    nextItem: vi.fn(),
+    skipQuestion: vi.fn(),
+    nextSection: vi.fn(),
+    serialize: vi.fn((): EngineSnapshot | null => null),
+    dispose: vi.fn(),
+  };
+
+  createEngineSessionMock.mockReturnValue(session);
+  render(LearnPage);
+  await screen.findByRole('heading', { name: 'Partially correct' });
+
+  return { session };
 }
 
 // --- Tests ---
@@ -170,8 +237,8 @@ describe('learn route new question types', () => {
     });
   });
 
-  it('renders a code prompt with starter code and submits edited code', async () => {
-    const { submitAnswer } = await renderLearnPageWithItem({
+  it('renders a code prompt with starter code and submits edited code for tutor grading', async () => {
+    const { submitCodeAnswer } = await renderLearnPageWithItem({
       type: 'code',
       id: 'code-1',
       topicId: 't1',
@@ -195,7 +262,7 @@ describe('learn route new question types', () => {
     });
     await fireEvent.click(screen.getByRole('button', { name: 'Submit Code' }));
 
-    expect(submitAnswer).toHaveBeenCalledWith({
+    expect(submitCodeAnswer).toHaveBeenCalledWith({
       type: 'code',
       code: 'function first<T>(items: T[]): T | undefined {\n  return items[0];\n}',
     });
@@ -216,5 +283,33 @@ describe('learn route new question types', () => {
       type: 'self-evaluation',
       selectedIndex: 2,
     });
+  });
+
+  it('renders AI tutor feedback as escaped text', async () => {
+    const feedback = 'Use items[0], not <script>alert("x")</script>.';
+
+    await renderLearnPageWithResult({
+      correct: false,
+      questionId: 'code-1',
+      topicId: 't1',
+      userAnswer: {
+        type: 'code',
+        code: 'function first<T>(items: T[]): T | undefined { return undefined; }',
+      },
+      correctAnswer: 'Review the AI tutor feedback',
+      explanation: feedback,
+      codeEvaluation: {
+        verdict: 'partial',
+        feedback,
+      },
+    });
+
+    expect(screen.getByText(feedback)).toBeTruthy();
+    const resultElement = document.querySelector('.result')!;
+    expect(resultElement.innerHTML).toContain(
+      'Use items[0], not &lt;script&gt;alert("x")&lt;/script&gt;.'
+    );
+    expect(resultElement.querySelector('script')).toBeNull();
+    expect(screen.queryByText(/Correct answer:/)).toBeNull();
   });
 });

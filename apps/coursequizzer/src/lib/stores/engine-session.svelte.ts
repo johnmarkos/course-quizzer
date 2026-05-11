@@ -12,7 +12,9 @@ import {
   type EngineSnapshot,
   type ContentItem,
   type AnswerResult,
-  type StudentAnswer,
+  type CodeAnswerEvaluator,
+  type CodeStudentAnswer,
+  type NonCodeStudentAnswer,
   type StudentState,
   type SessionProgress,
   type Section,
@@ -51,6 +53,7 @@ export type EngineSessionConfig = {
   snapshot?: EngineSnapshot;
   courseId?: string;
   storage?: Storage;
+  codeEvaluator?: CodeAnswerEvaluator;
 };
 
 export type EngineSession = ReturnType<typeof createEngineSession>;
@@ -60,6 +63,7 @@ export type EngineSession = ReturnType<typeof createEngineSession>;
 export function createEngineSession(config: EngineSessionConfig) {
   const engineConfig: CourseEngineConfig = {
     apiKey: config.apiKey,
+    codeEvaluator: config.codeEvaluator,
     prefetch: {
       enabled: true,
     },
@@ -283,9 +287,14 @@ export function createEngineSession(config: EngineSessionConfig) {
       engine.setSectionContent(items);
     },
 
-    submitAnswer(answer: StudentAnswer): AnswerResult {
+    submitAnswer(answer: NonCodeStudentAnswer): AnswerResult {
       if (!engine) throw new Error('Session is disposed');
       return engine.submitAnswer(answer);
+    },
+
+    submitCodeAnswer(answer: CodeStudentAnswer): Promise<AnswerResult> {
+      if (!engine) throw new Error('Session is disposed');
+      return engine.submitCodeAnswer(answer);
     },
 
     nextItem(): void {

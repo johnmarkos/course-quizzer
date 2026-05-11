@@ -122,6 +122,16 @@ export type StudentAnswer =
   | { type: 'code'; code: string }
   | { type: 'self-evaluation'; selectedIndex: number };
 
+export type CodeStudentAnswer = Extract<StudentAnswer, { type: 'code' }>;
+export type NonCodeStudentAnswer = Exclude<StudentAnswer, CodeStudentAnswer>;
+
+export type CodeEvaluationVerdict = 'correct' | 'partial' | 'incorrect';
+
+export type CodeEvaluation = {
+  verdict: CodeEvaluationVerdict;
+  feedback: string;
+};
+
 export type AnswerResult = {
   correct: boolean;
   questionId: string;
@@ -130,4 +140,5 @@ export type AnswerResult = {
   // Additional context the UI needs to render the result
   correctAnswer: string; // human-readable description of the correct answer
   explanation?: string; // optional explanation of why
+  codeEvaluation?: CodeEvaluation; // AI tutor verdict and feedback for code answers
 };

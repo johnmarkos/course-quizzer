@@ -191,6 +191,72 @@ describe('quality filters', () => {
     expect(issues.length).toBeGreaterThan(0);
     expect(issues[0].reason).toContain('longer');
   });
+
+  it('flags checklist items with a length outlier', () => {
+    const q: Question = {
+      type: 'checklist',
+      id: 'q1',
+      topicId: 't1',
+      question: 'Check each setup task:',
+      items: [
+        'Define the boundary conditions, failure modes, and verification steps before running the migration',
+        'Run tests',
+        'Deploy',
+      ],
+    };
+    const issues = checkQuestionQuality(q);
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues[0].reason).toContain('longer');
+  });
+
+  it('passes code questions without mutating them', () => {
+    const q: Question = {
+      type: 'code',
+      id: 'q1',
+      topicId: 't1',
+      question: 'Write a guard clause.',
+      language: 'typescript',
+      initialCode: 'function isReady(value: unknown) {}',
+      expectedPattern: 'return\\s+false',
+    };
+    const original = structuredClone(q);
+
+    expect(checkQuestionQuality(q)).toEqual([]);
+    expect(q).toEqual(original);
+  });
+
+  it('flags self-evaluation options with a length outlier', () => {
+    const q: Question = {
+      type: 'self-evaluation',
+      id: 'q1',
+      topicId: 't1',
+      question: 'How confidently can you explain the concept?',
+      options: [
+        'Not yet',
+        'Somewhat',
+        'I can explain the concept clearly, connect it to prior material, and apply it in a new scenario',
+      ],
+    };
+    const issues = checkQuestionQuality(q);
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues[0].reason).toContain('longer');
+  });
+
+  it('flags two-option self-evaluation questions with a length outlier', () => {
+    const q: Question = {
+      type: 'self-evaluation',
+      id: 'q1',
+      topicId: 't1',
+      question: 'How confidently can you perform the skill?',
+      options: [
+        'Not yet',
+        'I can perform the skill reliably, explain each decision I make, and adapt the approach when the scenario changes',
+      ],
+    };
+    const issues = checkQuestionQuality(q);
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues[0].reason).toContain('longer');
+  });
 });
 
 // --- ContentGenerator ---

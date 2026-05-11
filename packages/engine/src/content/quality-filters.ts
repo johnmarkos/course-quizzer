@@ -20,7 +20,7 @@ export function checkQuestionQuality(question: Question): QualityIssue[] {
   if (isLengthOutlier(question)) {
     issues.push({
       questionId: question.id,
-      reason: 'Correct answer is significantly longer than other options (too guessable)',
+      reason: getLengthOutlierReason(question),
     });
   }
 
@@ -43,26 +43,39 @@ export function checkQuestionQuality(question: Question): QualityIssue[] {
 
 // --- Length Outlier Detection ---
 // If the correct answer is the only long, detailed, or specific option,
-// the question is too guessable. Students learn to pick the longest answer.
+// the question is too guessable. Unkeyed practical items are also checked
+// for uneven detail levels so generated sets remain balanced.
 
 function isLengthOutlier(question: Question): boolean {
-  if (question.type === 'numeric-input' || question.type === 'ordering') {
-    return false; // These types don't have text options to compare
+  switch (question.type) {
+    case 'multiple-choice':
+    case 'multi-select':
+      return hasKeyedLengthOutlierInSet(
+        getOptions(question),
+        getCorrectIndices(question)
+      );
+    case 'two-stage':
+      return (
+        hasKeyedLengthOutlierInSet(getOptions(question), getCorrectIndices(question)) ||
+        hasKeyedLengthOutlierInSet(question.followUpOptions, [
+          question.followUpCorrectIndex,
+        ])
+      );
+    case 'checklist':
+      // Checklist items are all expected actions, so compare any unusually long item.
+      return hasAnyLengthOutlierInSet(question.items);
+    case 'self-evaluation':
+      // Self-evaluation options are unkeyed, so compare any unusually long option.
+      return hasAnyLengthOutlierInSet(question.options);
+    case 'numeric-input':
+      return false; // Numeric answers have no text options to compare.
+    case 'ordering':
+      return false; // Ordering items are sequence entries, not answer options.
+    case 'code':
+      return false; // Code prompts are open-ended and have no options to compare.
+    default:
+      return assertNever(question);
   }
-
-  // Check primary options
-  if (hasLengthOutlierInSet(getOptions(question), getCorrectIndex(question))) {
-    return true;
-  }
-
-  // Check two-stage follow-up options separately
-  if (question.type === 'two-stage') {
-    if (hasLengthOutlierInSet(question.followUpOptions, question.followUpCorrectIndex)) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 /**
@@ -70,22 +83,61 @@ function isLengthOutlier(question: Question): boolean {
  * Returns true if the correct answer is >2x the average length of
  * other options and longer than 30 characters.
  */
-function hasLengthOutlierInSet(
+function hasKeyedLengthOutlierInSet(
   options: string[] | undefined,
-  correctIndex: number | undefined
+  correctIndices: number[] | undefined
 ): boolean {
   if (!options || options.length < 3) return false;
-  if (correctIndex === undefined || correctIndex < 0 || correctIndex >= options.length) {
-    return false;
-  }
+  if (!correctIndices || correctIndices.length === 0) return false;
 
-  const correctLength = options[correctIndex].length;
-  const otherLengths = options.filter((_, i) => i !== correctIndex).map((o) => o.length);
+  return correctIndices.some((correctIndex) =>
+    isLengthOutlierAtIndex(options, correctIndex)
+  );
+}
+
+/**
+ * Check if any option or item is a length outlier within an unkeyed set.
+ * This is used for checklist and self-evaluation questions, which do not
+ * have a single correct option but still become low-quality when one item
+ * is much more detailed than its peers.
+ */
+function hasAnyLengthOutlierInSet(options: string[] | undefined): boolean {
+  if (!options || options.length < 2) return false;
+
+  return options.some((_, optionIndex) => isLengthOutlierAtIndex(options, optionIndex));
+}
+
+function isLengthOutlierAtIndex(options: string[], optionIndex: number): boolean {
+  if (optionIndex < 0 || optionIndex >= options.length) return false;
+
+  const candidateLength = options[optionIndex].length;
+  const otherLengths = options
+    .filter((_, currentIndex) => currentIndex !== optionIndex)
+    .map((option) => option.length);
   const avgOtherLength =
     otherLengths.reduce((sum, len) => sum + len, 0) / otherLengths.length;
 
-  // Flag if correct answer is more than 2x the average of others
-  return correctLength > avgOtherLength * 2 && correctLength > 30;
+  // Flag if the candidate is more than 2x the average of its peers.
+  return candidateLength > avgOtherLength * 2 && candidateLength > 30;
+}
+
+function getLengthOutlierReason(question: Question): string {
+  switch (question.type) {
+    case 'checklist':
+      return 'Checklist item is significantly longer than other items (uneven detail level)';
+    case 'self-evaluation':
+      return 'Self-evaluation option is significantly longer than other options (uneven detail level)';
+    case 'multiple-choice':
+    case 'multi-select':
+    case 'two-stage':
+      return 'Correct answer is significantly longer than other options (too guessable)';
+    case 'numeric-input':
+    case 'ordering':
+    case 'code':
+      return 'Question contains a significantly longer text option';
+    default:
+      return assertNever(question);
+  }
 }
 
 // --- Front-Matter Question Detection ---
@@ -128,31 +180,39 @@ function getOptions(question: Question): string[] | undefined {
     case 'self-evaluation':
       return question.options;
     case 'checklist':
+    case 'ordering':
       return question.items;
+    case 'numeric-input':
+      return undefined; // Numeric-input questions have no option strings.
+    case 'code':
+      return undefined; // Code questions are open-ended and have no option strings.
     default:
-      return undefined;
+      return assertNever(question);
   }
 }
 
-function getCorrectIndex(question: Question): number | undefined {
+function getCorrectIndices(question: Question): number[] | undefined {
   switch (question.type) {
     case 'multiple-choice':
     case 'two-stage':
-      return question.correctIndex;
+      return [question.correctIndex];
     case 'multi-select':
-      // For multi-select, check each correct option individually.
-      // Return the index of the longest correct option to detect
-      // if any correct answer is a length outlier.
-      return question.correctIndices.reduce(
-        (longest, idx) =>
-          longest === undefined
-            ? idx
-            : question.options[idx].length > question.options[longest].length
-              ? idx
-              : longest,
-        undefined as number | undefined
-      );
+      return [...question.correctIndices];
+    case 'checklist':
+      return undefined; // Checklist items are unkeyed.
+    case 'self-evaluation':
+      return undefined; // Self-evaluation options are unkeyed.
+    case 'numeric-input':
+      return undefined; // Numeric-input questions have no option index.
+    case 'ordering':
+      return undefined; // Ordering is graded by sequence, not a single option index.
+    case 'code':
+      return undefined; // Code is graded by pattern matching, not an option index.
     default:
-      return undefined;
+      return assertNever(question);
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled question type: ${JSON.stringify(value)}`);
 }

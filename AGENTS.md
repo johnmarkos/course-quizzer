@@ -512,9 +512,9 @@ Phase: N | Branch: main | State: short summary of where we are
 
 ## Open Issue Queue
 
-| # | Type | Summary | Notes |
-|---|---|---|---|
-| #N | type | ... | ... |
+| #   | Type | Summary | Notes |
+| --- | ---- | ------- | ----- |
+| #N  | type | ...     | ...   |
 
 ## Next
 

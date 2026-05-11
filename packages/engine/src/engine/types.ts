@@ -8,8 +8,8 @@ import type {
   Explanation,
 } from '../content/types.js';
 import type { StudentState, SessionProgress, TopicMastery } from '../student/types.js';
-import type { ClaudeProvider } from '../provider/ClaudeProvider.js';
-import type { ContentGenerator } from '../content/ContentGenerator.js';
+import type { ProviderClient } from '../provider/types.js';
+import type { TopicContentGenerator } from '../content/ContentGenerator.js';
 
 export type EngineState =
   | 'idle' // no syllabus loaded
@@ -25,11 +25,11 @@ export type EngineState =
 export type CourseEngineConfig = {
   apiKey: string;
   model?: string;
-  provider?: ClaudeProvider;
-  generator?: ContentGenerator;
+  provider?: ProviderClient;
+  generator?: TopicContentGenerator;
   prefetch?: {
     enabled: boolean;
-    generator?: ContentGenerator;
+    generator?: TopicContentGenerator;
   };
 };
 

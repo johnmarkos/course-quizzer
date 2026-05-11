@@ -2,6 +2,7 @@ export { CourseEngine } from './engine/CourseEngine.js';
 export { SNAPSHOT_VERSION } from './engine/constants.js';
 export { InvalidTransitionError, EngineError } from './engine/errors.js';
 export { ClaudeProvider } from './provider/ClaudeProvider.js';
+export { createDefaultProvider } from './provider/factory.js';
 export { RateLimiter } from './provider/rate-limiter.js';
 export { ProviderError } from './provider/types.js';
 export { StudentModel } from './student/StudentModel.js';
@@ -64,6 +65,7 @@ export type {
 
 export type {
   ProviderConfig,
+  ProviderClient,
   ProviderRequest,
   ProviderResponse,
   ProviderErrorType,
@@ -77,5 +79,6 @@ export type {
 } from './provider/types.js';
 
 export type { QualityIssue } from './content/quality-filters.js';
+export type { TopicContentGenerator } from './content/ContentGenerator.js';
 export type { ClaudeProviderConfig } from './provider/ClaudeProvider.js';
 export type { RateLimiterConfig } from './provider/rate-limiter.js';

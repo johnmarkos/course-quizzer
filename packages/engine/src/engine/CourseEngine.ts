@@ -8,7 +8,7 @@ import { EventEmitter } from './events.js';
 import { InvalidTransitionError } from './errors.js';
 import { SNAPSHOT_VERSION } from './constants.js';
 import { StudentModel } from '../student/StudentModel.js';
-import { ClaudeProvider } from '../provider/ClaudeProvider.js';
+import { createDefaultProvider } from '../provider/factory.js';
 import { ContentGenerator } from '../content/ContentGenerator.js';
 import { ContentManager } from '../content/ContentManager.js';
 import { ContentCache } from '../content/ContentCache.js';
@@ -111,7 +111,7 @@ export class CourseEngine extends EventEmitter {
 
     const provider =
       config.provider ||
-      new ClaudeProvider({
+      createDefaultProvider({
         apiKey: config.apiKey,
         model: config.model,
       });

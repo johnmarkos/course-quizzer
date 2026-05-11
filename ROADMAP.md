@@ -90,3 +90,37 @@ High-level project plan, organized by phase. The planning agent creates GitHub i
 - Course sharing (export curriculum plan as shareable file)
 - Spaced repetition across sessions
 - Static course generation (batch mode)
+
+---
+
+## Agent Factory Infrastructure
+
+This is a parallel track to the app phases above. It tracks the evolution of the multi-agent factory that builds CourseQuizzer, not CourseQuizzer itself. Items here are filed as GitHub issues when work begins, per the granularity rule.
+
+The shape we're moving toward: the **planner role becomes interactive-only** (chat with John, own ROADMAP.md, dispatch). All heavy-lift roles run as their own script with Codex → Gemini cascade. Claude is reserved for the planner. The factory is runnable from multiple machines — a pinned GitHub issue (not a local file) holds planner state.
+
+**Shipped:**
+
+- [x] Codex-first model cascade in author/reviewer (PR #75)
+- [x] Drop Claude from author/reviewer cascade — Claude is planner-only (PR #76)
+- [x] `scripts/audit.sh` — planner-triggered milestone audit runs on Codex (PR #77)
+- [x] Restore canonical merge policy: author owns merge, reviewer never merges (PR #81)
+- [x] Author script: stop fallback on non-credit agent failures (PR #78, closes #65)
+
+**Backlog (ordered by intended next move):**
+
+- [ ] Restart running author/reviewer agents to pick up #76 + #81 in memory
+- [ ] First real run of `scripts/audit.sh 3` once Phase 3 cleanup queue drains
+- [ ] Migrate planner state from `PLANNER-HANDOFF.md` to a pinned GitHub issue (label `planner-state`) — the multi-machine unlock
+- [ ] Onboard the new Mac as a second factory node (clone, env vars, CLI installs)
+- [ ] `scripts/start-agents.sh` / `stop-agents.sh` / `status.sh` — quality-of-life supervisor for multi-machine ops
+- [ ] AGENTS.md catch-up: document the new cascade, `audit.sh`, and the planner-state issue
+- [ ] **Deferred:** `scripts/dispatch.sh` (translate ROADMAP phase → issues) — build only when interactive planner dispatch starts to feel slow
+- [ ] **Deferred:** `scripts/write-tests.sh` (red-test author for TDD handoff) — build only when interactive test-writing feels slow
+- [ ] **Deferred:** `scripts/lib/common.sh` — extract shared shell helpers once a third script-driven role lands and copy-paste becomes painful
+
+**Future (not committed):**
+
+- Mac mini or other third node, if the two-machine setup proves out
+- Background log-mining agent (see memory `project_log_reaper`) — mine `logs/` for insights before deletion
+- Reviewer skip-rule for script-only PRs (currently the reviewer wastes a Codex call reviewing diffs that AGENTS.md says don't need formal review)

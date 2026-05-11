@@ -360,12 +360,14 @@ export class CourseEngine extends EventEmitter {
       throw new InvalidTransitionError('submitAnswer', 'current item is not a question');
     }
 
-    if (item.type !== 'code' || answer.type !== 'code') {
+    if (item.type !== 'code') {
       return this.#completeAnswerSubmission(this.#gradeAnswer(item, answer));
     }
 
-    if (this.#codeSubmissionInFlight) {
-      throw new EngineError('Code answer evaluation is already in progress.');
+    this.#requireNoCodeSubmissionInFlight();
+
+    if (answer.type !== 'code') {
+      return this.#completeAnswerSubmission(this.#gradeAnswer(item, answer));
     }
 
     this.#codeSubmissionInFlight = true;
@@ -422,6 +424,7 @@ export class CourseEngine extends EventEmitter {
 
   skipQuestion(): void {
     this.#requireState('skipQuestion', 'practicing');
+    this.#requireNoCodeSubmissionInFlight();
 
     const item = this.currentItem;
     if (!item || item.type === 'explanation') {
@@ -483,6 +486,12 @@ export class CourseEngine extends EventEmitter {
       studentState: this.studentState,
       progress: this.sessionProgress,
     });
+  }
+
+  #requireNoCodeSubmissionInFlight(): void {
+    if (this.#codeSubmissionInFlight) {
+      throw new EngineError('Code answer evaluation is already in progress.');
+    }
   }
 
   #updateMastery(result: AnswerResult): void {

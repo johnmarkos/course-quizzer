@@ -304,4 +304,55 @@ describe('CourseEngine code answer evaluation', () => {
     expect(engine.state).toBe('answered');
     expect(codeEvaluator.evaluateCode).toHaveBeenCalledTimes(1);
   });
+
+  it('rejects public mutations while tutor grading is in flight', async () => {
+    let resolveEvaluation!: (evaluation: CodeEvaluation) => void;
+    const pendingEvaluation = new Promise<CodeEvaluation>((resolve) => {
+      resolveEvaluation = resolve;
+    });
+    const codeEvaluator: CodeEvaluationClient = {
+      evaluateCode: vi.fn().mockReturnValue(pendingEvaluation),
+    };
+    const nextCodeQuestion: CodeQuestion = {
+      ...codeQuestion,
+      id: 'q-code-next',
+    };
+    const engine = new CourseEngine({
+      apiKey: 'test-key',
+      generator: mockGenerator,
+      codeEvaluator,
+    });
+    const answerResults: unknown[] = [];
+    engine.on('answerResult', (payload) => answerResults.push(payload.result));
+    engine.loadCurriculum(mockCurriculum());
+    engine.startSection('section-1');
+    engine.setSectionContent([codeQuestion, nextCodeQuestion]);
+
+    const firstSubmission = engine.submitAnswerAsync({
+      type: 'code',
+      code: 'function passingScores(scores) { return scores; }',
+    });
+
+    await expect(
+      engine.submitAnswerAsync({ type: 'multiple-choice', selectedIndex: 0 })
+    ).rejects.toThrow(EngineError);
+    expect(() => engine.skipQuestion()).toThrow(EngineError);
+    expect(engine.currentItem?.id).toBe('q-code');
+    expect(engine.state).toBe('practicing');
+    expect(answerResults).toHaveLength(0);
+    expect(codeEvaluator.evaluateCode).toHaveBeenCalledTimes(1);
+
+    resolveEvaluation({
+      verdict: 'correct',
+      correct: true,
+      feedback: 'The submission filters the scores correctly.',
+    });
+
+    const result = await firstSubmission;
+    expect(result.correct).toBe(true);
+    expect(engine.currentItem?.id).toBe('q-code');
+    expect(engine.state).toBe('answered');
+    expect(answerResults).toHaveLength(1);
+    expect(codeEvaluator.evaluateCode).toHaveBeenCalledTimes(1);
+  });
 });

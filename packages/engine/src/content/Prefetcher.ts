@@ -6,6 +6,7 @@
 import type { ContentGenerator } from './ContentGenerator.js';
 import type { ContentCache } from './ContentCache.js';
 import type { CurriculumPlan } from '../curriculum/types.js';
+import type { StudentModel } from '../student/StudentModel.js';
 import { ContentManager } from './ContentManager.js';
 
 export class Prefetcher {
@@ -32,7 +33,7 @@ export class Prefetcher {
    * Trigger prefetching of the next section.
    * This is a fire-and-forget background operation.
    */
-  async prefetch(currentSectionIndex: number): Promise<void> {
+  async prefetch(currentSectionIndex: number, studentModel: StudentModel): Promise<void> {
     if (!this.#curriculum) return;
 
     const nextIndex = currentSectionIndex + 1;
@@ -45,7 +46,8 @@ export class Prefetcher {
     try {
       const items = await this.#manager.generateSection(
         nextSection,
-        this.#curriculum.title
+        this.#curriculum.title,
+        studentModel
       );
       this.#cache.set(nextSection.id, items);
     } catch (_err) {

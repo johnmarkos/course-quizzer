@@ -331,7 +331,7 @@ export class CourseEngine extends EventEmitter {
       return;
     }
 
-    this.#prefetcher.prefetch(sectionIndex).catch((_err) => {
+    this.#prefetcher.prefetch(sectionIndex, this.#studentModel).catch((_err) => {
       // Log but don't crash — prefetching is non-critical.
       // We log a generic message to avoid leaking provider-specific error details.
       console.error('Background prefetch failed: non-critical error during generation');

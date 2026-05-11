@@ -479,57 +479,66 @@ Milestone reviews are a **planning agent responsibility**, not a coding or PR-re
 
 **Future automation:** Eventually, a planner script will poll for phase completion and trigger milestone reviews automatically. For now, milestone reviews happen in interactive planner sessions.
 
-### Handoff Files
+### Planner State (Cross-Session, Cross-Machine)
 
-Only the planning role maintains a handoff file now.
+The planner role's session-to-session state lives in a **pinned GitHub issue** labeled `planner-state` — not in a local file. This makes planner sessions portable across machines (laptop, Mac, future nodes). Find it with:
 
-Script-driven author and reviewer agents do **not** maintain handoff files. Their continuity comes from:
+```bash
+gh issue list --label planner-state --state open
+```
+
+Any planner session — on any machine — reads this issue first to bootstrap context, and edits the issue body in place before exiting. The issue is never closed; it is a living document.
+
+Script-driven author and reviewer agents do **not** maintain planner state. Their continuity comes from:
 
 - GitHub issues and PRs
 - review comments
 - script logs under `logs/`
 - the shell script control plane
 
-The planning role is different because it is interactive, cross-cutting, and not driven from a single issue/PR queue.
+The planner role is different because it is interactive, cross-cutting, and not driven from a single issue/PR queue.
 
-**Files:**
-
-- `PLANNER-HANDOFF.md` — Planning agent state
-
-**Format (strict — must be machine-parseable):**
+**Format (sections kept current in the issue body):**
 
 ```markdown
 ## Status
 
-Phase: 2 | Issue: #18 | Branch: feat/engine-store-wrapper | State: implementing
+Phase: N | Branch: main | State: short summary of where we are
 
-## Done
+## Done (recent)
 
-- [abc1234] Implemented store wrapper skeleton
-- [def5678] Added event forwarding tests
+- [PR #N] Short description of what shipped
+- ...
+
+## Open Issue Queue
+
+| # | Type | Summary | Notes |
+|---|---|---|---|
+| #N | type | ... | ... |
 
 ## Next
 
-1. Wire store to SvelteKit layout (specific file: src/routes/+layout.svelte)
-2. Add error propagation from engine events to store
+1. Specific, actionable next step
+2. ...
 
 ## Decisions
 
-- Chose runes over legacy stores because SvelteKit 5 default
-- Used $effect rather than onMount for engine binding — cleaner teardown
+- Non-obvious choice and the reason behind it
+- ...
 
 ## Gotchas
 
-- Engine emits 'ready' before first content is available — don't render until 'content:ready'
-- pnpm workspace protocol requires exact match on engine export names
+- Anything that would trip up a future planner session
+- ...
 ```
 
 **Rules:**
 
-- **Update before every exit.** Not optional. If the handoff file is stale, the next agent (especially Codex or Gemini) wastes credits re-deriving context.
+- **Update before every exit.** Not optional. If the issue is stale, the next planner — possibly on another machine — wastes Claude tokens re-deriving context.
 - **"Next" must be specific and actionable.** Not "continue working on the feature" — list exact files, functions, or steps.
-- **"Decisions" captures non-obvious choices.** If it's obvious from the code, don't repeat it. If a future agent would make a different choice without this context, write it down.
-- **This file is gitignored.** It lives in the worktree, not in the repo.
+- **"Decisions" captures non-obvious choices.** If it's obvious from the code, don't repeat it. If a future planner would make a different choice without this context, write it down.
+- **Re-verify before acting on what's written.** The issue is edited in place; mid-edit interruptions can leave content lagging reality. Cross-check against `gh issue list` / `gh pr list` / `git log` before relying on it.
+- **`PLANNER-HANDOFF.md` is deprecated.** It remains as a one-line redirect stub for session-start hooks that expect a `*-HANDOFF.md` file at the repo root. New planner sessions should edit the issue, not the file.
 
 ### TDD Workflow
 

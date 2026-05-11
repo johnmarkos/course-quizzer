@@ -9,7 +9,7 @@ import { ContentManager } from '../src/content/ContentManager.js';
 import { StudentModel } from '../src/student/StudentModel.js';
 import type { ClaudeProvider } from '../src/provider/ClaudeProvider.js';
 import type { CurriculumPlan } from '../src/curriculum/types.js';
-import type { ContentItem } from '../src/content/types.js';
+import type { ContentItem, Explanation, Question } from '../src/content/types.js';
 
 // --- Mocks & Fixtures ---
 
@@ -78,6 +78,33 @@ function mockGenerator(generator: ContentGenerator) {
   vi.spyOn(generator, 'generateTopicQuizBurst').mockResolvedValue(
     MOCK_QUESTIONS_T2 as any
   );
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
+}
+
+async function waitForAssertion(assertion: () => void): Promise<void> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 50; attempt++) {
+    try {
+      assertion();
+      return;
+    } catch (err) {
+      lastError = err;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+
+  throw lastError;
 }
 
 describe('ContentCache', () => {
@@ -273,6 +300,150 @@ describe('CourseEngine + Prefetcher integration', () => {
     expect(engine.state).toBe('practicing');
     expect(contentReadySpy).toHaveBeenCalled();
     expect(engine.currentItem).toEqual(MOCK_ITEMS_S2[0]);
+  });
+
+  it('waits for in-flight prefetch instead of generating the section again', async () => {
+    const provider = mockProvider();
+    const generator = new ContentGenerator(provider);
+    const s2Explanation = deferred<Explanation>();
+    const s2Questions = deferred<Question[]>();
+
+    const expSpy = vi
+      .spyOn(generator, 'generateTopicExplanation')
+      .mockImplementation(async (topic) => {
+        if (topic.id === 't2') {
+          return s2Explanation.promise;
+        }
+
+        return {
+          type: 'explanation',
+          topicId: topic.id,
+          title: `Explanation for ${topic.id}`,
+          content: `Content for ${topic.id}`,
+        };
+      });
+
+    const quizSpy = vi
+      .spyOn(generator, 'generateTopicQuizBurst')
+      .mockImplementation(async (topic) => {
+        if (topic.id === 't2') {
+          return s2Questions.promise;
+        }
+
+        return [
+          {
+            type: 'multiple-choice',
+            id: `q-${topic.id}`,
+            topicId: topic.id,
+            question: `Q ${topic.id}`,
+            options: ['A', 'B'],
+            correctIndex: 0,
+          },
+        ];
+      });
+
+    const engine = new CourseEngine({
+      apiKey: 'test',
+      generator,
+      prefetch: { enabled: true },
+    });
+
+    engine.loadCurriculum(MOCK_PLAN);
+    engine.startSection('s1');
+
+    await waitForAssertion(() => expect(engine.state).toBe('practicing'));
+    await waitForAssertion(() =>
+      expect(expSpy.mock.calls.filter(([topic]) => topic.id === 't2')).toHaveLength(1)
+    );
+
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem();
+    expect(engine.state).toBe('sectionComplete');
+
+    engine.startSection('s2');
+    expect(engine.state).toBe('loading');
+    expect(expSpy.mock.calls.filter(([topic]) => topic.id === 't2')).toHaveLength(1);
+
+    s2Explanation.resolve(MOCK_EXPLANATION_T2);
+    await waitForAssertion(() =>
+      expect(quizSpy.mock.calls.filter(([topic]) => topic.id === 't2')).toHaveLength(1)
+    );
+    s2Questions.resolve(MOCK_QUESTIONS_T2);
+
+    await waitForAssertion(() => expect(engine.state).toBe('practicing'));
+    expect(quizSpy.mock.calls.filter(([topic]) => topic.id === 't2')).toHaveLength(1);
+    expect(engine.currentItem).toEqual(MOCK_EXPLANATION_T2);
+  });
+
+  it('falls back to foreground generation if in-flight prefetch fails', async () => {
+    const provider = mockProvider();
+    const generator = new ContentGenerator(provider);
+    const prefetchFailure = deferred<Explanation>();
+    let t2ExplanationAttempts = 0;
+
+    const expSpy = vi
+      .spyOn(generator, 'generateTopicExplanation')
+      .mockImplementation(async (topic) => {
+        if (topic.id === 't2') {
+          t2ExplanationAttempts += 1;
+          if (t2ExplanationAttempts === 1) {
+            return prefetchFailure.promise;
+          }
+
+          return MOCK_EXPLANATION_T2;
+        }
+
+        return {
+          type: 'explanation',
+          topicId: topic.id,
+          title: `Explanation for ${topic.id}`,
+          content: `Content for ${topic.id}`,
+        };
+      });
+
+    vi.spyOn(generator, 'generateTopicQuizBurst').mockImplementation(async (topic) => {
+      if (topic.id === 't2') {
+        return MOCK_QUESTIONS_T2;
+      }
+
+      return [
+        {
+          type: 'multiple-choice',
+          id: `q-${topic.id}`,
+          topicId: topic.id,
+          question: `Q ${topic.id}`,
+          options: ['A', 'B'],
+          correctIndex: 0,
+        },
+      ];
+    });
+
+    const engine = new CourseEngine({
+      apiKey: 'test',
+      generator,
+      prefetch: { enabled: true },
+    });
+
+    engine.loadCurriculum(MOCK_PLAN);
+    engine.startSection('s1');
+
+    await waitForAssertion(() => expect(engine.state).toBe('practicing'));
+    await waitForAssertion(() => expect(t2ExplanationAttempts).toBe(1));
+
+    engine.nextItem();
+    engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 });
+    engine.nextItem();
+
+    engine.startSection('s2');
+    expect(engine.state).toBe('loading');
+    expect(expSpy.mock.calls.filter(([topic]) => topic.id === 't2')).toHaveLength(1);
+
+    prefetchFailure.reject(new Error('prefetch failed'));
+
+    await waitForAssertion(() => expect(t2ExplanationAttempts).toBe(2));
+    await waitForAssertion(() => expect(engine.state).toBe('practicing'));
+    expect(engine.currentItem).toEqual(MOCK_EXPLANATION_T2);
   });
 
   it('triggers prefetch on startSection', async () => {

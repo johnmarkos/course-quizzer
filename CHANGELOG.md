@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0 — 2026-05-10
+
+### Phase 3: Adaptive Learning + Polish
+
+- **Engine:** Add `AdaptiveSelector` so quiz bursts can be biased by student mastery and performance
+- **Engine:** Add `Prefetcher` and `ContentCache` support for background generation of the next section
+- **Engine/App:** Add export and import flows so course progress can move between browsers without including API keys
+- **App:** Add section completion summaries with topic-level mastery display and review suggestions
+- **Engine/App:** Add checklist, code, and self-evaluation question types for practical skills
+
 ## 0.8.5 — 2026-05-10
 
 ### Fixes

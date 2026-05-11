@@ -1,7 +1,6 @@
 // --- Quiz Generation Prompt ---
 // Generates a burst of quiz questions for one topic.
-// Uses all 5 OpenQuizzer question types: MCQ, numeric input,
-// ordering, multi-select, two-stage.
+// Supports the full v1 question set, including practical and self-evaluation prompts.
 
 import type { PromptMessages } from './types.js';
 

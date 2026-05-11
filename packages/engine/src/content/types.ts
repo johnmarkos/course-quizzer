@@ -1,6 +1,6 @@
 // --- Content Types ---
 // Represents generated learning content: explanations and questions.
-// Question types match OpenQuizzer's proven set.
+// Question types include OpenQuizzer-style recall checks plus practical tasks.
 
 // --- Explanations ---
 
@@ -12,7 +12,7 @@ export type Explanation = {
 };
 
 // --- Question Types ---
-// These mirror OpenQuizzer's 5 question types.
+// The v1 set supports eight question formats for recall, practice, and reflection.
 
 export type MultipleChoiceQuestion = {
   type: 'multiple-choice';

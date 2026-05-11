@@ -10,6 +10,7 @@ import {
   type CourseRecord,
 } from '../../src/lib/storage/course-storage.js';
 import {
+  Exporter,
   SNAPSHOT_VERSION,
   type CurriculumPlan,
   type EngineSnapshot,
@@ -63,8 +64,8 @@ function mockSnapshot(): EngineSnapshot {
     version: SNAPSHOT_VERSION,
     state: 'ready',
     curriculum: mockCurriculumPlan(),
-    currentSectionIndex: 0,
-    currentItemIndex: 0,
+    currentSectionIndex: -1,
+    currentItemIndex: -1,
     sectionItems: [],
     allGeneratedContent: {},
     studentState: { masteryByTopic: {}, gaps: [] },
@@ -315,6 +316,41 @@ describe('course-storage', () => {
 
     const raw = storage.getItem(COURSES_STORAGE_KEY)!;
     expect(raw).not.toContain('sk-ant-secret');
+  });
+
+  it('strips unknown imported snapshot fields before persistence and export', () => {
+    const snapshotWithUnknownFields = {
+      ...mockSnapshot(),
+      provider: { apiKey: 'sk-ant-provider-secret' },
+      headers: { 'x-api-key': 'sk-ant-header-secret' },
+      debug: { rawApiKey: 'sk-ant-debug-secret' },
+    };
+
+    const courseId = importCourse(
+      {
+        title: 'Imported course',
+        curriculum: mockCurriculumPlan(),
+        snapshot: snapshotWithUnknownFields,
+      },
+      storage
+    );
+
+    const raw = storage.getItem(COURSES_STORAGE_KEY)!;
+    expect(raw).not.toContain('sk-ant-provider-secret');
+    expect(raw).not.toContain('sk-ant-header-secret');
+    expect(raw).not.toContain('sk-ant-debug-secret');
+
+    const stored = getCourse(courseId, storage);
+    expect(stored).not.toBeNull();
+    const storedSnapshot = stored!.snapshot as EngineSnapshot & Record<string, unknown>;
+    expect(storedSnapshot.provider).toBeUndefined();
+    expect(storedSnapshot.headers).toBeUndefined();
+    expect(storedSnapshot.debug).toBeUndefined();
+
+    const exported = new Exporter().exportToString(stored!.snapshot!);
+    expect(exported).not.toContain('sk-ant-provider-secret');
+    expect(exported).not.toContain('sk-ant-header-secret');
+    expect(exported).not.toContain('sk-ant-debug-secret');
   });
 
   // --- Defensive copies ---

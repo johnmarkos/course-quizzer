@@ -123,7 +123,7 @@
 
       {#if progress && progress.hasProgress}
         <div class="progress-bar-container">
-          <div class="progress-bar" style="width: {Math.round(progress.overallMastery * 100)}%"></div>
+          <div class="progress-bar" style="width: {progress.overallMasteryPercent}%"></div>
         </div>
         <p class="progress-summary">
           {getProgressLabel(course)} · {progress.totalQuestionsAnswered} questions answered

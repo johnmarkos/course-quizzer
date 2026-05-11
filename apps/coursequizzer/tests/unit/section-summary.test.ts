@@ -72,24 +72,24 @@ describe('section summary data', () => {
 
     expect(session.engineState).toBe('sectionComplete');
     expect(session.studentState).not.toBeNull();
-    expect(session.progress?.currentSection).not.toBeNull();
+    expect(session.progress?.currentSectionTopicProgress).toHaveLength(2);
 
-    const topicProgress = session.progress!.currentSection!.topics;
+    const topicProgress = session.progress!.currentSectionTopicProgress;
     expect(topicProgress[0]).toMatchObject({
       topicId: 't1',
-      title: 'What is a Unit Test?',
       score: 0.15,
+      scorePercent: 15,
       questionsCorrect: 1,
-      status: 'struggling',
+      level: 'struggling',
       needsReview: true,
     });
 
     expect(topicProgress[1]).toMatchObject({
       topicId: 't2',
-      title: 'Test Runners',
       score: 0,
+      scorePercent: 0,
       questionsCorrect: 0,
-      status: 'struggling',
+      level: 'struggling',
       needsReview: true,
     });
 

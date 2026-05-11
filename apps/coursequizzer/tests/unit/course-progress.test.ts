@@ -67,6 +67,7 @@ function mockSnapshot(overrides?: Partial<EngineSnapshot>): EngineSnapshot {
     currentSectionIndex: 0,
     currentItemIndex: 0,
     sectionItems: [],
+    allGeneratedContent: {},
     studentState: { masteryByTopic: {}, gaps: [] },
     lastAnswerResult: null,
     ...overrides,

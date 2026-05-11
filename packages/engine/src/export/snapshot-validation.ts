@@ -1,16 +1,8 @@
 import { validateCurriculumPlan } from '../curriculum/SyllabusParser.js';
 import { SNAPSHOT_VERSION } from '../engine/constants.js';
 import type { CurriculumPlan, EngineSnapshot } from '../engine/types.js';
-
-function deepCopy<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function sanitizeSnapshot(snapshot: EngineSnapshot): EngineSnapshot {
-  const copy = { ...snapshot };
-  delete (copy as Record<string, unknown>)['apiKey'];
-  return copy;
-}
+import type { AnswerResult, ContentItem, StudentAnswer } from '../content/types.js';
+import type { StudentState } from '../student/types.js';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -78,7 +70,7 @@ function isValidEngineState(value: unknown): boolean {
   );
 }
 
-function isValidStudentState(value: unknown): boolean {
+function isValidStudentState(value: unknown): value is StudentState {
   if (!isPlainObject(value)) return false;
   if (!isPlainObject(value.masteryByTopic) || !isStringArray(value.gaps)) return false;
 
@@ -96,7 +88,7 @@ function isValidStudentState(value: unknown): boolean {
   });
 }
 
-function isValidStudentAnswer(value: unknown): boolean {
+function isValidStudentAnswer(value: unknown): value is StudentAnswer {
   if (!isPlainObject(value) || typeof value.type !== 'string') return false;
 
   switch (value.type) {
@@ -124,7 +116,7 @@ function isValidStudentAnswer(value: unknown): boolean {
   }
 }
 
-function isValidAnswerResult(value: unknown): boolean {
+function isValidAnswerResult(value: unknown): value is AnswerResult {
   if (!isPlainObject(value)) return false;
   return (
     typeof value.correct === 'boolean' &&
@@ -136,7 +128,7 @@ function isValidAnswerResult(value: unknown): boolean {
   );
 }
 
-function isValidContentItem(value: unknown): boolean {
+function isValidContentItem(value: unknown): value is ContentItem {
   if (!isPlainObject(value) || typeof value.type !== 'string') return false;
 
   switch (value.type) {
@@ -292,10 +284,202 @@ function isValidSnapshotPosition(snapshot: EngineSnapshot): boolean {
   }
 }
 
+// --- Canonical copies ---
+
+function setRecordEntry<T>(record: Record<string, T>, key: string, value: T): void {
+  Object.defineProperty(record, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+}
+
+function copyStudentAnswer(answer: StudentAnswer): StudentAnswer {
+  switch (answer.type) {
+    case 'multiple-choice':
+      return { type: answer.type, selectedIndex: answer.selectedIndex };
+    case 'numeric-input':
+      return { type: answer.type, value: answer.value };
+    case 'ordering':
+      return { type: answer.type, order: [...answer.order] };
+    case 'multi-select':
+      return { type: answer.type, selectedIndices: [...answer.selectedIndices] };
+    case 'two-stage':
+      return {
+        type: answer.type,
+        selectedIndex: answer.selectedIndex,
+        followUpSelectedIndex: answer.followUpSelectedIndex,
+      };
+    case 'checklist':
+      return { type: answer.type, checkedIndices: [...answer.checkedIndices] };
+    case 'code':
+      return { type: answer.type, code: answer.code };
+    case 'self-evaluation':
+      return { type: answer.type, selectedIndex: answer.selectedIndex };
+  }
+}
+
+function copyAnswerResult(result: AnswerResult): AnswerResult {
+  const copy: AnswerResult = {
+    correct: result.correct,
+    questionId: result.questionId,
+    topicId: result.topicId,
+    userAnswer: copyStudentAnswer(result.userAnswer),
+    correctAnswer: result.correctAnswer,
+  };
+
+  if (result.explanation !== undefined) {
+    copy.explanation = result.explanation;
+  }
+
+  return copy;
+}
+
+function copyContentItem(item: ContentItem): ContentItem {
+  switch (item.type) {
+    case 'explanation':
+      return {
+        type: item.type,
+        topicId: item.topicId,
+        title: item.title,
+        content: item.content,
+      };
+    case 'multiple-choice':
+      return {
+        type: item.type,
+        id: item.id,
+        topicId: item.topicId,
+        question: item.question,
+        options: [...item.options],
+        correctIndex: item.correctIndex,
+      };
+    case 'numeric-input': {
+      const copy: ContentItem = {
+        type: item.type,
+        id: item.id,
+        topicId: item.topicId,
+        question: item.question,
+        correctValue: item.correctValue,
+      };
+      if (item.tolerance !== undefined) copy.tolerance = item.tolerance;
+      if (item.unit !== undefined) copy.unit = item.unit;
+      return copy;
+    }
+    case 'ordering':
+      return {
+        type: item.type,
+        id: item.id,
+        topicId: item.topicId,
+        question: item.question,
+        items: [...item.items],
+        correctOrder: [...item.correctOrder],
+      };
+    case 'multi-select':
+      return {
+        type: item.type,
+        id: item.id,
+        topicId: item.topicId,
+        question: item.question,
+        options: [...item.options],
+        correctIndices: [...item.correctIndices],
+      };
+    case 'two-stage':
+      return {
+        type: item.type,
+        id: item.id,
+        topicId: item.topicId,
+        question: item.question,
+        options: [...item.options],
+        correctIndex: item.correctIndex,
+        followUp: item.followUp,
+        followUpOptions: [...item.followUpOptions],
+        followUpCorrectIndex: item.followUpCorrectIndex,
+      };
+    case 'checklist':
+      return {
+        type: item.type,
+        id: item.id,
+        topicId: item.topicId,
+        question: item.question,
+        items: [...item.items],
+      };
+    case 'code': {
+      const copy: ContentItem = {
+        type: item.type,
+        id: item.id,
+        topicId: item.topicId,
+        question: item.question,
+        language: item.language,
+      };
+      if (item.initialCode !== undefined) copy.initialCode = item.initialCode;
+      if (item.expectedPattern !== undefined) copy.expectedPattern = item.expectedPattern;
+      return copy;
+    }
+    case 'self-evaluation':
+      return {
+        type: item.type,
+        id: item.id,
+        topicId: item.topicId,
+        question: item.question,
+        options: [...item.options],
+      };
+  }
+}
+
+function copyGeneratedContentRecord(
+  allGeneratedContent: Record<string, ContentItem[]> | undefined
+): Record<string, ContentItem[]> {
+  const copy: Record<string, ContentItem[]> = {};
+  if (!allGeneratedContent) return copy;
+
+  for (const [sectionId, items] of Object.entries(allGeneratedContent)) {
+    setRecordEntry(copy, sectionId, items.map(copyContentItem));
+  }
+
+  return copy;
+}
+
+function copyStudentState(state: StudentState): StudentState {
+  const masteryByTopic: StudentState['masteryByTopic'] = {};
+
+  for (const [topicId, mastery] of Object.entries(state.masteryByTopic)) {
+    setRecordEntry(masteryByTopic, topicId, {
+      topicId: mastery.topicId,
+      score: mastery.score,
+      questionsAnswered: mastery.questionsAnswered,
+      questionsCorrect: mastery.questionsCorrect,
+    });
+  }
+
+  return {
+    masteryByTopic,
+    gaps: [...state.gaps],
+  };
+}
+
+function copyEngineSnapshot(snapshot: EngineSnapshot): EngineSnapshot {
+  return {
+    version: snapshot.version,
+    state: snapshot.state,
+    curriculum:
+      snapshot.curriculum === null ? null : validateCurriculumPlan(snapshot.curriculum),
+    currentSectionIndex: snapshot.currentSectionIndex,
+    currentItemIndex: snapshot.currentItemIndex,
+    sectionItems: snapshot.sectionItems.map(copyContentItem),
+    allGeneratedContent: copyGeneratedContentRecord(snapshot.allGeneratedContent),
+    studentState: copyStudentState(snapshot.studentState),
+    lastAnswerResult:
+      snapshot.lastAnswerResult === null
+        ? null
+        : copyAnswerResult(snapshot.lastAnswerResult),
+  };
+}
+
 export function validateEngineSnapshot(value: unknown): EngineSnapshot | null {
   if (!isPlainObject(value)) return null;
 
-  const snapshot = sanitizeSnapshot(value as EngineSnapshot);
+  const snapshot = value as EngineSnapshot;
   const supportedVersions = [3, SNAPSHOT_VERSION];
   const hasGeneratedContent = 'allGeneratedContent' in snapshot;
 
@@ -326,5 +510,5 @@ export function validateEngineSnapshot(value: unknown): EngineSnapshot | null {
     return null;
   }
 
-  return deepCopy(snapshot);
+  return copyEngineSnapshot(snapshot);
 }

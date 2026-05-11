@@ -8,40 +8,59 @@ export type TopicMastery = {
   questionsCorrect: number;
 };
 
-export type MasteryStatus = 'struggling' | 'gaining' | 'mastered';
+export type TopicMasteryLevel = 'struggling' | 'gaining' | 'mastered';
 
-export type TopicProgress = {
+export type TopicProgressSummary = {
   topicId: string;
-  title: string;
   score: number; // 0.0 to 1.0
+  scorePercent: number;
   questionsAnswered: number;
   questionsCorrect: number;
-  status: MasteryStatus;
+  level: TopicMasteryLevel;
   needsReview: boolean;
-};
-
-export type SectionProgressSummary = {
-  sectionId: string;
-  title: string;
-  started: boolean;
-  topicsAttempted: number;
-  topicsTotal: number;
-  mastery: number; // 0.0 to 1.0, average across attempted topics
-  topics: TopicProgress[];
-};
-
-export type CourseProgressSummary = {
-  currentSectionIndex: number;
-  totalSections: number;
-  overallMastery: number; // 0.0 to 1.0, average across attempted topics
-  totalQuestionsAnswered: number;
-  sections: SectionProgressSummary[];
-  hasProgress: boolean;
 };
 
 export type StudentState = {
   masteryByTopic: Record<string, TopicMastery>;
   gaps: string[]; // topic IDs where mastery is below threshold
+};
+
+export type ProgressTopicInput = {
+  id: string;
+};
+
+export type ProgressSectionInput = {
+  id: string;
+  topics: ProgressTopicInput[];
+};
+
+export type SectionProgressSummary = {
+  sectionId: string;
+  /** Whether the student has started or completed this section. */
+  started: boolean;
+  /** Number of topics with at least one answered question. */
+  topicsAttempted: number;
+  /** Total number of topics in the section. */
+  topicsTotal: number;
+  /** Average mastery score (0-1) across attempted topics in this section. */
+  mastery: number;
+  masteryPercent: number;
+};
+
+export type CourseProgressSummary = {
+  /** Index of the section the student was last working on. */
+  currentSectionIndex: number;
+  /** Total number of sections. */
+  totalSections: number;
+  /** Overall mastery score (0-1) across all attempted topics. */
+  overallMastery: number;
+  overallMasteryPercent: number;
+  /** Total questions answered across all topics. */
+  totalQuestionsAnswered: number;
+  /** Per-section progress. */
+  sections: SectionProgressSummary[];
+  /** Whether the course has any answered questions. */
+  hasProgress: boolean;
 };
 
 export type SessionProgress = {
@@ -50,5 +69,9 @@ export type SessionProgress = {
   currentItemIndex: number;
   totalItemsInSection: number;
   overallMastery: number; // 0.0 to 1.0, average across all topics
-  currentSection: SectionProgressSummary | null;
+  overallMasteryPercent: number;
+  totalQuestionsAnswered: number;
+  sections: SectionProgressSummary[];
+  currentSectionTopicProgress: TopicProgressSummary[];
+  hasProgress: boolean;
 };

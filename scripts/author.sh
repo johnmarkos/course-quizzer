@@ -13,7 +13,10 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-WORKTREE="/home/nhoj/Documents/learning/cq-author"
+# Default: a sibling directory of the repo (e.g., $REPO_ROOT/../cq-author).
+# Override via CQ_WORKTREE_AUTHOR when the default doesn't fit (different
+# layout on a second factory node, etc.).
+WORKTREE="${CQ_WORKTREE_AUTHOR:-$REPO_ROOT/../cq-author}"
 PROMPT_FILE="$SCRIPT_DIR/prompts/author.md"
 LOGDIR="$REPO_ROOT/logs/author"
 ERRORLOG="$REPO_ROOT/logs/author-errors.log"

@@ -9,6 +9,7 @@
 - **Engine:** Extend quality-filter length-outlier coverage to `checklist` and `self-evaluation` questions, and make all question-type switch branches explicit
 - **Engine:** Extract shared `copyContentItem` utility so `ContentCache` and `CourseEngine` cannot drift when new content item types are added
 - **Engine:** Bump `QUIZ_GENERATION_VERSION` to `1.3` to track the prompt expansion for checklist, code, and self-evaluation questions
+- **Engine/App:** Add correlation ids to `apiCallStart` and `apiCallComplete` events, and keep app loading state tied to active API call ids
 - **Engine:** Add `AdaptiveSelector` boundary and integration tests covering gap, default, and proficient quiz burst counts
 
 ## 0.9.0 — 2026-05-10

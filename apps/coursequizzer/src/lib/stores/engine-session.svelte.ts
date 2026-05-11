@@ -106,6 +106,7 @@ export function createEngineSession(config: EngineSessionConfig) {
   let studentState = $state<StudentState | null>(null);
   let progress = $state<SessionProgress | null>(null);
   let apiLoading = $state(false);
+  const activeApiCallIds = new Set<string>();
   let error = $state<ErrorInfo | null>(initialError);
 
   // If restoring successfully, sync initial state from snapshot
@@ -168,12 +169,14 @@ export function createEngineSession(config: EngineSessionConfig) {
     autoSave();
   };
 
-  const onApiCallStart: Listener<'apiCallStart'> = () => {
+  const onApiCallStart: Listener<'apiCallStart'> = (payload) => {
+    activeApiCallIds.add(payload.id);
     apiLoading = true;
   };
 
-  const onApiCallComplete: Listener<'apiCallComplete'> = () => {
-    apiLoading = false;
+  const onApiCallComplete: Listener<'apiCallComplete'> = (payload) => {
+    activeApiCallIds.delete(payload.id);
+    apiLoading = activeApiCallIds.size > 0;
   };
 
   const onError: Listener<'error'> = (payload) => {
@@ -319,6 +322,7 @@ export function createEngineSession(config: EngineSessionConfig) {
       lastResult = null;
       studentState = null;
       progress = null;
+      activeApiCallIds.clear();
       apiLoading = false;
       error = null;
     },

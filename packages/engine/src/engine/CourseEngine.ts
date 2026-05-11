@@ -120,9 +120,9 @@ export class CourseEngine extends EventEmitter {
 
     this.#contentManager = new ContentManager(generator, (payload) => {
       if (payload.status === 'start') {
-        this.emit('apiCallStart', { purpose: payload.purpose });
+        this.emit('apiCallStart', { id: payload.id, purpose: payload.purpose });
       } else {
-        this.emit('apiCallComplete', { purpose: payload.purpose });
+        this.emit('apiCallComplete', { id: payload.id, purpose: payload.purpose });
       }
     });
 

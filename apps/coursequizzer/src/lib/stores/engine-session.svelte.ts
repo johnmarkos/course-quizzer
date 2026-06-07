@@ -6,6 +6,7 @@
 
 import {
   CourseEngine,
+  createDefaultProvider,
   type CourseEngineConfig,
   type CurriculumPlan,
   type EngineState,
@@ -62,7 +63,7 @@ export type EngineSession = ReturnType<typeof createEngineSession>;
 
 export function createEngineSession(config: EngineSessionConfig) {
   const engineConfig: CourseEngineConfig = {
-    apiKey: config.apiKey,
+    provider: createDefaultProvider({ apiKey: config.apiKey }),
     codeEvaluator: config.codeEvaluator,
     prefetch: {
       enabled: true,

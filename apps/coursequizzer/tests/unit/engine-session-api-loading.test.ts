@@ -51,6 +51,7 @@ describe('createEngineSession API loading state', () => {
   it('stays loading until every active API call id completes', async () => {
     vi.doMock('quizzer-engine', () => ({
       CourseEngine: MockCourseEngine,
+      createDefaultProvider: vi.fn(() => ({})),
     }));
 
     const { createEngineSession } =

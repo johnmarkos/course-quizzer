@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.2 — 2026-06-07
+
+### Fixes
+
+- **Engine:** Complete provider-agnostic refactor by making `provider` mandatory in `CourseEngineConfig` and removing `apiKey`/`model` fields, ensuring `CourseEngine` has no dependency on `createDefaultProvider` or `ClaudeProvider`
+- **Engine:** Fix bug in `export.test.ts` where an undefined variable was used in a restore test
+- **App:** Update engine session store to pass an explicitly constructed provider to the engine constructor
+
 ## 0.9.1 — 2026-05-11
 
 ### Fixes

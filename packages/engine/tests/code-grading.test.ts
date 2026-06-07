@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CourseEngine } from '../src/index.js';
+import { CourseEngine, createDefaultProvider } from '../src/index.js';
 import type {
   CodeAnswerEvaluator,
   CodeEvaluation,
@@ -50,7 +50,7 @@ function codeQuestion(): CodeQuestion {
 
 function engineWithCodeQuestion(evaluator: CodeAnswerEvaluator): CourseEngine {
   const engine = new CourseEngine({
-    apiKey: 'test-key',
+    provider: createDefaultProvider({ apiKey: 'test-key' }),
     generator: mockGenerator,
     codeEvaluator: evaluator,
   });

@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { vi } from 'vitest';
 import { SyllabusParser } from '../../src/curriculum/SyllabusParser.js';
 import { ContentGenerator } from '../../src/content/ContentGenerator.js';
-import { CourseEngine } from '../../src/engine/CourseEngine.js';
+import { CourseEngine, createDefaultProvider } from '../../src/index.js';
 import type { ClaudeProvider } from '../../src/provider/ClaudeProvider.js';
 import type { CurriculumPlan } from '../../src/curriculum/types.js';
 import type { ContentItem, Question, StudentAnswer } from '../../src/content/types.js';
@@ -98,7 +98,9 @@ async function runLifecycle(
   logPlan(label, plan);
 
   // Step 2: Create engine, load curriculum
-  const engine = new CourseEngine({ apiKey: 'test-key' });
+  const engine = new CourseEngine({
+    provider: createDefaultProvider({ apiKey: 'test-key' }),
+  });
   engine.loadCurriculum(plan);
   expect(engine.state).toBe('ready');
 

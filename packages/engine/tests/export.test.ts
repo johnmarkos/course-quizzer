@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { CourseEngine } from '../src/engine/CourseEngine.js';
+import { CourseEngine, createDefaultProvider } from '../src/index.js';
 import { Exporter } from '../src/export/Exporter.js';
 import { Importer } from '../src/export/Importer.js';
 import type { CurriculumPlan, ContentItem } from '../src/engine/types.js';
@@ -32,7 +32,9 @@ function mockSectionContent(): ContentItem[] {
 
 describe('Exporter & Importer', () => {
   function createValidSnapshot(): ReturnType<CourseEngine['serialize']> {
-    const engine = new CourseEngine({ apiKey: 'sk-test-key' });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'sk-test-key' }),
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
     engine.setSectionContent(mockSectionContent());
@@ -40,7 +42,9 @@ describe('Exporter & Importer', () => {
   }
 
   it('round-trips full course data with generated content', () => {
-    const engine = new CourseEngine({ apiKey: 'sk-test-key' });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'sk-test-key' }),
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
     const items = mockSectionContent();
@@ -63,7 +67,7 @@ describe('Exporter & Importer', () => {
     // Restore into new engine
     const restoredSnapshot = importer.import(bundle);
     const restoredEngine = CourseEngine.restore(restoredSnapshot, {
-      apiKey: 'sk-new-key',
+      provider: createDefaultProvider({ apiKey: 'sk-test-key' }),
     });
 
     expect(restoredEngine.state).toBe('practicing');
@@ -78,7 +82,10 @@ describe('Exporter & Importer', () => {
       generateTopicExplanation: vi.fn(() => Promise.reject(new Error('API Failure'))),
       generateTopicQuizBurst: vi.fn(),
     };
-    const engine = new CourseEngine({ apiKey: 'sk-test-key', generator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'sk-test-key' }),
+      generator,
+    });
 
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
@@ -89,7 +96,7 @@ describe('Exporter & Importer', () => {
 
     const importedSnapshot = importer.import(exporter.exportToString(snapshot));
     const restoredEngine = CourseEngine.restore(importedSnapshot, {
-      apiKey: 'sk-new-key',
+      provider: createDefaultProvider({ apiKey: 'sk-test-key' }),
     });
 
     expect(importedSnapshot.state).toBe('error');
@@ -97,7 +104,9 @@ describe('Exporter & Importer', () => {
   });
 
   it('maintains allGeneratedContent across sections', () => {
-    const engine = new CourseEngine({ apiKey: 'sk-test-key' });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'sk-test-key' }),
+    });
     engine.loadCurriculum(mockCurriculum());
 
     // Section 1

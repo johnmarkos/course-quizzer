@@ -22,8 +22,10 @@ describe('createEngineSession prefetch config', () => {
   });
 
   it('enables prefetch without creating a second generator config', async () => {
+    const mockProvider = { type: 'provider' };
     vi.doMock('quizzer-engine', () => ({
       CourseEngine: MockCourseEngine,
+      createDefaultProvider: vi.fn(() => mockProvider),
     }));
 
     const { createEngineSession } =
@@ -32,7 +34,8 @@ describe('createEngineSession prefetch config', () => {
     createEngineSession({ apiKey: 'test-key' });
 
     expect(capturedConfig).toEqual({
-      apiKey: 'test-key',
+      provider: mockProvider,
+      codeEvaluator: undefined,
       prefetch: {
         enabled: true,
       },

@@ -53,15 +53,12 @@ export class SyllabusParser {
         });
         return this.#extractPlan(response);
       } catch (secondError) {
-        // If it's still failing, throw the error. If it's a ProviderError, keep it.
-        // Otherwise wrap it as malformed_response.
-        if (firstError instanceof ProviderError) {
-          throw firstError;
+        // Prioritize the second error if it's a ProviderError (e.g., rate limit or network during retry)
+        if (secondError instanceof ProviderError) {
+          throw secondError;
         }
-        throw new ProviderError(
-          'malformed_response',
-          firstError instanceof Error ? firstError.message : String(firstError)
-        );
+        // Fall back to the first error (guaranteed to be ProviderError from #extractPlan)
+        throw firstError as ProviderError;
       }
     }
   }

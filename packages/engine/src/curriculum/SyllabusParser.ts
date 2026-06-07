@@ -10,10 +10,11 @@
 // ProviderRequest/ProviderResponse types.
 
 import { buildSyllabusAnalysisPrompt } from '../prompts/syllabus-analysis.js';
-import type {
-  ProviderClient,
-  ProviderResponse,
-  ToolUseBlock,
+import {
+  ProviderError,
+  type ProviderClient,
+  type ProviderResponse,
+  type ToolUseBlock,
 } from '../provider/types.js';
 import type { CurriculumPlan, Section, Topic } from './types.js';
 
@@ -51,9 +52,16 @@ export class SyllabusParser {
           maxTokens: MAX_TOKENS,
         });
         return this.#extractPlan(response);
-      } catch {
-        // Throw the original error — it's more informative
-        throw firstError;
+      } catch (secondError) {
+        // If it's still failing, throw the error. If it's a ProviderError, keep it.
+        // Otherwise wrap it as malformed_response.
+        if (firstError instanceof ProviderError) {
+          throw firstError;
+        }
+        throw new ProviderError(
+          'malformed_response',
+          firstError instanceof Error ? firstError.message : String(firstError)
+        );
       }
     }
   }
@@ -67,12 +75,20 @@ export class SyllabusParser {
     );
 
     if (!toolBlock) {
-      throw new Error(
+      throw new ProviderError(
+        'malformed_response',
         'Syllabus analysis response did not contain a create_curriculum_plan tool use'
       );
     }
 
-    return validateCurriculumPlan(toolBlock.input);
+    try {
+      return validateCurriculumPlan(toolBlock.input);
+    } catch (err) {
+      throw new ProviderError(
+        'malformed_response',
+        err instanceof Error ? err.message : String(err)
+      );
+    }
   }
 }
 

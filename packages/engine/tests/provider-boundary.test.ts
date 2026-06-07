@@ -35,7 +35,7 @@ describe('provider boundary', () => {
     const violations = collectSourceFiles(sourceRoot)
       .filter((filePath) => {
         const path = sourcePath(filePath);
-        return !path.startsWith('provider/') && path !== 'index.ts';
+        return !path.startsWith('provider/');
       })
       .filter((filePath) => {
         const contents = readFileSync(filePath, 'utf8');

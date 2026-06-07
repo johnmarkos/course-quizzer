@@ -4,7 +4,7 @@
 // This module is pure logic — no Svelte, no browser APIs at import time.
 
 import {
-  validateCurriculumPlan,
+  SyllabusParser,
   type CurriculumPlan,
   type ProviderRequest,
   type ProviderResponse,
@@ -22,7 +22,7 @@ export type AnalysisResult =
   | { ok: true; plan: CurriculumPlan }
   | { ok: false; error: string; errorType?: string };
 
-// A sendMessage function matching ClaudeProvider.sendMessage signature.
+// A sendMessage function matching ProviderClient.sendMessage signature.
 // Accepting this as a parameter makes the module testable without real API calls.
 type SendMessageFn = (request: ProviderRequest) => Promise<ProviderResponse>;
 
@@ -44,10 +44,6 @@ export function validateSyllabusInput(text: string): string | null {
   return null;
 }
 
-// --- Error Sanitization ---
-// Delegates to the centralized normalizeError utility, which maps provider,
-// engine, storage, and unknown errors to user-safe messages.
-
 // --- Analysis ---
 
 export async function analyzeSyllabus(
@@ -55,58 +51,17 @@ export async function analyzeSyllabus(
 ): Promise<AnalysisResult> {
   const { syllabusText, sendMessage } = params;
 
-  // Build the prompt using the engine's prompt builder and wire in the
-  // sendMessage function directly (no ClaudeProvider instance needed).
-  const { buildSyllabusAnalysisPrompt } = await import('quizzer-engine');
-
-  const prompt = buildSyllabusAnalysisPrompt(syllabusText);
-  const MAX_TOKENS = 4096;
+  // Use the engine's SyllabusParser, which handles prompt building,
+  // response parsing, and retries.
+  const parser = new SyllabusParser({ sendMessage });
 
   try {
-    let response = await sendMessage({ ...prompt, maxTokens: MAX_TOKENS });
-
-    // Try to extract and validate the plan
-    try {
-      const plan = extractPlan(response);
-      return { ok: true, plan };
-    } catch {
-      // Retry once on malformed response
-      response = await sendMessage({ ...prompt, maxTokens: MAX_TOKENS });
-      try {
-        const plan = extractPlan(response);
-        return { ok: true, plan };
-      } catch {
-        return {
-          ok: false,
-          error: 'The API returned an unexpected response. Please try again.',
-          errorType: 'malformed_response',
-        };
-      }
-    }
+    const plan = await parser.parse(syllabusText);
+    return { ok: true, plan };
   } catch (err) {
     const normalized = normalizeError(err);
     return { ok: false, error: normalized.message, errorType: normalized.category };
   }
-}
-
-// --- Response Extraction ---
-// Extracts and validates the curriculum plan from a provider response.
-
-function extractPlan(response: ProviderResponse): CurriculumPlan {
-  const toolBlock = response.content.find(
-    (block): block is Extract<(typeof response.content)[number], { type: 'tool_use' }> =>
-      block.type === 'tool_use' &&
-      'name' in block &&
-      block.name === 'create_curriculum_plan'
-  );
-
-  if (!toolBlock) {
-    throw new Error(
-      'Syllabus analysis response did not contain a create_curriculum_plan tool use'
-    );
-  }
-
-  return validateCurriculumPlan(toolBlock.input);
 }
 
 // --- Persistence ---

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { ClaudeProvider, type CurriculumPlan } from 'quizzer-engine';
+  import { createDefaultProvider, type CurriculumPlan } from 'quizzer-engine';
   import { getApiKey } from '$lib/stores/api-key.js';
   import {
     analyzeSyllabus,
@@ -51,7 +51,7 @@
     step = 'analyzing';
     analysisError = '';
 
-    const provider = new ClaudeProvider({ apiKey });
+    const provider = createDefaultProvider({ apiKey });
     const result = await analyzeSyllabus({
       syllabusText: syllabusText.trim(),
       sendMessage: (req) => provider.sendMessage(req),

@@ -12,7 +12,10 @@
 - **Engine/App:** Add correlation ids to `apiCallStart` and `apiCallComplete` events, and keep app loading state tied to active API call ids
 - **Engine:** Add `AdaptiveSelector` boundary and integration tests covering gap, default, and proficient quiz burst counts
 - **Scripts:** Guard author-agent `gh pr merge` calls so approved PRs cannot merge while GitHub status checks are failing, pending, cancelled, or absent
-- **Engine:** Type content generation orchestration against provider-agnostic interfaces, with default Claude construction isolated inside the provider layer
+- **Engine/App:** Complete the provider-agnostic refactor by removing concrete `ClaudeProvider` exports from the engine index and updating the app to use the provider factory
+- **App:** Refactor syllabus analysis flow to use `SyllabusParser` from the engine, centralizing parsing and retry logic
+- **Engine:** Update `SyllabusParser` to throw `ProviderError` with `malformed_response` type for better error categorization in the UI
+- **Engine:** Tighten provider boundary tests to ensure no concrete provider leaks through the main engine index
 - **Engine/App:** Move topic status, review flags, and course progress summary calculations behind engine-owned progress helpers so the app only formats and renders emitted progress data
 - **Engine:** Tighten imported snapshot validation for mastery ranges, question counts, answer-key bounds, and state-aware section/item indices
 - **Engine:** Add import coverage for recoverable error-state snapshots so exports from generation failures restore back to `ready`

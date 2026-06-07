@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ClaudeProvider, ProviderError, RateLimiter } from '../src/index.js';
+import { ClaudeProvider } from '../src/provider/ClaudeProvider.js';
+import { ProviderError, RateLimiter } from '../src/index.js';
 import type { ProviderRequest } from '../src/index.js';
 
 // --- Mock Fetch ---

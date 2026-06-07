@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CourseEngine } from '../src/index.js';
+import { CourseEngine, createDefaultProvider } from '../src/index.js';
 import type { CodeAnswerEvaluator } from '../src/content/CodeEvaluator.js';
 import type { CurriculumPlan, ContentItem } from '../src/index.js';
 
@@ -34,7 +34,10 @@ const correctCodeEvaluator: CodeAnswerEvaluator = {
 
 describe('New Question Types', () => {
   it('grades checklist correctly', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
 
@@ -56,7 +59,10 @@ describe('New Question Types', () => {
     expect(resultCorrect.correct).toBe(true);
 
     // Incorrect: not all items checked
-    const engine2 = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine2 = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine2.loadCurriculum(mockCurriculum());
     engine2.startSection('section-1');
     engine2.setSectionContent([checklistItem]);
@@ -78,7 +84,7 @@ describe('New Question Types', () => {
     };
 
     const engineWithDuplicates = new CourseEngine({
-      apiKey: 'test-key',
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
       generator: mockGenerator,
     });
     engineWithDuplicates.loadCurriculum(mockCurriculum());
@@ -92,7 +98,7 @@ describe('New Question Types', () => {
     expect(duplicateResult.correct).toBe(false);
 
     const engineWithOutOfRangeIndex = new CourseEngine({
-      apiKey: 'test-key',
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
       generator: mockGenerator,
     });
     engineWithOutOfRangeIndex.loadCurriculum(mockCurriculum());
@@ -174,7 +180,10 @@ describe('New Question Types', () => {
   });
 
   it('grades self-evaluation correctly when a valid option is selected', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
 
@@ -205,7 +214,7 @@ describe('New Question Types', () => {
     };
 
     const engineWithOutOfRangeIndex = new CourseEngine({
-      apiKey: 'test-key',
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
       generator: mockGenerator,
     });
     engineWithOutOfRangeIndex.loadCurriculum(mockCurriculum());
@@ -219,7 +228,7 @@ describe('New Question Types', () => {
     expect(outOfRangeResult.correct).toBe(false);
 
     const engineWithFractionalIndex = new CourseEngine({
-      apiKey: 'test-key',
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
       generator: mockGenerator,
     });
     engineWithFractionalIndex.loadCurriculum(mockCurriculum());
@@ -234,7 +243,10 @@ describe('New Question Types', () => {
   });
 
   it('round-trips new question types via serialization', async () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
 
@@ -266,7 +278,7 @@ describe('New Question Types', () => {
 
     const snapshot = engine.serialize();
     const restored = CourseEngine.restore(snapshot, {
-      apiKey: 'test-key',
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
       codeEvaluator: correctCodeEvaluator,
     });
 

@@ -8,7 +8,6 @@ import { EventEmitter } from './events.js';
 import { InvalidTransitionError } from './errors.js';
 import { SNAPSHOT_VERSION } from './constants.js';
 import { StudentModel } from '../student/StudentModel.js';
-import { createDefaultProvider } from '../provider/factory.js';
 import { ContentGenerator } from '../content/ContentGenerator.js';
 import { ContentManager } from '../content/ContentManager.js';
 import { CodeEvaluator } from '../content/CodeEvaluator.js';
@@ -123,12 +122,7 @@ export class CourseEngine extends EventEmitter {
     super();
     this.#config = { ...config };
 
-    const provider =
-      config.provider ||
-      createDefaultProvider({
-        apiKey: config.apiKey,
-        model: config.model,
-      });
+    const provider = config.provider;
 
     const generator = config.generator || new ContentGenerator(provider);
     this.#codeEvaluator = config.codeEvaluator || new CodeEvaluator(provider);

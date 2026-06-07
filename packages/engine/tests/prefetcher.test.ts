@@ -1,7 +1,7 @@
 // --- Prefetcher Tests ---
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { CourseEngine } from '../src/engine/CourseEngine.js';
+import { CourseEngine, createDefaultProvider } from '../src/index.js';
 import { ContentGenerator } from '../src/content/ContentGenerator.js';
 import { ContentCache } from '../src/content/ContentCache.js';
 import { Prefetcher } from '../src/content/Prefetcher.js';
@@ -259,7 +259,7 @@ describe('CourseEngine + Prefetcher integration', () => {
     const provider = mockProvider();
     const generator = new ContentGenerator(provider);
     const engine = new CourseEngine({
-      apiKey: 'test',
+      provider: createDefaultProvider({ apiKey: 'test' }),
       generator,
       prefetch: { enabled: true },
     });
@@ -343,7 +343,7 @@ describe('CourseEngine + Prefetcher integration', () => {
       });
 
     const engine = new CourseEngine({
-      apiKey: 'test',
+      provider: createDefaultProvider({ apiKey: 'test' }),
       generator,
       prefetch: { enabled: true },
     });
@@ -420,7 +420,7 @@ describe('CourseEngine + Prefetcher integration', () => {
     });
 
     const engine = new CourseEngine({
-      apiKey: 'test',
+      provider: createDefaultProvider({ apiKey: 'test' }),
       generator,
       prefetch: { enabled: true },
     });
@@ -463,7 +463,7 @@ describe('CourseEngine + Prefetcher integration', () => {
     );
 
     const engine = new CourseEngine({
-      apiKey: 'test',
+      provider: createDefaultProvider({ apiKey: 'test' }),
       generator,
       prefetch: { enabled: true },
     });
@@ -513,7 +513,7 @@ describe('CourseEngine + Prefetcher integration', () => {
       );
 
     const engine = new CourseEngine({
-      apiKey: 'test',
+      provider: createDefaultProvider({ apiKey: 'test' }),
       generator,
       prefetch: { enabled: true },
     });
@@ -554,7 +554,7 @@ describe('CourseEngine + Prefetcher integration', () => {
     );
 
     const engine = new CourseEngine({
-      apiKey: 'test',
+      provider: createDefaultProvider({ apiKey: 'test' }),
       generator,
       prefetch: { enabled: true },
     });
@@ -617,7 +617,7 @@ describe('CourseEngine + Prefetcher integration', () => {
     });
 
     const engine = new CourseEngine({
-      apiKey: 'test',
+      provider: createDefaultProvider({ apiKey: 'test' }),
       generator,
       prefetch: { enabled: true },
     });

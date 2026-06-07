@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { CourseEngine, InvalidTransitionError } from '../src/index.js';
+import {
+  CourseEngine,
+  InvalidTransitionError,
+  createDefaultProvider,
+} from '../src/index.js';
 import type {
   EngineEventMap,
   CurriculumPlan,
@@ -106,7 +110,10 @@ function engineAtPracticing(): {
   items: ContentItem[];
 } {
   const items = mockSectionContent();
-  const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+  const engine = new CourseEngine({
+    provider: createDefaultProvider({ apiKey: 'test-key' }),
+    generator: mockGenerator,
+  });
   engine.loadCurriculum(mockCurriculum());
   engine.startSection('section-1');
   engine.setSectionContent(items);
@@ -117,12 +124,18 @@ function engineAtPracticing(): {
 
 describe('CourseEngine', () => {
   it('starts in idle state', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     expect(engine.state).toBe('idle');
   });
 
   it('has no curriculum initially', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     expect(engine.curriculum).toBeNull();
     expect(engine.currentSection).toBeNull();
     expect(engine.currentItem).toBeNull();
@@ -133,7 +146,10 @@ describe('CourseEngine', () => {
 
 describe('state machine transitions', () => {
   it('idle → ready on loadCurriculum', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     const stateChanges = collectEvents(engine, 'stateChange');
 
     engine.loadCurriculum(mockCurriculum());
@@ -143,7 +159,10 @@ describe('state machine transitions', () => {
   });
 
   it('ready → loading on startSection', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     const stateChanges = collectEvents(engine, 'stateChange');
 
@@ -154,7 +173,10 @@ describe('state machine transitions', () => {
   });
 
   it('loading → practicing on setSectionContent', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
     const stateChanges = collectEvents(engine, 'stateChange');
@@ -216,7 +238,10 @@ describe('state machine transitions', () => {
   });
 
   it('includes engine-computed topic progress in sectionComplete events', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
     engine.setSectionContent([
@@ -331,25 +356,37 @@ describe('state machine transitions', () => {
 
 describe('invalid transitions', () => {
   it('throws on loadCurriculum when not idle', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
 
     expect(() => engine.loadCurriculum(mockCurriculum())).toThrow(InvalidTransitionError);
   });
 
   it('throws on startSection when idle', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     expect(() => engine.startSection('section-1')).toThrow(InvalidTransitionError);
   });
 
   it('throws on startSection with unknown section id', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     expect(() => engine.startSection('nonexistent')).toThrow(InvalidTransitionError);
   });
 
   it('throws on submitAnswer when not practicing', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     expect(() =>
       engine.submitAnswer({ type: 'multiple-choice', selectedIndex: 0 })
     ).toThrow(InvalidTransitionError);
@@ -371,7 +408,10 @@ describe('invalid transitions', () => {
   });
 
   it('throws on setSectionContent when not loading', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     expect(() => engine.setSectionContent([])).toThrow(InvalidTransitionError);
   });
 
@@ -415,7 +455,10 @@ describe('answer grading', () => {
   });
 
   it('grades numeric-input with tolerance', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
     engine.setSectionContent([
@@ -434,7 +477,10 @@ describe('answer grading', () => {
   });
 
   it('handles numeric-input with correctValue of 0', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
     engine.setSectionContent([
@@ -553,7 +599,10 @@ describe('skipQuestion', () => {
 
 describe('event payloads', () => {
   it('syllabusLoaded contains the full curriculum', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     const events = collectEvents(engine, 'syllabusLoaded');
 
     engine.loadCurriculum(mockCurriculum());
@@ -564,7 +613,10 @@ describe('event payloads', () => {
   });
 
   it('sectionStart contains section info and position', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     const events = collectEvents(engine, 'sectionStart');
 
@@ -577,7 +629,10 @@ describe('event payloads', () => {
   });
 
   it('contentReady contains all items and section', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
     const events = collectEvents(engine, 'contentReady');
@@ -591,7 +646,10 @@ describe('event payloads', () => {
   });
 
   it('itemShow contains item and position', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
     const events = collectEvents(engine, 'itemShow');
@@ -644,7 +702,10 @@ describe('mastery tracking', () => {
   });
 
   it('mastery stays within 0-1 bounds', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
 
@@ -779,7 +840,10 @@ describe('async lifecycle and events', () => {
   });
 
   it('reverts loading or error state to ready state on restore', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
     expect(engine.state).toBe('loading');
@@ -807,9 +871,14 @@ describe('async lifecycle and events', () => {
 
 describe('serialize / restore', () => {
   it('round-trips engine in idle state', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     const snapshot = engine.serialize();
-    const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
+    const restored = CourseEngine.restore(snapshot, {
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+    });
     expect(restored.state).toBe('idle');
   });
 
@@ -820,7 +889,9 @@ describe('serialize / restore', () => {
     engine.nextItem(); // advance to q2
 
     const snapshot = engine.serialize();
-    const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
+    const restored = CourseEngine.restore(snapshot, {
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+    });
 
     expect(restored.state).toBe('practicing');
     expect(restored.curriculum?.title).toBe('Intro to Testing');
@@ -834,7 +905,9 @@ describe('serialize / restore', () => {
     const snapshot = engine.serialize();
 
     const events: EngineEventMap['stateChange'][] = [];
-    const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
+    const restored = CourseEngine.restore(snapshot, {
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+    });
     restored.on('stateChange', (p) => events.push(p));
 
     expect(events).toHaveLength(0);
@@ -851,9 +924,11 @@ describe('serialize / restore', () => {
       studentState: { masteryByTopic: {}, gaps: [] },
       lastAnswerResult: null,
     };
-    expect(() => CourseEngine.restore(snapshot, { apiKey: 'test-key' })).toThrow(
-      'Unsupported snapshot version'
-    );
+    expect(() =>
+      CourseEngine.restore(snapshot, {
+        provider: createDefaultProvider({ apiKey: 'test-key' }),
+      })
+    ).toThrow('Unsupported snapshot version');
   });
 
   it('restored engine can continue operating', () => {
@@ -861,7 +936,9 @@ describe('serialize / restore', () => {
     engine.nextItem(); // explanation → q1
 
     const snapshot = engine.serialize();
-    const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
+    const restored = CourseEngine.restore(snapshot, {
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+    });
 
     // Should be able to answer the current question
     const result = restored.submitAnswer({
@@ -928,7 +1005,9 @@ describe('serialize / restore', () => {
     engine.submitAnswer({ type: 'multi-select', selectedIndices: [0, 2] });
 
     const snapshot = engine.serialize();
-    const restored = CourseEngine.restore(snapshot, { apiKey: 'test-key' });
+    const restored = CourseEngine.restore(snapshot, {
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+    });
 
     snapshot.curriculum!.title = 'Mutated';
     const snapshotMultiSelectItem = snapshot.sectionItems[4];
@@ -969,7 +1048,10 @@ describe('serialize / restore', () => {
 
 describe('defensive copies', () => {
   it('loadCurriculum stores a copy, not the original', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     const curriculum = mockCurriculum();
     engine.loadCurriculum(curriculum);
 
@@ -987,7 +1069,10 @@ describe('defensive copies', () => {
   });
 
   it('curriculum getter returns a copy, not the internal object', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
 
     const c1 = engine.curriculum!;
@@ -1042,7 +1127,10 @@ describe('defensive copies', () => {
   });
 
   it('setSectionContent stores deep copies of all question array fields', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');
     const items = mockSectionContent();
@@ -1116,7 +1204,10 @@ describe('defensive copies', () => {
   });
 
   it('contentReady emits deep copies of generated content', () => {
-    const engine = new CourseEngine({ apiKey: 'test-key', generator: mockGenerator });
+    const engine = new CourseEngine({
+      provider: createDefaultProvider({ apiKey: 'test-key' }),
+      generator: mockGenerator,
+    });
     const contentReadyEvents = collectEvents(engine, 'contentReady');
     engine.loadCurriculum(mockCurriculum());
     engine.startSection('section-1');

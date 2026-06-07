@@ -33,9 +33,7 @@ export type EngineState =
   | 'error'; // content generation failed
 
 export type CourseEngineConfig = {
-  apiKey: string;
-  model?: string;
-  provider?: ProviderClient;
+  provider: ProviderClient;
   generator?: TopicContentGenerator;
   codeEvaluator?: CodeAnswerEvaluator;
   prefetch?: {

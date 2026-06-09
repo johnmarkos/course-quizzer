@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- **Scripts:** Add Claude as a last-resort fallback after Codex and Gemini in `author.sh` and `reviewer.sh`. Claude fires only when both free tiers are in cooldown, preserving Pro-plan budget for the planner role.
+
 ## 0.9.2 — 2026-06-07
 
 ### Fixes
